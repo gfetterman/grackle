@@ -17,6 +17,8 @@ int main() {
         }
         if (!strcmp(EXIT_KEYWORD, input)) {
             exit = 1;
+        } else {
+            printf("%s\n", input);
         }
     }
     return 0;
