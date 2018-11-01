@@ -58,7 +58,7 @@ void install_symbol(Node** list, char* symbol, char* value) {
 char* substring(char* str, unsigned int start, unsigned int end) {
     if (str == NULL || strlen(str) < (end - start)) {
         fprintf(stderr, \
-                "substring bad address: start %d -> end %d in string of length %d", \
+                "fatal error: substring bad address: start %d -> end %d in string of length %d\n", \
                 start,
                 end,
                 (int)strlen(str));
@@ -66,7 +66,7 @@ char* substring(char* str, unsigned int start, unsigned int end) {
     }
     char* ss = malloc(sizeof(char) * (end - start + 1));
     if (ss == NULL) {
-        fprintf(stderr, "malloc failed in substring()\n");
+        fprintf(stderr, "fatal error: malloc failed in substring()\n");
         exit(-1);
     }
     memcpy(ss, (str + start), (sizeof(char) * (end - start)));
