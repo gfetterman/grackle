@@ -171,13 +171,38 @@ void get_input(char* prompt, char buffer[], unsigned int buffer_size) {
     return;
 }
 
+unsigned int lookahead(unsigned int token_list[], unsigned int num_tokens) {
+    unsigned int open_parens = 0;
+    unsigned int finger = 0;
+    while (finger < num_tokens) {
+        switch (token_list[finger]) {
+            case 0:
+                open_parens = 0;
+                break;
+            case 1:
+                open_parens++;
+                break;
+            case 2:
+                open_parens--;
+                break;
+            default:
+                break;
+        }
+        finger++;
+        if (open_parens == 0) {
+            break;
+        }
+    }
+    return finger;
+}
+
 unsigned int evaluate(Node** symbol_table, \
                       unsigned int token_list[], \
                       unsigned int num_tokens) {
-    // initial version doesn't support nesting
     unsigned int finger = 0;
     unsigned int result = 0;
     while (finger < num_tokens) {
+        printf("case %d\n", token_list[finger]);
         switch (token_list[finger]) {
             case 0: // end of token list
                 finger = num_tokens;
@@ -190,24 +215,12 @@ unsigned int evaluate(Node** symbol_table, \
                 break;
             case 3: {// addition
                 unsigned int operand_1, operand_2;
-                Node* found = symbol_from_index(*symbol_table, token_list[finger + 1]);
-                if (found == NULL) {
-                    printf("error: symbol \"%d\" not found\n", token_list[finger + 1]);
-                    finger = num_tokens;
-                    break;
-                } else {
-                    operand_1 = atoi(found->value);
-                }
-                found = symbol_from_index(*symbol_table, token_list[finger + 2]);
-                if (found == NULL) {
-                    printf("error: symbol \"%d\" not found\n", token_list[finger + 2]);
-                    finger = num_tokens;
-                    break;
-                } else {
-                    operand_2 = atoi(found->value);
-                }
+                unsigned int len_1 = lookahead(token_list + finger + 1, num_tokens - finger - 1);
+                unsigned int len_2 = lookahead(token_list + finger + 1 + len_1, num_tokens - finger - 1 - len_1);
+                operand_1 = evaluate(symbol_table, token_list + finger + 1, len_1);
+                operand_2 = evaluate(symbol_table, token_list + finger + 1 + len_1, len_2);
                 result = operand_1 + operand_2;
-                finger += 3;
+                finger = num_tokens;
                 break;
             }
             case 4:
@@ -220,6 +233,7 @@ unsigned int evaluate(Node** symbol_table, \
                 } else {
                     result = atoi(found->value);
                 }
+                finger++;
             }
         }
     }
