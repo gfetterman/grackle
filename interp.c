@@ -296,7 +296,7 @@ int main() {
             token_list[num_tokens] = token;
             num_tokens++;
         }
-        printf("result = %d\n", evaluate(&symbol_table, token_list, num_tokens));
+        printf("result = %u\n", evaluate(&symbol_table, token_list, num_tokens));
     }
     return 0;
 }
