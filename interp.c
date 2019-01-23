@@ -273,8 +273,12 @@ unsigned int evaluate(Node** symbol_table, \
                 break;
             }
             case 7:
-                printf("exiting...\n");
-                exit(0);
+                if (num_tokens == 3 && finger == 1 && token_list[0] == 1 && token_list[2] == 2) {
+                    printf("exiting...\n");
+                    exit(0);
+                } else {
+                    printf("error: malformed expression\n");
+                }
             default: {
                 Node* found = symbol_from_index(*symbol_table, token_list[finger]);
                 if (found == NULL) {
