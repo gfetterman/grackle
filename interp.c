@@ -220,6 +220,10 @@ unsigned int evaluate(Node** symbol_table, \
                 unsigned int operand_1, operand_2;
                 unsigned int len_1 = lookahead(token_list + finger + 1, num_tokens - finger - 1);
                 unsigned int len_2 = lookahead(token_list + finger + 1 + len_1, num_tokens - finger - 1 - len_1);
+                if (token_list[finger + 1 + len_1 + len_2] != 2) {
+                    printf("error: '+' operator takes exactly 2 operands\n");
+                    return 0;
+                }
                 operand_1 = evaluate(symbol_table, token_list + finger + 1, len_1);
                 operand_2 = evaluate(symbol_table, token_list + finger + 1 + len_1, len_2);
                 result = operand_1 + operand_2;
@@ -230,6 +234,10 @@ unsigned int evaluate(Node** symbol_table, \
                 unsigned int operand_1, operand_2;
                 unsigned int len_1 = lookahead(token_list + finger + 1, num_tokens - finger - 1);
                 unsigned int len_2 = lookahead(token_list + finger + 1 + len_1, num_tokens - finger - 1 - len_1);
+                if (token_list[finger + 1 + len_1 + len_2] != 2) {
+                    printf("error: '*' operator takes exactly 2 operands\n");
+                    return 0;
+                }
                 operand_1 = evaluate(symbol_table, token_list + finger + 1, len_1);
                 operand_2 = evaluate(symbol_table, token_list + finger + 1 + len_1, len_2);
                 result = operand_1 * operand_2;
@@ -240,6 +248,10 @@ unsigned int evaluate(Node** symbol_table, \
                 unsigned int operand_1, operand_2;
                 unsigned int len_1 = lookahead(token_list + finger + 1, num_tokens - finger - 1);
                 unsigned int len_2 = lookahead(token_list + finger + 1 + len_1, num_tokens - finger - 1 - len_1);
+                if (token_list[finger + 1 + len_1 + len_2] != 2) {
+                    printf("error: '-' operator takes exactly 2 operands\n");
+                    return 0;
+                }
                 operand_1 = evaluate(symbol_table, token_list + finger + 1, len_1);
                 operand_2 = evaluate(symbol_table, token_list + finger + 1 + len_1, len_2);
                 result = operand_1 - operand_2;
@@ -250,6 +262,10 @@ unsigned int evaluate(Node** symbol_table, \
                 unsigned int operand_1, operand_2;
                 unsigned int len_1 = lookahead(token_list + finger + 1, num_tokens - finger - 1);
                 unsigned int len_2 = lookahead(token_list + finger + 1 + len_1, num_tokens - finger - 1 - len_1);
+                if (token_list[finger + 1 + len_1 + len_2] != 2) {
+                    printf("error: '/' operator takes exactly 2 operands\n");
+                    return 0;
+                }
                 operand_1 = evaluate(symbol_table, token_list + finger + 1, len_1);
                 operand_2 = evaluate(symbol_table, token_list + finger + 1 + len_1, len_2);
                 result = operand_1 / operand_2;
