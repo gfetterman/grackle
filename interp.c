@@ -157,6 +157,9 @@ void setup_symbol_table(Node** symbol_table) {
     install_symbol(symbol_table, "(", "(");
     install_symbol(symbol_table, ")", ")");
     install_symbol(symbol_table, "+", "+");
+    install_symbol(symbol_table, "*", "*");
+    install_symbol(symbol_table, "-", "-");
+    install_symbol(symbol_table, "/", "/");
     install_symbol(symbol_table, "exit", "exit");
     return;
 }
@@ -223,7 +226,37 @@ unsigned int evaluate(Node** symbol_table, \
                 finger = num_tokens;
                 break;
             }
-            case 4:
+            case 4: { // multiplication
+                unsigned int operand_1, operand_2;
+                unsigned int len_1 = lookahead(token_list + finger + 1, num_tokens - finger - 1);
+                unsigned int len_2 = lookahead(token_list + finger + 1 + len_1, num_tokens - finger - 1 - len_1);
+                operand_1 = evaluate(symbol_table, token_list + finger + 1, len_1);
+                operand_2 = evaluate(symbol_table, token_list + finger + 1 + len_1, len_2);
+                result = operand_1 * operand_2;
+                finger = num_tokens;
+                break;
+            }
+            case 5: { // subtraction
+                unsigned int operand_1, operand_2;
+                unsigned int len_1 = lookahead(token_list + finger + 1, num_tokens - finger - 1);
+                unsigned int len_2 = lookahead(token_list + finger + 1 + len_1, num_tokens - finger - 1 - len_1);
+                operand_1 = evaluate(symbol_table, token_list + finger + 1, len_1);
+                operand_2 = evaluate(symbol_table, token_list + finger + 1 + len_1, len_2);
+                result = operand_1 - operand_2;
+                finger = num_tokens;
+                break;
+            }
+            case 6: { // (integer) division
+                unsigned int operand_1, operand_2;
+                unsigned int len_1 = lookahead(token_list + finger + 1, num_tokens - finger - 1);
+                unsigned int len_2 = lookahead(token_list + finger + 1 + len_1, num_tokens - finger - 1 - len_1);
+                operand_1 = evaluate(symbol_table, token_list + finger + 1, len_1);
+                operand_2 = evaluate(symbol_table, token_list + finger + 1 + len_1, len_2);
+                result = operand_1 / operand_2;
+                finger = num_tokens;
+                break;
+            }
+            case 7:
                 printf("exiting...\n");
                 exit(0);
             default: {
