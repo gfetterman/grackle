@@ -216,7 +216,10 @@ unsigned int evaluate(Node** symbol_table, \
             case 2: // close parenthesis
                 finger = num_tokens;
                 break;
-            case 3: {// addition
+            case 3:   // |   |   |
+            case 4:   // |   |   |
+            case 5:   // V   V   V
+            case 6: { // binary arithmetic operators
                 unsigned int operand_1, operand_2;
                 unsigned int len_1 = lookahead(token_list + finger + 1, num_tokens - finger - 1);
                 unsigned int len_2 = lookahead(token_list + finger + 1 + len_1, num_tokens - finger - 1 - len_1);
@@ -226,49 +229,23 @@ unsigned int evaluate(Node** symbol_table, \
                 }
                 operand_1 = evaluate(symbol_table, token_list + finger + 1, len_1);
                 operand_2 = evaluate(symbol_table, token_list + finger + 1 + len_1, len_2);
-                result = operand_1 + operand_2;
-                finger = num_tokens;
-                break;
-            }
-            case 4: { // multiplication
-                unsigned int operand_1, operand_2;
-                unsigned int len_1 = lookahead(token_list + finger + 1, num_tokens - finger - 1);
-                unsigned int len_2 = lookahead(token_list + finger + 1 + len_1, num_tokens - finger - 1 - len_1);
-                if (token_list[finger + 1 + len_1 + len_2] != 2) {
-                    printf("error: '*' operator takes exactly 2 operands\n");
-                    return 0;
+                switch (token_list[finger]) {
+                    case 3: // addition
+                        result = operand_1 + operand_2;
+                        break;
+                    case 4: // multiplication
+                        result = operand_1 * operand_2;
+                        break;
+                    case 5: // subtraction
+                        result = operand_1 - operand_2;
+                        break;
+                    case 6:
+                        result = operand_1 / operand_2;
+                        break;
+                    default:
+                        printf("error: unrecognized built-in arithmetic operator\n");
+                        return 0;
                 }
-                operand_1 = evaluate(symbol_table, token_list + finger + 1, len_1);
-                operand_2 = evaluate(symbol_table, token_list + finger + 1 + len_1, len_2);
-                result = operand_1 * operand_2;
-                finger = num_tokens;
-                break;
-            }
-            case 5: { // subtraction
-                unsigned int operand_1, operand_2;
-                unsigned int len_1 = lookahead(token_list + finger + 1, num_tokens - finger - 1);
-                unsigned int len_2 = lookahead(token_list + finger + 1 + len_1, num_tokens - finger - 1 - len_1);
-                if (token_list[finger + 1 + len_1 + len_2] != 2) {
-                    printf("error: '-' operator takes exactly 2 operands\n");
-                    return 0;
-                }
-                operand_1 = evaluate(symbol_table, token_list + finger + 1, len_1);
-                operand_2 = evaluate(symbol_table, token_list + finger + 1 + len_1, len_2);
-                result = operand_1 - operand_2;
-                finger = num_tokens;
-                break;
-            }
-            case 6: { // (integer) division
-                unsigned int operand_1, operand_2;
-                unsigned int len_1 = lookahead(token_list + finger + 1, num_tokens - finger - 1);
-                unsigned int len_2 = lookahead(token_list + finger + 1 + len_1, num_tokens - finger - 1 - len_1);
-                if (token_list[finger + 1 + len_1 + len_2] != 2) {
-                    printf("error: '/' operator takes exactly 2 operands\n");
-                    return 0;
-                }
-                operand_1 = evaluate(symbol_table, token_list + finger + 1, len_1);
-                operand_2 = evaluate(symbol_table, token_list + finger + 1 + len_1, len_2);
-                result = operand_1 / operand_2;
                 finger = num_tokens;
                 break;
             }
