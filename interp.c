@@ -160,6 +160,7 @@ void setup_symbol_table(Node** symbol_table) {
     install_symbol(symbol_table, "*", "*");
     install_symbol(symbol_table, "-", "-");
     install_symbol(symbol_table, "/", "/");
+    install_symbol(symbol_table, "setq", "setq");
     install_symbol(symbol_table, "exit", "exit");
     return;
 }
@@ -253,7 +254,27 @@ unsigned int evaluate(Node** symbol_table, \
                 finger = num_tokens;
                 break;
             }
-            case 7:
+            case 7: { // setq
+                unsigned int len_1 = lookahead(token_list + finger + 1, num_tokens - finger - 1);
+                unsigned int len_2 = lookahead(token_list + finger + 1 + len_1, num_tokens - finger - 1 - len_1);
+                if (token_list[finger + 1 + len_1 + len_2] != 2) {
+                    printf("error: 'setq' takes exactly 2 arguments\n");
+                    return 0;
+                }
+                if (len_1 != 1) {
+                    printf("error: cannot assign to an expression, only a symbol\n");
+                    return 0;
+                }
+                unsigned int new_value = evaluate(symbol_table, token_list + finger + 1 + len_1, len_2);
+                char buf[80]; // temporary restriction
+                unsigned int num_chars = sprintf(buf, "%u", new_value) + 1;
+                char* str_new_value = malloc(num_chars * sizeof(char)); // this is the symbol table's problem now
+                strcpy(str_new_value, buf);
+                symbol_from_index(*symbol_table, token_list[finger + 1])->value = str_new_value;
+                finger = num_tokens;
+                break;
+            }
+            case 8:
                 if (num_tokens == 3 && finger == 1 && token_list[0] == 1 && token_list[2] == 2) {
                     printf("exiting...\n");
                     exit(0);
