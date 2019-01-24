@@ -240,6 +240,10 @@ unsigned int evaluate(Node** symbol_table, \
                         result = operand_1 - operand_2;
                         break;
                     case 6:
+                        if (operand_2 == 0) {
+                            printf("error: cannot divide by zero\n");
+                            return 0;
+                        }
                         result = operand_1 / operand_2;
                         break;
                     default:
