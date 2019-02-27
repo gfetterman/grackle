@@ -7,14 +7,41 @@
 #define BUF_SIZE 80
 #define EXIT_KEYWORD "(exit)"
 
+typedef enum {TYPE_UNDEF, \
+              TYPE_ERROR, \
+              TYPE_BUILTIN, \
+              TYPE_NUM, \
+              TYPE_SEXPR, \
+              TYPE_SYM} type;
+
+typedef struct TYPED_PTR {
+    type type;
+    unsigned int ptr;
+} typed_ptr;
+
+typed_ptr* create_typed_ptr(type type, unsigned int ptr) {
+    typed_ptr* new_tp = malloc(sizeof(typed_ptr));
+    if (new_tp == NULL) {
+        printf("malloc failed in create_typed_ptr()\n");
+        exit(-1);
+    }
+    new_tp->type = type;
+    new_tp->ptr = ptr;
+    return new_tp;
+}
+
 typedef struct LLNODE {
     unsigned int symbol_number;
     char* symbol;
-    char* value;
+    type type;
+    unsigned int value;
     struct LLNODE* next;
 } Node;
 
-Node* create_node(char* symbol, char* value, unsigned int symbol_number) {
+Node* create_node(unsigned int symbol_number, \
+                  char* symbol, \
+                  type type, \
+                  unsigned int value) {
     Node* new_node = malloc(sizeof(Node));
     if (new_node == NULL) {
         fprintf(stderr, "fatal error: malloc failed in create_node()\n");
@@ -22,13 +49,32 @@ Node* create_node(char* symbol, char* value, unsigned int symbol_number) {
     }
     new_node->symbol_number = symbol_number;
     new_node->symbol = symbol;
+    new_node->type = type;
     new_node->value = value;
     new_node->next = NULL;
     return new_node;
 }
 
-Node* search_list(Node* list, char* symbol) {
-    Node* curr = list;
+typedef struct SYMBOL_TABLE {
+    Node* head;
+    unsigned int length;
+    unsigned int symbol_number_offset;
+} Symbol_Table;
+
+Symbol_Table* create_symbol_table(unsigned int offset) {
+    Symbol_Table* new_st = malloc(sizeof(Symbol_Table));
+    if (new_st == NULL) {
+        printf("malloc failed in create_symbol_table()\n");
+        exit(-1);
+    }
+    new_st->head = NULL;
+    new_st->length = 0;
+    new_st->symbol_number_offset = offset;
+    return new_st;
+}
+
+Node* search_list(Symbol_Table* st, char* symbol) {
+    Node* curr = st->head;
     while (curr != NULL) {
         if (!strcmp(curr->symbol, symbol)) {
             return curr;
@@ -38,8 +84,8 @@ Node* search_list(Node* list, char* symbol) {
     return NULL;
 }
 
-Node* symbol_from_index(Node* list, unsigned int index) {
-    Node* curr = list;
+Node* symbol_from_index(Symbol_Table* st, unsigned int index) {
+    Node* curr = st->head;
     while (curr != NULL) {
         if (curr->symbol_number == index) {
             break;
@@ -49,27 +95,24 @@ Node* symbol_from_index(Node* list, unsigned int index) {
     return curr;
 }
 
-unsigned int len(Node* list) {
-    unsigned int length = 0;
-    while (list != NULL) {
-        list = list->next;
-        length++;
-    }
-    return length;
-}
-
-unsigned int install_symbol(Node** list, char* symbol, char* value) {
-    Node* existing_value = search_list(*list, symbol);
-    if (existing_value == NULL) {
-        unsigned int num = len(*list);
-        Node* new_node = create_node(symbol, value, num);
-        new_node->next = *list;
-        *list = new_node;
-        return num;
+typed_ptr* install_symbol(Symbol_Table* st, \
+                          char* symbol, \
+                          type type, \
+                          unsigned int value) {
+    unsigned int symbol_number = st->length + st->symbol_number_offset;
+    Node* found = search_list(st, symbol);
+    if (found == NULL) {
+        Node* new_node = create_node(symbol_number, symbol, type, value);
+        new_node->next = st->head;
+        st->head = new_node;
+        st->length++;
     } else {
-        existing_value->value = value;
-        return existing_value->symbol_number;
+        free(symbol);
+        found->type = type;
+        found->value = value;
+        symbol_number = found->symbol_number;
     }
+    return create_typed_ptr((type != TYPE_BUILTIN) ? TYPE_SYM : type, symbol_number);
 }
 
 char* substring(char* str, unsigned int start, unsigned int end) {
@@ -91,77 +134,35 @@ char* substring(char* str, unsigned int start, unsigned int end) {
     return ss;
 }
 
-void print_symbol_table(Node* list) {
-    Node* curr = list;
+void print_symbol_table(Symbol_Table* st) {
+    Node* curr = st->head;
     printf("current symbol table:\n");
     while (curr != NULL) {
-        printf("  symbol #%d, \"%s\", has value \"%s\"\n", curr->symbol_number, curr->symbol, curr->value);
+        printf("  symbol #%d, \"%s\", has type \"%d\" and value %u\n", \
+               curr->symbol_number, \
+               curr->symbol, \
+               curr->type, \
+               curr->value);
         curr = curr->next;
     }
     return;
 }
 
-unsigned int pull_token(Node** symbol_table, \
-                        char str[], \
-                        unsigned int length, \
-                        unsigned int* offset) {
-    // length must == length of character array str
-    // pulls one token out of the front of str
-    // if it reaches the end of str, it returns 0
-    // if it's '(' or ')', it returns 1 or 2, respectively
-    // if it's anything else, it returns an index into
-    // the symbol table (here, for the moment, the number
-    // table and symbol table have been merged)
-    // leading spaces are ignored
-    // (it can't handle other whitespace at the moment)
-    //printf("string to tokenize: \"%s\", beginning with '%c'\n", str, str[*offset]);
-    while (*offset < length && str[*offset] == ' ') {
-        (*offset)++;
-    }
-    if (*offset >= length) { // reached end of input
-        return 0;
-    } else if (str[*offset] == '(') { // open parenthesis
-        (*offset)++;
-        return 1;
-    } else if (str[*offset] == ')') { // close parenthesis
-        (*offset)++;
-        return 2;
-    } else { // number or atom
-        unsigned int token_len = 0;
-        while (*offset + token_len < length && \
-               str[*offset + token_len] != ' ' && \
-               str[*offset + token_len] != '(' && \
-               str[*offset + token_len] != ')') {
-            token_len++;
-        }
-        char* token_str = substring(str, *offset, *offset + token_len);
-        //printf("symbol found: %s\n", token_str);
-        Node* found = search_list(*symbol_table, token_str);
-        (*offset) += token_len; // for the next call to pull_token()
-        if (found == NULL) {
-            unsigned int new_offset = install_symbol(symbol_table, token_str, token_str);
-            //printf("new symbol added to symbol table at position %d\n", new_offset);
-            //print_symbol_table(*symbol_table);
-            // and now it's the symbol table's problem to free the memory
-            // allocated for token_str
-            return new_offset;
-        } else {
-            free(token_str);
-            return found->symbol_number;
-        }
-    }
-}
+typedef enum {BUILTIN_ADD, \
+              BUILTIN_MUL, \
+              BUILTIN_SUB, \
+              BUILTIN_DIV, \
+              BUILTIN_SETQ, \
+              BUILTIN_EXIT} builtin_code;
 
-void setup_symbol_table(Node** symbol_table) {
-    install_symbol(symbol_table, "NULL_SENTINEL", "NULL_SENTINEL");
-    install_symbol(symbol_table, "(", "(");
-    install_symbol(symbol_table, ")", ")");
-    install_symbol(symbol_table, "+", "+");
-    install_symbol(symbol_table, "*", "*");
-    install_symbol(symbol_table, "-", "-");
-    install_symbol(symbol_table, "/", "/");
-    install_symbol(symbol_table, "setq", "setq");
-    install_symbol(symbol_table, "exit", "exit");
+void setup_symbol_table(Symbol_Table* st) {
+    install_symbol(st, "NULL_SENTINEL", TYPE_UNDEF, 0);
+    install_symbol(st, "+", TYPE_BUILTIN, BUILTIN_ADD);
+    install_symbol(st, "*", TYPE_BUILTIN, BUILTIN_MUL);
+    install_symbol(st, "-", TYPE_BUILTIN, BUILTIN_SUB);
+    install_symbol(st, "/", TYPE_BUILTIN, BUILTIN_DIV);
+    install_symbol(st, "setq", TYPE_BUILTIN, BUILTIN_SETQ);
+    install_symbol(st, "exit", TYPE_BUILTIN, BUILTIN_EXIT);
     return;
 }
 
@@ -175,121 +176,687 @@ void get_input(char* prompt, char buffer[], unsigned int buffer_size) {
     return;
 }
 
-unsigned int lookahead(unsigned int token_list[], unsigned int num_tokens) {
-    unsigned int open_parens = 0;
-    unsigned int finger = 0;
-    while (finger < num_tokens) {
-        switch (token_list[finger]) {
-            case 0:
-                open_parens = 0;
-                break;
-            case 1:
-                open_parens++;
-                break;
-            case 2:
-                open_parens--;
-                break;
-            default:
-                break;
-        }
-        finger++;
-        if (open_parens == 0) {
+typedef struct S_EXPR_NODE {
+    typed_ptr* car;
+    typed_ptr* cdr;
+} s_expr;
+
+s_expr* create_s_expr(typed_ptr* car, typed_ptr* cdr) {
+    s_expr* new_se = malloc(sizeof(s_expr));
+    if (new_se == NULL) {
+        printf("malloc failed in create_s_expr()\n");
+        exit(-1);
+    }
+    new_se->car = car;
+    new_se->cdr = cdr;
+    return new_se;
+}
+
+void delete_s_expr(s_expr* se) {
+    if (se != NULL) {
+        free(se->car);
+        free(se->cdr);
+        free(se);
+    }
+    return;
+}
+
+typedef struct S_EXPR_STACK_NODE {
+    unsigned int list_number;
+    s_expr* se;
+    struct S_EXPR_STACK_NODE* next;
+} s_expr_stack_node;
+
+s_expr_stack_node* create_s_expr_stack_node(unsigned int list_number, s_expr* se) {
+    s_expr_stack_node* new_sesn = malloc(sizeof(s_expr_stack_node));
+    if (new_sesn == NULL) {
+        printf("malloc failed in create_s_expr_stack_node()\n");
+        exit(-1);
+    }
+    new_sesn->list_number = list_number;
+    new_sesn->se = se;
+    new_sesn->next = NULL;
+    return new_sesn;
+}
+
+typedef struct LIST_AREA {
+    s_expr_stack_node* head;
+    unsigned int length;
+    unsigned int offset;
+} List_Area;
+
+List_Area* create_list_area(unsigned int offset) {
+    List_Area* new_la = malloc(sizeof(List_Area));
+    if (new_la == NULL) {
+        printf("malloc failed in create_list_area()\n");
+        exit(-1);
+    }
+    new_la->head = NULL;
+    new_la->length = 0;
+    new_la->offset = offset;
+    return new_la;
+}
+
+typed_ptr* install_list(List_Area* la, s_expr* new_se) {
+    // we don't check for duplicates - that'd take forever
+    unsigned int num = la->length + la->offset;
+    s_expr_stack_node* new_sesn = create_s_expr_stack_node(num, new_se);
+    new_sesn->next = la->head;
+    la->head = new_sesn;
+    la->length++;
+    return create_typed_ptr(TYPE_SEXPR, num);
+}
+
+void se_stack_push(s_expr_stack_node** stack, s_expr* new_se) {
+    if (stack == NULL) {
+        printf("stack double pointer NULL in se_stack_push()\n");
+        exit(-1);
+    }
+    s_expr_stack_node* new_node = create_s_expr_stack_node(0, new_se);
+    new_node->next = *stack;
+    *stack = new_node;
+    return;
+}
+
+void se_stack_pop(s_expr_stack_node** stack) {
+    if (stack == NULL) {
+        printf("stack double pointer NULL in se_stack_pop()\n");
+        exit(-1);
+    }
+    if (*stack == NULL) {
+        printf("cannot pop() from empty se_stack\n");
+        exit(-1);
+    }
+    s_expr_stack_node* old_head = *stack;
+    *stack = old_head->next;
+    // note that we don't free() the s_expr contained in this se_stack_node
+    // (bug-free) parsing ensures that it is still reachable from the head
+    // variable in parse()
+    // so it can be cleaned up as needed later
+    // and in the meantime, it's still needed
+    free(old_head);
+    return;
+}
+
+bool is_number(char str[]) {
+    char c;
+    bool ok = true;
+    while ((c = *str++)) {
+        if (c < 48 || c > 57) {
+            ok = false;
             break;
         }
     }
-    return finger;
+    return ok;
 }
 
-unsigned int evaluate(Node** symbol_table, \
-                      unsigned int token_list[], \
-                      unsigned int num_tokens) {
-    unsigned int finger = 0;
-    unsigned int result = 0;
-    while (finger < num_tokens) {
-        printf("case %d\n", token_list[finger]);
-        switch (token_list[finger]) {
-            case 0: // end of token list
-                finger = num_tokens;
-                break;
-            case 1: // open parenthesis
-                finger++;
-                break;
-            case 2: // close parenthesis
-                finger = num_tokens;
-                break;
-            case 3:   // |   |   |
-            case 4:   // |   |   |
-            case 5:   // V   V   V
-            case 6: { // binary arithmetic operators
-                unsigned int operand_1, operand_2;
-                unsigned int len_1 = lookahead(token_list + finger + 1, num_tokens - finger - 1);
-                unsigned int len_2 = lookahead(token_list + finger + 1 + len_1, num_tokens - finger - 1 - len_1);
-                if (token_list[finger + 1 + len_1 + len_2] != 2) {
-                    printf("error: '+' operator takes exactly 2 operands\n");
-                    return 0;
-                }
-                operand_1 = evaluate(symbol_table, token_list + finger + 1, len_1);
-                operand_2 = evaluate(symbol_table, token_list + finger + 1 + len_1, len_2);
-                switch (token_list[finger]) {
-                    case 3: // addition
-                        result = operand_1 + operand_2;
+typed_ptr* install_symbol_substring(Symbol_Table* st, \
+                                    Symbol_Table* temp_st, \
+                                    char str[], \
+                                    unsigned int start, \
+                                    unsigned int end) {
+    char* symbol = substring(str, start, end);
+    if (is_number(symbol)) {
+        unsigned int value = atoi(symbol);
+        free(symbol);
+        return create_typed_ptr(TYPE_NUM, value);
+    } else {
+        Node* found = search_list(st, symbol);
+        if (found == NULL) {
+            found = search_list(temp_st, symbol);
+            if (found == NULL) {
+                return install_symbol(temp_st, symbol, TYPE_UNDEF, 0);
+            }
+        }
+        free(symbol);
+        return create_typed_ptr((found->type == TYPE_BUILTIN) ? found->type : TYPE_SYM, found->symbol_number);
+    }
+}
+
+s_expr* list_from_index(List_Area* la, unsigned int index) {
+    s_expr_stack_node* curr = la->head;
+    while (curr != NULL) {
+        if (curr->list_number == index) {
+            break;
+        }
+        curr = curr->next;
+    }
+    return curr->se;
+}
+
+void print_se_recursive(s_expr* se, unsigned int depth, Symbol_Table* st, List_Area* la) {
+    for (unsigned int i = 0; i < depth; i++) {
+        printf("  ");
+    }
+    if (se == NULL) {
+        printf("null\n");
+    } else {
+        if (se->car == NULL) {
+            printf("car: NULL, ");
+        } else {
+            switch (se->car->type) {
+                case TYPE_NUM:
+                    printf("car: number %u, ", se->car->ptr);
+                    break;
+                case TYPE_SEXPR:
+                    printf("car: s-expression #%u, ", se->car->ptr);
+                    break;
+                case TYPE_SYM:
+                    printf("car: symbol #%u, ", se->car->ptr);
+                    break;
+                case TYPE_BUILTIN:
+                    printf("car: built-in operator with symbol #%u, ", se->car->ptr);
+                    break;
+                default:
+                    printf("car: unrecognized type: %d, ", se->car->type);
+            }
+        }
+        if (se->cdr == NULL) {
+            printf("cdr: NULL\n");
+        } else {
+            switch (se->cdr->type) {
+                case TYPE_NUM:
+                    printf("cdr: number %u, ", se->cdr->ptr);
+                    break;
+                case TYPE_SEXPR:
+                    printf("cdr: s-expression #%u\n", se->cdr->ptr);
+                    break;
+                case TYPE_SYM:
+                    printf("cdr: symbol #%u\n", se->cdr->ptr);
+                    break;
+                case TYPE_BUILTIN:
+                    printf("cdr: built-in operator with symbol #%u, ", se->cdr->ptr);
+                    break;
+                default:
+                    printf("cdr: unrecognized type: %d\n", se->cdr->type);
+            }
+        }
+        if (se->car != NULL && se->car->type == TYPE_SEXPR) {
+            print_se_recursive(list_from_index(la, se->car->ptr), depth + 1, st, la);
+        }
+        if (se->cdr != NULL && se->cdr->type == TYPE_SEXPR) {
+            print_se_recursive(list_from_index(la, se->cdr->ptr), depth + 1, st, la);
+        }
+    }
+    return;
+}
+
+void print_s_expr(s_expr* se, Symbol_Table* st, List_Area* la) {
+    print_se_recursive(se, 0, st, la);
+    return;
+}
+
+void print_list_area(Symbol_Table* st, List_Area* la) {
+    s_expr_stack_node* curr = la->head;
+    printf("current list area:\n");
+    while (curr != NULL) {
+        printf("  list #%u:\n", curr->list_number);
+        print_s_expr(curr->se, st, la);
+        curr = curr->next;
+    }
+    return;
+}
+
+void merge_list_areas(List_Area* first, List_Area* second) {
+    if (first->head == NULL) {
+        first->head = second->head;
+    } else {
+        s_expr_stack_node* curr = first->head;
+        while (curr->next != NULL) {
+            curr = curr->next;
+        }
+        curr->next = second->head;
+    }
+    first->length += second->length;
+    return;
+}
+
+void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second) {
+    if (first->head == NULL) {
+        first->head = second->head;
+    } else {
+        Node* curr = first->head;
+        while (curr->next != NULL) {
+            curr = curr->next;
+        }
+        curr->next = second->head;
+    }
+    first->length += second->length;
+    return;
+}
+
+s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
+    enum Parse_State {START, NEW_SE, READY, READ_SYMBOL, FINISH, ERROR};
+    enum Parse_State state = START;
+    enum Error_Code {NONE, UNBAL_PAREN, BARE_SYM, EMPTY_PAREN, TOO_MANY};
+    enum Error_Code error_code = NONE;
+    s_expr_stack_node* stack = NULL;
+    s_expr* new_s_expr = NULL;
+    unsigned int curr = 0;
+    unsigned int symbol_start = 0;
+    Symbol_Table* temp_symbol_table = create_symbol_table(st->length);
+    List_Area* temp_list_area = create_list_area(la->length);
+    s_expr* head = NULL;
+    while (str[curr] && state != ERROR) {
+        switch (state) {
+            case START:
+                switch (str[curr]) {
+                    case ' ': // ignore leading whitespace
                         break;
-                    case 4: // multiplication
-                        result = operand_1 * operand_2;
+                    case '(':
+                        head = create_s_expr(NULL, NULL);
+                        se_stack_push(&stack, head);
+                        state = NEW_SE;
                         break;
-                    case 5: // subtraction
-                        result = operand_1 - operand_2;
-                        break;
-                    case 6:
-                        if (operand_2 == 0) {
-                            printf("error: cannot divide by zero\n");
-                            return 0;
-                        }
-                        result = operand_1 / operand_2;
+                    case ')':
+                        state = ERROR;
+                        error_code = UNBAL_PAREN;
                         break;
                     default:
-                        printf("error: unrecognized built-in arithmetic operator\n");
-                        return 0;
+                        state = ERROR;
+                        error_code = BARE_SYM;
+                        break;
                 }
-                finger = num_tokens;
+                break;
+            case NEW_SE:
+                switch (str[curr]) {
+                    case ' ': // ignore leading whitespace
+                        break;
+                    case '(':
+                        new_s_expr = create_s_expr(NULL, NULL);
+                        stack->se->car = install_list(temp_list_area, \
+                                                      new_s_expr);
+                        se_stack_push(&stack, new_s_expr);
+                        break;
+                    case ')':
+                        state = ERROR;
+                        error_code = EMPTY_PAREN;
+                        break;
+                    default:
+                        symbol_start = curr;
+                        state = READ_SYMBOL;
+                        break;
+                }
+                break;
+            case READY:
+                switch (str[curr]) {
+                    case ' ': // lump whitespace together
+                        break;
+                    case '(':
+                        // create the next backbone node
+                        new_s_expr = create_s_expr(NULL, NULL);
+                        stack->se->cdr = install_list(temp_list_area, \
+                                                      new_s_expr);
+                        se_stack_push(&stack, new_s_expr);
+                        // create the new s-expression's initial node
+                        new_s_expr = create_s_expr(NULL, NULL);
+                        stack->se->car = install_list(temp_list_area, \
+                                                      new_s_expr);
+                        se_stack_push(&stack, new_s_expr);
+                        state = NEW_SE;
+                        break;
+                    case ')':
+                        if (stack == NULL) {
+                            state = ERROR;
+                            error_code = UNBAL_PAREN;
+                        } else {
+                            se_stack_pop(&stack);
+                            while (stack != NULL && stack->se->cdr != NULL) {
+                                se_stack_pop(&stack);
+                            }
+                            state = (stack == NULL) ? FINISH : READY;
+                        }
+                        break;
+                    default:
+                        symbol_start = curr;
+                        se_stack_push(&stack, create_s_expr(NULL, NULL));
+                        stack->next->se->cdr = install_list(temp_list_area, \
+                                                            stack->se);
+                        state = READ_SYMBOL;
+                        break;
+                }
+                break;
+            case READ_SYMBOL:
+                switch (str[curr]) {
+                    case ' ':
+                        // update the current backbone node
+                        stack->se->car = install_symbol_substring(st, \
+                                                                  temp_symbol_table, \
+                                                                  str, \
+                                                                  symbol_start, \
+                                                                  curr);
+                        state = READY;
+                        break;
+                    case '(':
+                        // update the current backbone node
+                        stack->se->car = install_symbol_substring(st,
+                                                                  temp_symbol_table,
+                                                                  str,
+                                                                  symbol_start,
+                                                                  curr);
+                        // create the next backbone node
+                        new_s_expr = create_s_expr(NULL, NULL);
+                        stack->se->cdr = install_list(temp_list_area, \
+                                                      new_s_expr);
+                        se_stack_push(&stack, new_s_expr);
+                        // create the new s-expression's initial node
+                        new_s_expr = create_s_expr(NULL, NULL);
+                        stack->se->car = install_list(temp_list_area, \
+                                                      new_s_expr);
+                        se_stack_push(&stack, new_s_expr);
+                        state = NEW_SE;
+                        break;
+                    case ')':
+                        // update the current backbone node
+                        stack->se->car = install_symbol_substring(st,
+                                                                  temp_symbol_table,
+                                                                  str,
+                                                                  symbol_start,
+                                                                  curr);
+                        if (stack == NULL) {
+                            state = ERROR;
+                            error_code = UNBAL_PAREN;
+                        } else {
+                            se_stack_pop(&stack);
+                            while (stack != NULL && stack->se->cdr != NULL) {
+                                se_stack_pop(&stack);
+                            }
+                            state = (stack == NULL) ? FINISH : READY;
+                        }
+                        break;
+                    default: // just keep reading
+                        break;
+                }
+                break;
+            case FINISH:
+                switch (str[curr]) {
+                    case ' ': // ignore trailing whitespace
+                        break;
+                    case '(':
+                        state = ERROR;
+                        error_code = TOO_MANY;
+                        break;
+                    case ')':
+                        state = ERROR;
+                        error_code = UNBAL_PAREN;
+                        break;
+                    default:
+                        state = ERROR;
+                        error_code = BARE_SYM;
+                        break;
+                }
+                break;
+            default:
+                printf("fatal error: parser in unknown state\n");
+                exit(-1);
+        }
+        curr++;
+    }
+    if (stack != NULL) {
+        state = ERROR;
+        error_code = UNBAL_PAREN;
+    }
+    switch (error_code) {
+        case NONE: // do nothing
+            break;
+        case UNBAL_PAREN:
+            printf("parse error: unbalanced parentheses\n");
+            break;
+        case BARE_SYM:
+            printf("parse error: symbol outside of parentheses\n");
+            break;
+        case EMPTY_PAREN:
+            printf("parse error: '()' is not allowed\n");
+            break;
+        case TOO_MANY:
+            printf("parse error: too many statements in input\n");
+            break;
+        default:
+            printf("parse error: unrecognized code (%d)\n", error_code);
+            break;
+    }
+    if (error_code == NONE) {
+        merge_list_areas(la, temp_list_area);
+        free(temp_list_area);
+        merge_symbol_tables(st, temp_symbol_table);
+        free(temp_symbol_table);
+    } else {
+        while (stack != NULL) {
+            s_expr_stack_node* stack_temp = stack;
+            stack = stack->next;
+            // s-expressions pointed to on the stack are accessible from head
+            free(stack_temp);
+        }
+        Node* symbol_curr = temp_symbol_table->head;
+        while (symbol_curr != NULL) {
+            Node* symbol_temp = symbol_curr;
+            symbol_curr = symbol_curr->next;
+            free(symbol_temp);
+        }
+        free(temp_symbol_table);
+        s_expr_stack_node* list_curr = temp_list_area->head;
+        while (list_curr != NULL) {
+            s_expr_stack_node* list_temp = list_curr;
+            list_curr = list_curr->next;
+            delete_s_expr(list_temp->se);
+            free(list_temp);
+        }
+        free(temp_list_area);
+        delete_s_expr(head);
+        head = NULL;
+    }
+    return head;
+}
+
+typedef enum {EVAL_ERROR_EXIT, \
+              EVAL_ERROR_NULL_SEXPR, \
+              EVAL_ERROR_NULL_CAR, \
+              EVAL_ERROR_UNDEF_SYM, \
+              EVAL_ERROR_UNDEF_TYPE, \
+              EVAL_ERROR_UNDEF_BUILTIN, \
+              EVAL_ERROR_FEW_ARGS, \
+              EVAL_ERROR_MANY_ARGS, \
+              EVAL_ERROR_NEED_NUM, \
+              EVAL_ERROR_DIV_ZERO} eval_error;
+
+s_expr* sexpr_lookup(List_Area* la, typed_ptr* tp) {
+    if (tp == NULL) {
+        return NULL;
+    }
+    s_expr_stack_node* curr = la->head;
+    while (curr != NULL) {
+        if (curr->list_number == tp->ptr) {
+            return curr->se;
+        }
+        curr = curr->next;
+    }
+    return NULL;
+}
+
+typed_ptr* value_lookup(Symbol_Table* st, typed_ptr* tp) {
+    if (tp == NULL) {
+        return NULL;
+    }
+    Node* curr = st->head;
+    while (curr != NULL) {
+        if (curr->symbol_number == tp->ptr) {
+            return create_typed_ptr(curr->type, curr->value);
+        }
+        curr = curr->next;
+    }
+    return NULL;
+}
+
+// forward declaration
+typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la);
+
+typed_ptr* apply_builtin_arithmetic(s_expr* se, Symbol_Table* st, List_Area* la) {
+    builtin_code operation = symbol_from_index(st, se->car->ptr)->value;
+    unsigned int result = (operation == BUILTIN_ADD || operation == BUILTIN_SUB) ? 0 : 1;
+    if (se->cdr == NULL) {
+        if (operation == BUILTIN_ADD || operation == BUILTIN_MUL) {
+            // (+) or (*) -> additive or multiplicative identity
+            return create_typed_ptr(TYPE_NUM, result);
+        } else {
+            return create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+        }
+    } else {
+        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+        if (cdr_se == NULL) {
+            return create_typed_ptr(TYPE_ERROR, EVAL_ERROR_NULL_SEXPR);
+        }
+        typed_ptr* curr_arg = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+        if (curr_arg->type == TYPE_ERROR) { // pass errors through
+            return curr_arg;
+        } else if (curr_arg->type != TYPE_NUM) { // non-numerics -> error
+            free(curr_arg);
+            return create_typed_ptr(TYPE_ERROR, EVAL_ERROR_NEED_NUM);
+        } else if (operation == BUILTIN_DIV && \
+                   curr_arg->ptr == 0 && \
+                   cdr_se->cdr == NULL) {
+            // (/ 0) will fail
+            // but (/ 0 1) will succeed
+            // as will (+ 0)
+            free(curr_arg);
+            return create_typed_ptr(TYPE_ERROR, EVAL_ERROR_DIV_ZERO);
+        } else {
+            switch (operation) {
+                case BUILTIN_ADD:
+                    result += curr_arg->ptr;
+                    break;
+                case BUILTIN_MUL:
+                    result *= curr_arg->ptr;
+                    break;
+                case BUILTIN_SUB:
+                    if (cdr_se->cdr == NULL) {
+                        //  (- 4) -> -4
+                        result -= curr_arg->ptr;
+                    } else {
+                        // (- 4 1) -> 3
+                        result = curr_arg->ptr;
+                    }
+                    break;
+                case BUILTIN_DIV:
+                    if (cdr_se->cdr == NULL) {
+                        //  (/ 1) -> 1
+                        result /= curr_arg->ptr;
+                    } else {
+                        // (/ 4 1) -> 4
+                        result = curr_arg->ptr;
+                    }
+                    break;
+                default:
+                    free(curr_arg);
+                    return create_typed_ptr(TYPE_ERROR, EVAL_ERROR_UNDEF_BUILTIN);
+            }
+        }
+        se = sexpr_lookup(la, se->cdr);
+        if (se == NULL) {
+            return create_typed_ptr(TYPE_ERROR, EVAL_ERROR_NULL_SEXPR);
+        }
+        while (se->cdr != NULL) {
+            s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+            if (cdr_se == NULL) {
+                return create_typed_ptr(TYPE_ERROR, EVAL_ERROR_NULL_SEXPR);
+            }
+            typed_ptr* curr_arg = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+            if (curr_arg->type == TYPE_ERROR) { // pass errors through
+                return curr_arg;
+            } else if (curr_arg->type != TYPE_NUM) { // non-numerics -> error
+                free(curr_arg);
+                return create_typed_ptr(TYPE_ERROR, EVAL_ERROR_NEED_NUM);
+            }
+            switch (operation) {
+                case BUILTIN_ADD:
+                    result += curr_arg->ptr;
+                    break;
+                case BUILTIN_MUL:
+                    result *= curr_arg->ptr;
+                    break;
+                case BUILTIN_SUB:
+                    result -= curr_arg->ptr;
+                    break;
+                case BUILTIN_DIV:
+                    if (curr_arg->ptr == 0) {
+                        free(curr_arg);
+                        return create_typed_ptr(TYPE_ERROR, EVAL_ERROR_DIV_ZERO);
+                    } else {
+                        result /= curr_arg->ptr;
+                    }
+                    break;
+                default:
+                    free(curr_arg);
+                    return create_typed_ptr(TYPE_ERROR, EVAL_ERROR_UNDEF_BUILTIN);
+            }
+            se = cdr_se;
+            free(curr_arg);
+        }
+        return create_typed_ptr(TYPE_NUM, result);
+    }
+}
+
+typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
+    typed_ptr* result = NULL;
+    if (se == NULL) {
+        result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_NULL_SEXPR);
+    } else if (se->car == NULL) {
+        result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_NULL_CAR);
+    } else {
+        switch (se->car->type) {
+            case TYPE_UNDEF:
+                result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_UNDEF_SYM);
+                break;
+            case TYPE_ERROR: // future: add info for traceback
+                result = se->car;
+                break;
+            case TYPE_BUILTIN: {
+                builtin_code builtin = symbol_from_index(st, se->car->ptr)->value;
+                switch (builtin) {
+                    case BUILTIN_ADD: //    -|
+                    case BUILTIN_MUL: //    -|
+                    case BUILTIN_SUB: //    -|
+                    case BUILTIN_DIV: //     v
+                        result = apply_builtin_arithmetic(se, st, la);
+                        break;
+                    case BUILTIN_SETQ: {
+                        // this special form must have exactly 2 arguments
+                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        s_expr* cddr_se = sexpr_lookup(la, (cdr_se == NULL) ? NULL : cdr_se->cdr);
+                        if (cdr_se == NULL || cddr_se == NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                        } else if (cddr_se->cdr != NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                        } else {
+                            unsigned int symbol_idx = cdr_se->car->ptr;
+                            unsigned int new_value = cddr_se->car->ptr;
+                            result = install_symbol(st, \
+                                                    strdup(symbol_from_index(st, symbol_idx)->symbol), \
+                                                    TYPE_NUM, \
+                                                    new_value);
+                        }
+                        break;
+                    }
+                    case BUILTIN_EXIT:
+                        result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_EXIT);
+                        break;
+                    default:
+                        result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_UNDEF_BUILTIN);
+                        break;
+                }
                 break;
             }
-            case 7: { // setq
-                unsigned int len_1 = lookahead(token_list + finger + 1, num_tokens - finger - 1);
-                unsigned int len_2 = lookahead(token_list + finger + 1 + len_1, num_tokens - finger - 1 - len_1);
-                if (token_list[finger + 1 + len_1 + len_2] != 2) {
-                    printf("error: 'setq' takes exactly 2 arguments\n");
-                    return 0;
-                }
-                if (len_1 != 1) {
-                    printf("error: cannot assign to an expression, only a symbol\n");
-                    return 0;
-                }
-                unsigned int new_value = evaluate(symbol_table, token_list + finger + 1 + len_1, len_2);
-                char buf[80]; // temporary restriction
-                unsigned int num_chars = sprintf(buf, "%u", new_value) + 1;
-                char* str_new_value = malloc(num_chars * sizeof(char)); // this is the symbol table's problem now
-                strcpy(str_new_value, buf);
-                symbol_from_index(*symbol_table, token_list[finger + 1])->value = str_new_value;
-                finger = num_tokens;
+            case TYPE_NUM:
+                result = create_typed_ptr(se->car->type, se->car->ptr);
                 break;
-            }
-            case 8:
-                if (num_tokens == 3 && finger == 1 && token_list[0] == 1 && token_list[2] == 2) {
-                    printf("exiting...\n");
-                    exit(0);
-                } else {
-                    printf("error: malformed expression\n");
-                }
-            default: {
-                Node* found = symbol_from_index(*symbol_table, token_list[finger]);
-                if (found == NULL) {
-                    printf("error: token index \"%d\" unrecognized\n", token_list[finger]);
-                } else {
-                    result = atoi(found->value);
-                }
-                finger++;
-            }
+            case TYPE_SEXPR:
+                result = evaluate(sexpr_lookup(la, se->car), st, la);
+                break;
+            case TYPE_SYM:
+                result = value_lookup(st, se->car);
+                break;
+            default:
+                result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_UNDEF_TYPE);
+                break;
         }
     }
     return result;
@@ -298,27 +865,21 @@ unsigned int evaluate(Node** symbol_table, \
 int main() {
     bool exit = 0;
     char input[BUF_SIZE];
-    Node* symbol_table = NULL;
-    setup_symbol_table(&symbol_table);
-    unsigned int token_list[20]; // this is a temporary solution
+    Symbol_Table* symbol_table = create_symbol_table(0);
+    setup_symbol_table(symbol_table);
+    List_Area* list_area = create_list_area(0);
     while (!exit) {
-        // clear token list
-        for (int i = 0; i < 20; i++) {
-            token_list[i] = 0;
-        }
         get_input(PROMPT, input, BUF_SIZE);
-        unsigned int token;
-        unsigned int num_tokens = 0;
-        unsigned int offset = 0;
-        while ((token = pull_token(&symbol_table, input, strlen(input), &offset))) {
-            if (num_tokens >= 20) {
-                printf("error: cannot parse more than 20 tokens\n");
-                break; // then evaluation will probably fail and throw another error
-            }
-            token_list[num_tokens] = token;
-            num_tokens++;
+        s_expr* input_s_expr = parse(input, symbol_table, list_area);
+        if (input_s_expr == NULL) { // parse error
+            continue;
         }
-        printf("result = %u\n", evaluate(&symbol_table, token_list, num_tokens));
+        typed_ptr* result = evaluate(input_s_expr, symbol_table, list_area);
+        printf("result: %u (type %d)\n", result->ptr, result->type);
+        if (result->type == TYPE_ERROR && result->ptr == EVAL_ERROR_EXIT) {
+            exit = true;
+        }
     }
+    printf("exiting...\n");
     return 0;
 }
