@@ -115,6 +115,15 @@ typed_ptr* install_symbol(Symbol_Table* st, \
     return create_typed_ptr((type != TYPE_BUILTIN) ? TYPE_SYM : type, symbol_number);
 }
 
+void blind_install_symbol(Symbol_Table* st, \
+                          char* symbol, \
+                          type type, \
+                          unsigned int value) {
+    typed_ptr* tp = install_symbol(st, symbol, type, value);
+    free(tp);
+    return;
+}
+
 char* substring(char* str, unsigned int start, unsigned int end) {
     if (str == NULL || strlen(str) < (end - start)) {
         fprintf(stderr, \
@@ -159,16 +168,16 @@ typedef enum {BUILTIN_ADD, \
               BUILTIN_CDR} builtin_code;
 
 void setup_symbol_table(Symbol_Table* st) {
-    install_symbol(st, "NULL_SENTINEL", TYPE_UNDEF, 0);
-    install_symbol(st, "+", TYPE_BUILTIN, BUILTIN_ADD);
-    install_symbol(st, "*", TYPE_BUILTIN, BUILTIN_MUL);
-    install_symbol(st, "-", TYPE_BUILTIN, BUILTIN_SUB);
-    install_symbol(st, "/", TYPE_BUILTIN, BUILTIN_DIV);
-    install_symbol(st, "setq", TYPE_BUILTIN, BUILTIN_SETQ);
-    install_symbol(st, "exit", TYPE_BUILTIN, BUILTIN_EXIT);
-    install_symbol(st, "cons", TYPE_BUILTIN, BUILTIN_CONS);
-    install_symbol(st, "car", TYPE_BUILTIN, BUILTIN_CAR);
-    install_symbol(st, "cdr", TYPE_BUILTIN, BUILTIN_CDR);
+    blind_install_symbol(st, "NULL_SENTINEL", TYPE_UNDEF, 0);
+    blind_install_symbol(st, "+", TYPE_BUILTIN, BUILTIN_ADD);
+    blind_install_symbol(st, "*", TYPE_BUILTIN, BUILTIN_MUL);
+    blind_install_symbol(st, "-", TYPE_BUILTIN, BUILTIN_SUB);
+    blind_install_symbol(st, "/", TYPE_BUILTIN, BUILTIN_DIV);
+    blind_install_symbol(st, "setq", TYPE_BUILTIN, BUILTIN_SETQ);
+    blind_install_symbol(st, "exit", TYPE_BUILTIN, BUILTIN_EXIT);
+    blind_install_symbol(st, "cons", TYPE_BUILTIN, BUILTIN_CONS);
+    blind_install_symbol(st, "car", TYPE_BUILTIN, BUILTIN_CAR);
+    blind_install_symbol(st, "cdr", TYPE_BUILTIN, BUILTIN_CDR);
     return;
 }
 
