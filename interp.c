@@ -166,7 +166,8 @@ typedef enum {BUILTIN_ADD, \
               BUILTIN_EXIT, \
               BUILTIN_CONS, \
               BUILTIN_CAR, \
-              BUILTIN_CDR} builtin_code;
+              BUILTIN_CDR, \
+              BUILTIN_LIST} builtin_code;
 
 void setup_symbol_table(Symbol_Table* st) {
     blind_install_symbol(st, "NULL_SENTINEL", TYPE_UNDEF, 0);
@@ -179,6 +180,7 @@ void setup_symbol_table(Symbol_Table* st) {
     blind_install_symbol(st, "cons", TYPE_BUILTIN, BUILTIN_CONS);
     blind_install_symbol(st, "car", TYPE_BUILTIN, BUILTIN_CAR);
     blind_install_symbol(st, "cdr", TYPE_BUILTIN, BUILTIN_CDR);
+    blind_install_symbol(st, "list", TYPE_BUILTIN, BUILTIN_LIST);
     blind_install_symbol(st, "null", TYPE_SEXPR, EMPTY_LIST_IDX);
     return;
 }
@@ -919,6 +921,26 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                                 result = create_typed_ptr(arg1_cdr->type, arg1_cdr->ptr);
                             }
                             free(eval_arg1);
+                        }
+                        break;
+                    }
+                    case BUILTIN_LIST: {
+                        if (se->cdr == NULL) {
+                            result = create_typed_ptr(TYPE_SEXPR, EMPTY_LIST_IDX);
+                        } else {
+                            s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                            typed_ptr* new_car = evaluate(cdr_se, st, la);
+                            s_expr* last_cons_cell = NULL;
+                            s_expr* curr_cons_cell = create_s_expr(new_car, \
+                                                                   create_typed_ptr(TYPE_SEXPR, EMPTY_LIST_IDX));
+                            result = install_list(la, curr_cons_cell);
+                            while (cdr_se->cdr != NULL) {
+                                cdr_se = sexpr_lookup(la, cdr_se->cdr);
+                                new_car = evaluate(cdr_se, st, la);
+                                last_cons_cell = curr_cons_cell;
+                                curr_cons_cell = create_s_expr(new_car, last_cons_cell->cdr);
+                                last_cons_cell->cdr = install_list(la, curr_cons_cell);
+                            }
                         }
                         break;
                     }
