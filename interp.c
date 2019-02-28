@@ -13,7 +13,8 @@ typedef enum {TYPE_UNDEF, \
               TYPE_BUILTIN, \
               TYPE_NUM, \
               TYPE_SEXPR, \
-              TYPE_SYM} type;
+              TYPE_SYM, \
+              TYPE_BOOL} type;
 
 typedef struct TYPED_PTR {
     type type;
@@ -182,6 +183,8 @@ void setup_symbol_table(Symbol_Table* st) {
     blind_install_symbol(st, "cdr", TYPE_BUILTIN, BUILTIN_CDR);
     blind_install_symbol(st, "list", TYPE_BUILTIN, BUILTIN_LIST);
     blind_install_symbol(st, "null", TYPE_SEXPR, EMPTY_LIST_IDX);
+    blind_install_symbol(st, "#t", TYPE_BOOL, 1);
+    blind_install_symbol(st, "#f", TYPE_BOOL, 0);
     return;
 }
 
@@ -380,6 +383,9 @@ void print_se_recursive(s_expr* se, unsigned int depth, Symbol_Table* st, List_A
                 case TYPE_BUILTIN:
                     printf("car: built-in operator with symbol #%u, ", se->car->ptr);
                     break;
+                case TYPE_BOOL:
+                    printf("car: boolean %s, ", (se->car->ptr == 0) ? "#f" : "#t");
+                    break;
                 default:
                     printf("car: unrecognized type: %d, ", se->car->type);
             }
@@ -399,6 +405,9 @@ void print_se_recursive(s_expr* se, unsigned int depth, Symbol_Table* st, List_A
                     break;
                 case TYPE_BUILTIN:
                     printf("cdr: built-in operator with symbol #%u, ", se->cdr->ptr);
+                    break;
+                case TYPE_BOOL:
+                    printf("cdr: boolean %s, ", (se->cdr->ptr == 0) ? "#f" : "#t");
                     break;
                 default:
                     printf("cdr: unrecognized type: %d\n", se->cdr->type);
@@ -958,6 +967,9 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                 break;
             case TYPE_SYM:
                 result = value_lookup(st, se->car);
+                break;
+            case TYPE_BOOL:
+                result = create_typed_ptr(se->car->type, se->car->ptr);
                 break;
             default:
                 result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_UNDEF_TYPE);
