@@ -6,6 +6,7 @@
 #define PROMPT ">>>"
 #define BUF_SIZE 80
 #define EXIT_KEYWORD "(exit)"
+#define EMPTY_LIST_IDX 0
 
 typedef enum {TYPE_UNDEF, \
               TYPE_ERROR, \
@@ -178,6 +179,7 @@ void setup_symbol_table(Symbol_Table* st) {
     blind_install_symbol(st, "cons", TYPE_BUILTIN, BUILTIN_CONS);
     blind_install_symbol(st, "car", TYPE_BUILTIN, BUILTIN_CAR);
     blind_install_symbol(st, "cdr", TYPE_BUILTIN, BUILTIN_CDR);
+    blind_install_symbol(st, "null", TYPE_SEXPR, EMPTY_LIST_IDX);
     return;
 }
 
@@ -260,6 +262,20 @@ typed_ptr* install_list(List_Area* la, s_expr* new_se) {
     la->head = new_sesn;
     la->length++;
     return create_typed_ptr(TYPE_SEXPR, num);
+}
+
+void set_list_area_member(List_Area* la, unsigned int idx, s_expr* new_se) {
+    // this is a bit of a kludge
+    s_expr_stack_node* new_sesn = create_s_expr_stack_node(idx, new_se);
+    new_sesn->next = la->head;
+    la->head = new_sesn;
+    la->length++;
+    return;
+}
+
+void setup_list_area(List_Area* la) {
+    set_list_area_member(la, EMPTY_LIST_IDX, create_s_expr(NULL, NULL));
+    return;
 }
 
 void se_stack_push(s_expr_stack_node** stack, s_expr* new_se) {
@@ -878,7 +894,7 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                             result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
                         } else {
                             typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
-                            if (eval_arg1->type != TYPE_SEXPR) {
+                            if (eval_arg1->type != TYPE_SEXPR || eval_arg1->ptr == EMPTY_LIST_IDX) {
                                 result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE);
                             } else {
                                 typed_ptr* arg1_car = sexpr_lookup(la, eval_arg1)->car;
@@ -896,7 +912,7 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                             result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
                         } else {
                             typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
-                            if (eval_arg1->type != TYPE_SEXPR) {
+                            if (eval_arg1->type != TYPE_SEXPR || eval_arg1->ptr == EMPTY_LIST_IDX) {
                                 result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE);
                             } else {
                                 typed_ptr* arg1_cdr = sexpr_lookup(la, eval_arg1)->cdr; // only diff from BUILTIN_CAR
@@ -935,6 +951,7 @@ int main() {
     Symbol_Table* symbol_table = create_symbol_table(0);
     setup_symbol_table(symbol_table);
     List_Area* list_area = create_list_area(0);
+    setup_list_area(list_area);
     while (!exit) {
         get_input(PROMPT, input, BUF_SIZE);
         s_expr* input_s_expr = parse(input, symbol_table, list_area);
