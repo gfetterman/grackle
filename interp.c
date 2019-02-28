@@ -153,7 +153,10 @@ typedef enum {BUILTIN_ADD, \
               BUILTIN_SUB, \
               BUILTIN_DIV, \
               BUILTIN_SETQ, \
-              BUILTIN_EXIT} builtin_code;
+              BUILTIN_EXIT, \
+              BUILTIN_CONS, \
+              BUILTIN_CAR, \
+              BUILTIN_CDR} builtin_code;
 
 void setup_symbol_table(Symbol_Table* st) {
     install_symbol(st, "NULL_SENTINEL", TYPE_UNDEF, 0);
@@ -163,6 +166,9 @@ void setup_symbol_table(Symbol_Table* st) {
     install_symbol(st, "/", TYPE_BUILTIN, BUILTIN_DIV);
     install_symbol(st, "setq", TYPE_BUILTIN, BUILTIN_SETQ);
     install_symbol(st, "exit", TYPE_BUILTIN, BUILTIN_EXIT);
+    install_symbol(st, "cons", TYPE_BUILTIN, BUILTIN_CONS);
+    install_symbol(st, "car", TYPE_BUILTIN, BUILTIN_CAR);
+    install_symbol(st, "cdr", TYPE_BUILTIN, BUILTIN_CDR);
     return;
 }
 
@@ -656,6 +662,7 @@ typedef enum {EVAL_ERROR_EXIT, \
               EVAL_ERROR_UNDEF_BUILTIN, \
               EVAL_ERROR_FEW_ARGS, \
               EVAL_ERROR_MANY_ARGS, \
+              EVAL_ERROR_BAD_ARG_TYPE, \
               EVAL_ERROR_NEED_NUM, \
               EVAL_ERROR_DIV_ZERO} eval_error;
 
@@ -828,17 +835,68 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                             result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
                         } else {
                             unsigned int symbol_idx = cdr_se->car->ptr;
-                            unsigned int new_value = cddr_se->car->ptr;
+                            typed_ptr* eval_arg2 = evaluate(create_s_expr(cddr_se->car, NULL), st, la);
                             result = install_symbol(st, \
                                                     strdup(symbol_from_index(st, symbol_idx)->symbol), \
-                                                    TYPE_NUM, \
-                                                    new_value);
+                                                    eval_arg2->type, \
+                                                    eval_arg2->ptr);
+                            free(eval_arg2);
                         }
                         break;
                     }
                     case BUILTIN_EXIT:
                         result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_EXIT);
                         break;
+                    case BUILTIN_CONS: {
+                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        s_expr* cddr_se = sexpr_lookup(la, cdr_se->cdr);
+                        if (cdr_se == NULL || cddr_se == NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                        } else if (cddr_se->cdr != NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                        } else {
+                            typed_ptr* new_car = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                            typed_ptr* new_cdr = evaluate(create_s_expr(cddr_se->car, NULL), st, la);
+                            result = install_list(la, create_s_expr(new_car, new_cdr));
+                        }
+                        break;
+                    }
+                    case BUILTIN_CAR: {
+                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        if (cdr_se == NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                        } else if (cdr_se->cdr != NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                        } else {
+                            typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                            if (eval_arg1->type != TYPE_SEXPR) {
+                                result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE);
+                            } else {
+                                typed_ptr* arg1_car = sexpr_lookup(la, eval_arg1)->car;
+                                result = create_typed_ptr(arg1_car->type, arg1_car->ptr);
+                            }
+                            free(eval_arg1);
+                        }
+                        break;
+                    }
+                    case BUILTIN_CDR: {
+                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        if (cdr_se == NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                        } else if (cdr_se->cdr != NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                        } else {
+                            typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                            if (eval_arg1->type != TYPE_SEXPR) {
+                                result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE);
+                            } else {
+                                typed_ptr* arg1_cdr = sexpr_lookup(la, eval_arg1)->cdr; // only diff from BUILTIN_CAR
+                                result = create_typed_ptr(arg1_cdr->type, arg1_cdr->ptr);
+                            }
+                            free(eval_arg1);
+                        }
+                        break;
+                    }
                     default:
                         result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_UNDEF_BUILTIN);
                         break;
