@@ -929,14 +929,14 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                             result = create_typed_ptr(TYPE_SEXPR, EMPTY_LIST_IDX);
                         } else {
                             s_expr* cdr_se = sexpr_lookup(la, se->cdr);
-                            typed_ptr* new_car = evaluate(cdr_se, st, la);
+                            typed_ptr* new_car = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
                             s_expr* last_cons_cell = NULL;
                             s_expr* curr_cons_cell = create_s_expr(new_car, \
                                                                    create_typed_ptr(TYPE_SEXPR, EMPTY_LIST_IDX));
                             result = install_list(la, curr_cons_cell);
                             while (cdr_se->cdr != NULL) {
                                 cdr_se = sexpr_lookup(la, cdr_se->cdr);
-                                new_car = evaluate(cdr_se, st, la);
+                                new_car = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
                                 last_cons_cell = curr_cons_cell;
                                 curr_cons_cell = create_s_expr(new_car, last_cons_cell->cdr);
                                 last_cons_cell->cdr = install_list(la, curr_cons_cell);
