@@ -14,7 +14,8 @@ typedef enum {TYPE_UNDEF, \
               TYPE_NUM, \
               TYPE_SEXPR, \
               TYPE_SYM, \
-              TYPE_BOOL} type;
+              TYPE_BOOL, \
+              TYPE_VOID} type;
 
 typedef struct TYPED_PTR {
     type type;
@@ -392,6 +393,8 @@ void print_se_recursive(s_expr* se, unsigned int depth, Symbol_Table* st, List_A
                 case TYPE_BOOL:
                     printf("car: boolean %s, ", (se->car->ptr == 0) ? "#f" : "#t");
                     break;
+                case TYPE_VOID:
+                    printf("car: #<void>, ");
                 default:
                     printf("car: unrecognized type: %d, ", se->car->type);
             }
@@ -415,6 +418,8 @@ void print_se_recursive(s_expr* se, unsigned int depth, Symbol_Table* st, List_A
                 case TYPE_BOOL:
                     printf("cdr: boolean %s, ", (se->cdr->ptr == 0) ? "#f" : "#t");
                     break;
+                case TYPE_VOID:
+                    printf("cdr: #<void>\n");
                 default:
                     printf("cdr: unrecognized type: %d\n", se->cdr->type);
             }
@@ -1027,6 +1032,9 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                 break;
             case TYPE_BOOL:
                 result = create_typed_ptr(se->car->type, se->car->ptr);
+                break;
+            case TYPE_VOID:
+                result = create_typed_ptr(TYPE_VOID, 0);
                 break;
             default:
                 result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_UNDEF_TYPE);
