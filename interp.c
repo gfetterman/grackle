@@ -168,7 +168,10 @@ typedef enum {BUILTIN_ADD, \
               BUILTIN_CONS, \
               BUILTIN_CAR, \
               BUILTIN_CDR, \
-              BUILTIN_LIST} builtin_code;
+              BUILTIN_LIST, \
+              BUILTIN_AND, \
+              BUILTIN_OR, \
+              BUILTIN_NOT} builtin_code;
 
 void setup_symbol_table(Symbol_Table* st) {
     blind_install_symbol(st, "NULL_SENTINEL", TYPE_UNDEF, 0);
@@ -181,6 +184,9 @@ void setup_symbol_table(Symbol_Table* st) {
     blind_install_symbol(st, "cons", TYPE_BUILTIN, BUILTIN_CONS);
     blind_install_symbol(st, "car", TYPE_BUILTIN, BUILTIN_CAR);
     blind_install_symbol(st, "cdr", TYPE_BUILTIN, BUILTIN_CDR);
+    blind_install_symbol(st, "and", TYPE_BUILTIN, BUILTIN_AND);
+    blind_install_symbol(st, "or", TYPE_BUILTIN, BUILTIN_OR);
+    blind_install_symbol(st, "not", TYPE_BUILTIN, BUILTIN_NOT);
     blind_install_symbol(st, "list", TYPE_BUILTIN, BUILTIN_LIST);
     blind_install_symbol(st, "null", TYPE_SEXPR, EMPTY_LIST_IDX);
     blind_install_symbol(st, "#t", TYPE_BOOL, 1);
@@ -838,6 +844,10 @@ typed_ptr* apply_builtin_arithmetic(s_expr* se, Symbol_Table* st, List_Area* la)
     }
 }
 
+bool is_false(typed_ptr* tp) {
+    return (tp->type == TYPE_BOOL && tp->ptr == 0);
+}
+
 typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
     typed_ptr* result = NULL;
     if (se == NULL) {
@@ -949,6 +959,53 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                                 last_cons_cell = curr_cons_cell;
                                 curr_cons_cell = create_s_expr(new_car, last_cons_cell->cdr);
                                 last_cons_cell->cdr = install_list(la, curr_cons_cell);
+                            }
+                        }
+                        break;
+                    }
+                    case BUILTIN_AND: {
+                        typed_ptr* last_arg_eval = create_typed_ptr(TYPE_BOOL, 1);
+                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        while (cdr_se != NULL) {
+                            free(last_arg_eval);
+                            last_arg_eval = evaluate(cdr_se, st, la);
+                            if (is_false(last_arg_eval)) {
+                                break;
+                            }
+                            cdr_se = sexpr_lookup(la, cdr_se->cdr);
+                        }
+                        result = last_arg_eval;
+                        break;
+                    }
+                    case BUILTIN_OR: {
+                        typed_ptr* last_arg_eval = create_typed_ptr(TYPE_BOOL, 0);
+                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        while (cdr_se != NULL) {
+                            free(last_arg_eval);
+                            last_arg_eval = evaluate(cdr_se, st, la);
+                            if (!is_false(last_arg_eval)) {
+                                break;
+                            }
+                            cdr_se = sexpr_lookup(la, cdr_se->cdr);
+                        }
+                        result = last_arg_eval;
+                        break;
+                    }
+                    case BUILTIN_NOT: {
+                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        if (cdr_se == NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                        } else if (cdr_se->cdr != NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                        } else {
+                            result = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                            if (result->type != TYPE_ERROR) {
+                                if (is_false(result)) {
+                                    result->ptr = 1;
+                                } else {
+                                    result->type = TYPE_BOOL;
+                                    result->ptr = 0;
+                                }
                             }
                         }
                         break;
