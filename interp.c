@@ -172,7 +172,8 @@ typedef enum {BUILTIN_ADD, \
               BUILTIN_LIST, \
               BUILTIN_AND, \
               BUILTIN_OR, \
-              BUILTIN_NOT} builtin_code;
+              BUILTIN_NOT, \
+              BUILTIN_COND} builtin_code;
 
 void setup_symbol_table(Symbol_Table* st) {
     blind_install_symbol(st, "NULL_SENTINEL", TYPE_UNDEF, 0);
@@ -188,6 +189,7 @@ void setup_symbol_table(Symbol_Table* st) {
     blind_install_symbol(st, "and", TYPE_BUILTIN, BUILTIN_AND);
     blind_install_symbol(st, "or", TYPE_BUILTIN, BUILTIN_OR);
     blind_install_symbol(st, "not", TYPE_BUILTIN, BUILTIN_NOT);
+    blind_install_symbol(st, "cond", TYPE_BUILTIN, BUILTIN_COND);
     blind_install_symbol(st, "list", TYPE_BUILTIN, BUILTIN_LIST);
     blind_install_symbol(st, "null", TYPE_SEXPR, EMPTY_LIST_IDX);
     blind_install_symbol(st, "#t", TYPE_BOOL, 1);
@@ -711,7 +713,8 @@ typedef enum {EVAL_ERROR_EXIT, \
               EVAL_ERROR_MANY_ARGS, \
               EVAL_ERROR_BAD_ARG_TYPE, \
               EVAL_ERROR_NEED_NUM, \
-              EVAL_ERROR_DIV_ZERO} eval_error;
+              EVAL_ERROR_DIV_ZERO, \
+              EVAL_ERROR_NONTERMINAL_ELSE} eval_error;
 
 s_expr* sexpr_lookup(List_Area* la, typed_ptr* tp) {
     if (tp == NULL) {
@@ -1013,6 +1016,47 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                                 }
                             }
                         }
+                        break;
+                    }
+                    case BUILTIN_COND: {
+                        typed_ptr* eval_intermediate = create_typed_ptr(TYPE_VOID, 0);
+                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        bool pred_true = false;
+                        s_expr* then_bodies = NULL;
+                        while (cdr_se != NULL && pred_true == false) {
+                            s_expr* cond_clause = sexpr_lookup(la, cdr_se->car);
+                            typed_ptr* pred = cond_clause->car;
+                            if (pred->type == TYPE_SYM && \
+                                !strcmp(symbol_from_index(st, pred->ptr)->symbol, "else")) {
+                                if (cdr_se->cdr != NULL) {
+                                    free(eval_intermediate);
+                                    eval_intermediate = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_NONTERMINAL_ELSE);
+                                    then_bodies = NULL; // strictly unnecessary, but I'm feeling paranoid
+                                } else {
+                                    then_bodies = sexpr_lookup(la, cond_clause->cdr);
+                                }
+                                pred_true = true;
+                            } else {
+                                free(eval_intermediate);
+                                eval_intermediate = evaluate(create_s_expr(pred, NULL), st, la);
+                                if (eval_intermediate->type == TYPE_ERROR) {
+                                    then_bodies = NULL;
+                                    pred_true = true;
+                                } else if (!is_false(eval_intermediate)) {
+                                    then_bodies = sexpr_lookup(la, cond_clause->cdr);
+                                    pred_true = true;
+                                }
+                            }
+                            cdr_se = sexpr_lookup(la, cdr_se->cdr);
+                        }
+                        // then evaluate the then-bodies and return the last one
+                        // (or eval_pred if there are none)
+                        while (then_bodies != NULL) {
+                            free(eval_intermediate);
+                            eval_intermediate = evaluate(create_s_expr(then_bodies->car, NULL), st, la);
+                            then_bodies = sexpr_lookup(la, then_bodies->cdr);
+                        }
+                        result = eval_intermediate;
                         break;
                     }
                     default:
