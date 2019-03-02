@@ -75,7 +75,7 @@ Symbol_Table* create_symbol_table(unsigned int offset) {
     return new_st;
 }
 
-symbol_table_node* search_list(Symbol_Table* st, char* symbol) {
+symbol_table_node* symbol_lookup_string(Symbol_Table* st, char* symbol) {
     symbol_table_node* curr = st->head;
     while (curr != NULL) {
         if (!strcmp(curr->symbol, symbol)) {
@@ -86,7 +86,7 @@ symbol_table_node* search_list(Symbol_Table* st, char* symbol) {
     return NULL;
 }
 
-symbol_table_node* symbol_from_index(Symbol_Table* st, unsigned int index) {
+symbol_table_node* symbol_lookup_index(Symbol_Table* st, unsigned int index) {
     symbol_table_node* curr = st->head;
     while (curr != NULL) {
         if (curr->symbol_number == index) {
@@ -102,7 +102,7 @@ typed_ptr* install_symbol(Symbol_Table* st, \
                           type type, \
                           unsigned int value) {
     unsigned int symbol_number = st->length + st->symbol_number_offset;
-    symbol_table_node* found = search_list(st, symbol);
+    symbol_table_node* found = symbol_lookup_string(st, symbol);
     if (found == NULL) {
         symbol_table_node* new_node = create_st_node(symbol_number, symbol, type, value);
         new_node->next = st->head;
@@ -365,9 +365,9 @@ typed_ptr* install_symbol_substring(Symbol_Table* st, \
         free(symbol);
         return create_typed_ptr(TYPE_NUM, value);
     } else {
-        symbol_table_node* found = search_list(st, symbol);
+        symbol_table_node* found = symbol_lookup_string(st, symbol);
         if (found == NULL) {
-            found = search_list(temp_st, symbol);
+            found = symbol_lookup_string(temp_st, symbol);
             if (found == NULL) {
                 return install_symbol(temp_st, symbol, TYPE_UNDEF, 0);
             }
@@ -767,7 +767,7 @@ typed_ptr* value_lookup(Symbol_Table* st, typed_ptr* tp) {
 typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la);
 
 typed_ptr* apply_builtin_arithmetic(s_expr* se, Symbol_Table* st, List_Area* la) {
-    builtin_code operation = symbol_from_index(st, se->car->ptr)->value;
+    builtin_code operation = symbol_lookup_index(st, se->car->ptr)->value;
     unsigned int result = (operation == BUILTIN_ADD || operation == BUILTIN_SUB) ? 0 : 1;
     if (se->cdr == NULL) {
         if (operation == BUILTIN_ADD || operation == BUILTIN_MUL) {
@@ -872,7 +872,7 @@ typed_ptr* apply_builtin_arithmetic(s_expr* se, Symbol_Table* st, List_Area* la)
 }
 
 typed_ptr* apply_number_comparison(s_expr* se, Symbol_Table* st, List_Area* la) {
-    builtin_code comparison = symbol_from_index(st, se->car->ptr)->value;
+    builtin_code comparison = symbol_lookup_index(st, se->car->ptr)->value;
     s_expr* cdr_se = sexpr_lookup(la, se->cdr);
     typed_ptr* result = NULL;
     if (cdr_se == NULL || cdr_se->cdr == NULL) {
@@ -950,7 +950,7 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                 result = se->car;
                 break;
             case TYPE_BUILTIN: {
-                builtin_code builtin = symbol_from_index(st, se->car->ptr)->value;
+                builtin_code builtin = symbol_lookup_index(st, se->car->ptr)->value;
                 switch (builtin) {
                     case BUILTIN_ADD: //    -|
                     case BUILTIN_MUL: //    -|
@@ -970,7 +970,7 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                             unsigned int symbol_idx = cdr_se->car->ptr;
                             typed_ptr* eval_arg2 = evaluate(create_s_expr(cddr_se->car, NULL), st, la);
                             result = install_symbol(st, \
-                                                    strdup(symbol_from_index(st, symbol_idx)->symbol), \
+                                                    strdup(symbol_lookup_index(st, symbol_idx)->symbol), \
                                                     eval_arg2->type, \
                                                     eval_arg2->ptr);
                             free(eval_arg2);
@@ -1106,7 +1106,7 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                             s_expr* cond_clause = sexpr_lookup(la, cdr_se->car);
                             typed_ptr* pred = cond_clause->car;
                             if (pred->type == TYPE_SYM && \
-                                !strcmp(symbol_from_index(st, pred->ptr)->symbol, "else")) {
+                                !strcmp(symbol_lookup_index(st, pred->ptr)->symbol, "else")) {
                                 if (cdr_se->cdr != NULL) {
                                     free(eval_intermediate);
                                     eval_intermediate = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_NONTERMINAL_ELSE);
