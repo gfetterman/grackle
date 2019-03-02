@@ -36,6 +36,10 @@ typed_ptr* create_error(unsigned int err_code) {
     return create_typed_ptr(TYPE_ERROR, err_code);
 }
 
+typed_ptr* copy_typed_ptr(typed_ptr* tp) {
+    return create_typed_ptr(tp->type, tp->ptr);
+}
+
 typedef struct SYMBOL_TABLE_NODE {
     unsigned int symbol_number;
     char* symbol;
@@ -979,6 +983,31 @@ typed_ptr* eval_set_variable(s_expr* se, Symbol_Table* st, List_Area* la) {
     return result;
 }
 
+typed_ptr* eval_car_cdr(s_expr* se, Symbol_Table* st, List_Area* la) {
+    typed_ptr* result = NULL;
+    s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+    if (cdr_se == NULL) {
+        result = create_error(EVAL_ERROR_FEW_ARGS);
+    } else if (cdr_se->cdr != NULL) {
+        result = create_error(EVAL_ERROR_MANY_ARGS);
+    } else {
+        typed_ptr* eval_arg1 = evaluate(cdr_se, st, la);
+        if (eval_arg1->type != TYPE_SEXPR || \
+            eval_arg1->ptr == EMPTY_LIST_IDX) {
+            result = create_error(EVAL_ERROR_BAD_ARG_TYPE);
+        } else {
+            s_expr* arg1_se = sexpr_lookup(la, eval_arg1);
+            if (symbol_lookup_index(st, se->car->ptr)->value == BUILTIN_CAR) {
+                result = copy_typed_ptr(arg1_se->car);
+            } else {
+                result = copy_typed_ptr(arg1_se->cdr);
+            }
+        }
+        free(eval_arg1);
+    }
+    return result;
+}
+
 bool is_false_literal(typed_ptr* tp) {
     return (tp->type == TYPE_BOOL && tp->ptr == 0);
 }
@@ -1028,47 +1057,10 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                         }
                         break;
                     }
-                    case BUILTIN_CAR: {
-                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
-                        if (cdr_se == NULL) {
-                            result = create_error(EVAL_ERROR_FEW_ARGS);
-                        } else if (cdr_se->cdr != NULL) {
-                            result = create_error(EVAL_ERROR_MANY_ARGS);
-                        } else {
-                            typed_ptr* eval_arg1 = evaluate(cdr_se, st, la);
-                            if (eval_arg1->type != TYPE_SEXPR || \
-                                eval_arg1->ptr == EMPTY_LIST_IDX) {
-                                result = create_error(EVAL_ERROR_BAD_ARG_TYPE);
-                            } else {
-                                s_expr* arg1_se = sexpr_lookup(la, eval_arg1);
-                                result = create_typed_ptr(arg1_se->car->type, \
-                                                          arg1_se->car->ptr);
-                            }
-                            free(eval_arg1);
-                        }
+                    case BUILTIN_CAR: //    -|
+                    case BUILTIN_CDR: //    -V
+                        result = eval_car_cdr(se, st, la);
                         break;
-                    }
-                    case BUILTIN_CDR: {
-                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
-                        if (cdr_se == NULL) {
-                            result = create_error(EVAL_ERROR_FEW_ARGS);
-                        } else if (cdr_se->cdr != NULL) {
-                            result = create_error(EVAL_ERROR_MANY_ARGS);
-                        } else {
-                            typed_ptr* eval_arg1 = evaluate(cdr_se, st, la);
-                            if (eval_arg1->type != TYPE_SEXPR || \
-                                eval_arg1->ptr == EMPTY_LIST_IDX) {
-                                result = create_error(EVAL_ERROR_BAD_ARG_TYPE);
-                            } else {
-                                s_expr* arg1_se = sexpr_lookup(la, eval_arg1);
-                                // only diff from BUILTIN_CAR
-                                result = create_typed_ptr(arg1_se->cdr->type, \
-                                                          arg1_se->cdr->ptr);
-                            }
-                            free(eval_arg1);
-                        }
-                        break;
-                    }
                     case BUILTIN_LIST: {
                         if (se->cdr == NULL) {
                             result = create_typed_ptr(TYPE_SEXPR, \
