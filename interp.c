@@ -499,6 +499,12 @@ void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second) {
     return;
 }
 
+typedef enum {PARSE_ERROR_NONE, \
+              PARSE_ERROR_UNBAL_PAREN, \
+              PARSE_ERROR_BARE_SYM, \
+              PARSE_ERROR_EMPTY_PAREN, \
+              PARSE_ERROR_TOO_MANY} parse_error;
+
 s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
     enum Parse_State {PARSE_START, \
                       PARSE_NEW_SEXPR, \
@@ -507,12 +513,7 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
                       PARSE_FINISH, \
                       PARSE_ERROR};
     enum Parse_State state = PARSE_START;
-    enum Error_Code {PARSE_ERROR_NONE, \
-                     PARSE_ERROR_UNBAL_PAREN, \
-                     PARSE_ERROR_BARE_SYM, \
-                     PARSE_ERROR_EMPTY_PAREN, \
-                     PARSE_ERROR_TOO_MANY};
-    enum Error_Code error_code = PARSE_ERROR_NONE;
+    parse_error error_code = PARSE_ERROR_NONE;
     s_expr_storage* stack = NULL;
     s_expr* new_s_expr = NULL;
     unsigned int curr = 0;
@@ -679,25 +680,6 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
         state = PARSE_ERROR;
         error_code = PARSE_ERROR_UNBAL_PAREN;
     }
-    switch (error_code) {
-        case PARSE_ERROR_NONE: // do nothing
-            break;
-        case PARSE_ERROR_UNBAL_PAREN:
-            printf("parse error: unbalanced parentheses\n");
-            break;
-        case PARSE_ERROR_BARE_SYM:
-            printf("parse error: symbol outside of parentheses\n");
-            break;
-        case PARSE_ERROR_EMPTY_PAREN:
-            printf("parse error: '()' is not allowed\n");
-            break;
-        case PARSE_ERROR_TOO_MANY:
-            printf("parse error: too many statements in input\n");
-            break;
-        default:
-            printf("parse error: unrecognized code (%d)\n", error_code);
-            break;
-    }
     if (error_code == PARSE_ERROR_NONE) {
         merge_list_areas(la, temp_list_area);
         free(temp_list_area);
@@ -726,7 +708,7 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
         }
         free(temp_list_area);
         delete_s_expr(head);
-        head = NULL;
+        head = create_s_expr(create_typed_ptr(TYPE_ERROR, error_code), NULL);
     }
     return head;
 }
@@ -1299,13 +1281,16 @@ int main() {
     while (!exit) {
         get_input(PROMPT, input, BUF_SIZE);
         s_expr* input_s_expr = parse(input, symbol_table, list_area);
-        if (input_s_expr == NULL) { // parse error
-            continue;
-        }
-        typed_ptr* result = evaluate(input_s_expr, symbol_table, list_area);
-        printf("result: %u (type %d)\n", result->ptr, result->type);
-        if (result->type == TYPE_ERROR && result->ptr == EVAL_ERROR_EXIT) {
-            exit = true;
+        if (input_s_expr->car->type == TYPE_ERROR) {
+            printf("parse error: %u\n", input_s_expr->car->ptr);
+            delete_s_expr(input_s_expr);
+        } else {
+            typed_ptr* result = evaluate(input_s_expr, symbol_table, list_area);
+            printf("result: %u (type %d)\n", result->ptr, result->type);
+            if (result->type == TYPE_ERROR && result->ptr == EVAL_ERROR_EXIT) {
+                exit = true;
+            }
+            free(result);
         }
     }
     printf("exiting...\n");
