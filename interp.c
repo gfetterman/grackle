@@ -9,12 +9,12 @@
 
 typedef enum {TYPE_UNDEF, \
               TYPE_ERROR, \
+              TYPE_VOID, \
               TYPE_BUILTIN, \
               TYPE_NUM, \
-              TYPE_SEXPR, \
-              TYPE_SYM, \
               TYPE_BOOL, \
-              TYPE_VOID} type;
+              TYPE_SEXPR, \
+              TYPE_SYM} type;
 
 typedef struct TYPED_PTR {
     type type;
