@@ -1237,9 +1237,6 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                                             if (curr->cdr->type != TYPE_SEXPR) {
                                                 break;
                                             }
-                                            printf("  node %p ", curr->car);
-                                            printf("has car value %u & type %d ", curr->car->ptr, curr->car->type);
-                                            printf("and cdr value %u & type %d\n", curr->cdr->ptr, curr->cdr->type);
                                             if (curr->cdr->ptr == EMPTY_LIST_IDX) {
                                                 result->ptr = 1;
                                                 break;
