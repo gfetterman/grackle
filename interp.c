@@ -759,107 +759,128 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la);
 
 typed_ptr* apply_builtin_arithmetic(s_expr* se, Symbol_Table* st, List_Area* la) {
     builtin_code operation = symbol_lookup_index(st, se->car->ptr)->value;
-    unsigned int result = (operation == BUILTIN_ADD || operation == BUILTIN_SUB) ? 0 : 1;
+    typed_ptr* result = create_typed_ptr(TYPE_NUM, \
+                                         (operation == BUILTIN_ADD || operation == BUILTIN_SUB) ? 0 : 1);
     if (se->cdr == NULL) {
-        if (operation == BUILTIN_ADD || operation == BUILTIN_MUL) {
-            // (+) or (*) -> additive or multiplicative identity
-            return create_typed_ptr(TYPE_NUM, result);
-        } else {
-            return create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+        if (operation == BUILTIN_SUB || operation == BUILTIN_DIV) {
+            free(result);
+            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
         }
+        // else (+ or *) -> additive or multiplicative identity
     } else {
-        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
-        if (cdr_se == NULL) {
-            return create_typed_ptr(TYPE_ERROR, EVAL_ERROR_NULL_SEXPR);
-        }
-        typed_ptr* curr_arg = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
-        if (curr_arg->type == TYPE_ERROR) { // pass errors through
-            return curr_arg;
-        } else if (curr_arg->type != TYPE_NUM) { // non-numerics -> error
-            free(curr_arg);
-            return create_typed_ptr(TYPE_ERROR, EVAL_ERROR_NEED_NUM);
-        } else if (operation == BUILTIN_DIV && \
-                   curr_arg->ptr == 0 && \
-                   cdr_se->cdr == NULL) {
-            // (/ 0) will fail
-            // but (/ 0 1) will succeed
-            // as will (+ 0)
-            free(curr_arg);
-            return create_typed_ptr(TYPE_ERROR, EVAL_ERROR_DIV_ZERO);
+        if (se->cdr == NULL) {
+            free(result);
+            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_NULL_SEXPR);
         } else {
-            switch (operation) {
-                case BUILTIN_ADD:
-                    result += curr_arg->ptr;
-                    break;
-                case BUILTIN_MUL:
-                    result *= curr_arg->ptr;
-                    break;
-                case BUILTIN_SUB:
-                    if (cdr_se->cdr == NULL) {
-                        //  (- 4) -> -4
-                        result -= curr_arg->ptr;
-                    } else {
-                        // (- 4 1) -> 3
-                        result = curr_arg->ptr;
-                    }
-                    break;
-                case BUILTIN_DIV:
-                    if (cdr_se->cdr == NULL) {
-                        //  (/ 1) -> 1
-                        result /= curr_arg->ptr;
-                    } else {
-                        // (/ 4 1) -> 4
-                        result = curr_arg->ptr;
-                    }
-                    break;
-                default:
-                    free(curr_arg);
-                    return create_typed_ptr(TYPE_ERROR, EVAL_ERROR_UNDEF_BUILTIN);
-            }
-        }
-        se = sexpr_lookup(la, se->cdr);
-        if (se == NULL) {
-            return create_typed_ptr(TYPE_ERROR, EVAL_ERROR_NULL_SEXPR);
-        }
-        while (se->cdr != NULL) {
             s_expr* cdr_se = sexpr_lookup(la, se->cdr);
-            if (cdr_se == NULL) {
-                return create_typed_ptr(TYPE_ERROR, EVAL_ERROR_NULL_SEXPR);
-            }
             typed_ptr* curr_arg = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
             if (curr_arg->type == TYPE_ERROR) { // pass errors through
-                return curr_arg;
+                free(result);
+                result = curr_arg;
             } else if (curr_arg->type != TYPE_NUM) { // non-numerics -> error
                 free(curr_arg);
-                return create_typed_ptr(TYPE_ERROR, EVAL_ERROR_NEED_NUM);
-            }
-            switch (operation) {
-                case BUILTIN_ADD:
-                    result += curr_arg->ptr;
-                    break;
-                case BUILTIN_MUL:
-                    result *= curr_arg->ptr;
-                    break;
-                case BUILTIN_SUB:
-                    result -= curr_arg->ptr;
-                    break;
-                case BUILTIN_DIV:
-                    if (curr_arg->ptr == 0) {
+                free(result);
+                result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_NEED_NUM);
+            } else if (operation == BUILTIN_DIV && \
+                       curr_arg->ptr == 0 && \
+                       cdr_se->cdr == NULL) {
+                // (/ 0) will fail
+                // but (/ 0 1) will succeed
+                // as will (+ 0)
+                free(curr_arg);
+                free(result);
+                result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_DIV_ZERO);
+            } else {
+                switch (operation) {
+                    case BUILTIN_ADD:
+                        result->ptr += curr_arg->ptr;
+                        break;
+                    case BUILTIN_MUL:
+                        result->ptr *= curr_arg->ptr;
+                        break;
+                    case BUILTIN_SUB:
+                        if (cdr_se->cdr == NULL) {
+                            //  (- 4) -> -4
+                            result->ptr -= curr_arg->ptr;
+                        } else {
+                            // (- 4 1) -> 3
+                            result->ptr = curr_arg->ptr;
+                        }
+                        break;
+                    case BUILTIN_DIV:
+                        if (cdr_se->cdr == NULL) {
+                            //  (/ 1) -> 1
+                            result->ptr /= curr_arg->ptr;
+                        } else {
+                            // (/ 4 1) -> 4
+                            result->ptr = curr_arg->ptr;
+                        }
+                        break;
+                    default:
                         free(curr_arg);
-                        return create_typed_ptr(TYPE_ERROR, EVAL_ERROR_DIV_ZERO);
-                    } else {
-                        result /= curr_arg->ptr;
-                    }
-                    break;
-                default:
-                    free(curr_arg);
-                    return create_typed_ptr(TYPE_ERROR, EVAL_ERROR_UNDEF_BUILTIN);
+                        free(result);
+                        result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_UNDEF_BUILTIN);
+                        break;
+                }
             }
-            se = cdr_se;
-            free(curr_arg);
+            if (result->type != TYPE_ERROR) {
+                se = sexpr_lookup(la, se->cdr);
+                if (se == NULL) {
+                    free(result);
+                    result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_NULL_SEXPR);
+                }
+                while (se->cdr != NULL) {
+                    s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                    if (cdr_se == NULL) {
+                        free(result);
+                        result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_NULL_SEXPR);
+                    } else {
+                        typed_ptr* curr_arg = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                        if (curr_arg->type == TYPE_ERROR) { // pass errors through
+                            free(result);
+                            result = curr_arg;
+                        } else if (curr_arg->type != TYPE_NUM) { // non-numerics -> error
+                            free(curr_arg);
+                            free(result);
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_NEED_NUM);
+                        } else {
+                            switch (operation) {
+                                case BUILTIN_ADD:
+                                    result->ptr += curr_arg->ptr;
+                                    break;
+                                case BUILTIN_MUL:
+                                    result->ptr *= curr_arg->ptr;
+                                    break;
+                                case BUILTIN_SUB:
+                                    result->ptr -= curr_arg->ptr;
+                                    break;
+                                case BUILTIN_DIV:
+                                    if (curr_arg->ptr == 0) {
+                                        free(curr_arg);
+                                        free(result);
+                                        result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_DIV_ZERO);
+                                    } else {
+                                        result->ptr /= curr_arg->ptr;
+                                    }
+                                    break;
+                                default:
+                                    free(curr_arg);
+                                    free(result);
+                                    result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_UNDEF_BUILTIN);
+                                    break;
+                            }
+                        }
+                        if (result->type == TYPE_ERROR) {
+                            break;
+                        }
+                        se = cdr_se;
+                        free(curr_arg);
+                    }
+                }
+            }
         }
-        return create_typed_ptr(TYPE_NUM, result);
     }
+    return result;
 }
 
 typed_ptr* apply_number_comparison(s_expr* se, Symbol_Table* st, List_Area* la) {
