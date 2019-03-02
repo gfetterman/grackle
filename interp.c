@@ -943,7 +943,7 @@ typed_ptr* apply_number_comparison(s_expr* se, Symbol_Table* st, List_Area* la) 
     return result;
 }
 
-bool is_false(typed_ptr* tp) {
+bool is_false_literal(typed_ptr* tp) {
     return (tp->type == TYPE_BOOL && tp->ptr == 0);
 }
 
@@ -1068,7 +1068,7 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                         while (cdr_se != NULL) {
                             free(last_arg_eval);
                             last_arg_eval = evaluate(cdr_se, st, la);
-                            if (is_false(last_arg_eval)) {
+                            if (is_false_literal(last_arg_eval)) {
                                 break;
                             }
                             cdr_se = sexpr_lookup(la, cdr_se->cdr);
@@ -1082,7 +1082,7 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                         while (cdr_se != NULL) {
                             free(last_arg_eval);
                             last_arg_eval = evaluate(cdr_se, st, la);
-                            if (!is_false(last_arg_eval)) {
+                            if (!is_false_literal(last_arg_eval)) {
                                 break;
                             }
                             cdr_se = sexpr_lookup(la, cdr_se->cdr);
@@ -1099,7 +1099,7 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                         } else {
                             result = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
                             if (result->type != TYPE_ERROR) {
-                                if (is_false(result)) {
+                                if (is_false_literal(result)) {
                                     result->ptr = 1;
                                 } else {
                                     result->type = TYPE_BOOL;
@@ -1133,7 +1133,7 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                                 if (eval_intermediate->type == TYPE_ERROR) {
                                     then_bodies = NULL;
                                     pred_true = true;
-                                } else if (!is_false(eval_intermediate)) {
+                                } else if (!is_false_literal(eval_intermediate)) {
                                     then_bodies = sexpr_lookup(la, cond_clause->cdr);
                                     pred_true = true;
                                 }
