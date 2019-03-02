@@ -38,13 +38,13 @@ typedef struct SYMBOL_TABLE_NODE {
     type type;
     unsigned int value;
     struct SYMBOL_TABLE_NODE* next;
-} symbol_table_node;
+} sym_tab_node;
 
-symbol_table_node* create_st_node(unsigned int symbol_number, \
+sym_tab_node* create_st_node(unsigned int symbol_number, \
                                   char* symbol, \
                                   type type, \
                                   unsigned int value) {
-    symbol_table_node* new_node = malloc(sizeof(symbol_table_node));
+    sym_tab_node* new_node = malloc(sizeof(sym_tab_node));
     if (new_node == NULL) {
         fprintf(stderr, "fatal error: malloc failed in create_st_node()\n");
         exit(-1);
@@ -58,7 +58,7 @@ symbol_table_node* create_st_node(unsigned int symbol_number, \
 }
 
 typedef struct SYMBOL_TABLE {
-    symbol_table_node* head;
+    sym_tab_node* head;
     unsigned int length;
     unsigned int symbol_number_offset;
 } Symbol_Table;
@@ -75,8 +75,8 @@ Symbol_Table* create_symbol_table(unsigned int offset) {
     return new_st;
 }
 
-symbol_table_node* symbol_lookup_string(Symbol_Table* st, char* symbol) {
-    symbol_table_node* curr = st->head;
+sym_tab_node* symbol_lookup_string(Symbol_Table* st, char* symbol) {
+    sym_tab_node* curr = st->head;
     while (curr != NULL) {
         if (!strcmp(curr->symbol, symbol)) {
             return curr;
@@ -86,8 +86,8 @@ symbol_table_node* symbol_lookup_string(Symbol_Table* st, char* symbol) {
     return NULL;
 }
 
-symbol_table_node* symbol_lookup_index(Symbol_Table* st, unsigned int index) {
-    symbol_table_node* curr = st->head;
+sym_tab_node* symbol_lookup_index(Symbol_Table* st, unsigned int index) {
+    sym_tab_node* curr = st->head;
     while (curr != NULL) {
         if (curr->symbol_number == index) {
             break;
@@ -98,23 +98,23 @@ symbol_table_node* symbol_lookup_index(Symbol_Table* st, unsigned int index) {
 }
 
 typed_ptr* install_symbol(Symbol_Table* st, \
-                          char* symbol, \
+                          char* name, \
                           type type, \
                           unsigned int value) {
-    unsigned int symbol_number = st->length + st->symbol_number_offset;
-    symbol_table_node* found = symbol_lookup_string(st, symbol);
+    unsigned int sym_num = st->length + st->symbol_number_offset;
+    sym_tab_node* found = symbol_lookup_string(st, name);
     if (found == NULL) {
-        symbol_table_node* new_node = create_st_node(symbol_number, symbol, type, value);
+        sym_tab_node* new_node = create_st_node(sym_num, name, type, value);
         new_node->next = st->head;
         st->head = new_node;
         st->length++;
     } else {
-        free(symbol);
+        free(name);
         found->type = type;
         found->value = value;
-        symbol_number = found->symbol_number;
+        sym_num = found->symbol_number;
     }
-    return create_typed_ptr((type != TYPE_BUILTIN) ? TYPE_SYM : type, symbol_number);
+    return create_typed_ptr((type != TYPE_BUILTIN) ? TYPE_SYM : type, sym_num);
 }
 
 void blind_install_symbol(Symbol_Table* st, \
@@ -127,12 +127,13 @@ void blind_install_symbol(Symbol_Table* st, \
 }
 
 char* substring(char* str, unsigned int start, unsigned int end) {
-    if (str == NULL || strlen(str) < (end - start)) {
+    unsigned int len = strlen(str);
+    if (str == NULL || len < (end - start)) {
         fprintf(stderr, \
-                "fatal error: substring bad address: start %d -> end %d in string of length %d\n", \
-                start,
-                end,
-                (int)strlen(str));
+                "fatal error: bad substring from %u to %u, for str len %u\n", \
+                start, \
+                end, \
+                len);
         exit(-1);
     }
     char* ss = malloc(sizeof(char) * (end - start + 1));
@@ -146,7 +147,7 @@ char* substring(char* str, unsigned int start, unsigned int end) {
 }
 
 void print_symbol_table(Symbol_Table* st) {
-    symbol_table_node* curr = st->head;
+    sym_tab_node* curr = st->head;
     printf("current symbol table:\n");
     while (curr != NULL) {
         printf("  symbol #%d, \"%s\", has type \"%d\" and value %u\n", \
@@ -365,7 +366,7 @@ typed_ptr* install_symbol_substring(Symbol_Table* st, \
         free(symbol);
         return create_typed_ptr(TYPE_NUM, value);
     } else {
-        symbol_table_node* found = symbol_lookup_string(st, symbol);
+        sym_tab_node* found = symbol_lookup_string(st, symbol);
         if (found == NULL) {
             found = symbol_lookup_string(temp_st, symbol);
             if (found == NULL) {
@@ -373,7 +374,8 @@ typed_ptr* install_symbol_substring(Symbol_Table* st, \
             }
         }
         free(symbol);
-        return create_typed_ptr((found->type == TYPE_BUILTIN) ? found->type : TYPE_SYM, found->symbol_number);
+        type tp_type = (found->type == TYPE_BUILTIN) ? found->type : TYPE_SYM;
+        return create_typed_ptr(tp_type, found->symbol_number);
     }
 }
 
@@ -388,75 +390,80 @@ s_expr* list_from_index(List_Area* la, unsigned int index) {
     return curr->se;
 }
 
-void print_se_recursive(s_expr* se, unsigned int depth, Symbol_Table* st, List_Area* la) {
+void _print_se_rec(s_expr* se, \
+                   unsigned int depth, \
+                   Symbol_Table* st, \
+                   List_Area* la) {
     for (unsigned int i = 0; i < depth; i++) {
         printf("  ");
     }
     if (se == NULL) {
         printf("null\n");
     } else {
-        if (se->car == NULL) {
+        typed_ptr* car = se->car;
+        typed_ptr* cdr = se->cdr;
+        if (car == NULL) {
             printf("car: NULL, ");
         } else {
-            switch (se->car->type) {
+            switch (car->type) {
                 case TYPE_NUM:
-                    printf("car: number %u, ", se->car->ptr);
+                    printf("car: number %u, ", car->ptr);
                     break;
                 case TYPE_SEXPR:
-                    printf("car: s-expression #%u, ", se->car->ptr);
+                    printf("car: s-expression #%u, ", car->ptr);
                     break;
                 case TYPE_SYM:
-                    printf("car: symbol #%u, ", se->car->ptr);
+                    printf("car: symbol #%u, ", car->ptr);
                     break;
                 case TYPE_BUILTIN:
-                    printf("car: built-in operator with symbol #%u, ", se->car->ptr);
+                    printf("car: built-in with symbol #%u, ", car->ptr);
                     break;
                 case TYPE_BOOL:
-                    printf("car: boolean %s, ", (se->car->ptr == 0) ? "#f" : "#t");
+                    printf("car: boolean %s, ", (car->ptr == 0) ? "#f" : "#t");
                     break;
                 case TYPE_VOID:
                     printf("car: #<void>, ");
                 default:
-                    printf("car: unrecognized type: %d, ", se->car->type);
+                    printf("car: unrecognized type: %d, ", car->type);
             }
         }
-        if (se->cdr == NULL) {
+        if (cdr == NULL) {
             printf("cdr: NULL\n");
         } else {
-            switch (se->cdr->type) {
+            switch (cdr->type) {
                 case TYPE_NUM:
-                    printf("cdr: number %u, ", se->cdr->ptr);
+                    printf("cdr: number %u, ", cdr->ptr);
                     break;
                 case TYPE_SEXPR:
-                    printf("cdr: s-expression #%u\n", se->cdr->ptr);
+                    printf("cdr: s-expression #%u\n", cdr->ptr);
                     break;
                 case TYPE_SYM:
-                    printf("cdr: symbol #%u\n", se->cdr->ptr);
+                    printf("cdr: symbol #%u\n", cdr->ptr);
                     break;
                 case TYPE_BUILTIN:
-                    printf("cdr: built-in operator with symbol #%u, ", se->cdr->ptr);
+                    printf("cdr: built-in with symbol #%u\n", cdr->ptr);
                     break;
                 case TYPE_BOOL:
-                    printf("cdr: boolean %s, ", (se->cdr->ptr == 0) ? "#f" : "#t");
+                    printf("cdr: boolean %s\n", (cdr->ptr == 0) ? "#f" : "#t");
                     break;
                 case TYPE_VOID:
                     printf("cdr: #<void>\n");
                 default:
-                    printf("cdr: unrecognized type: %d\n", se->cdr->type);
+                    printf("cdr: unrecognized type: %d\n", cdr->type);
             }
         }
-        if (se->car != NULL && se->car->type == TYPE_SEXPR) {
-            print_se_recursive(list_from_index(la, se->car->ptr), depth + 1, st, la);
+        if (car != NULL && car->type == TYPE_SEXPR) {
+            _print_se_rec(list_from_index(la, car->ptr), depth + 1, st, la);
         }
-        if (se->cdr != NULL && se->cdr->type == TYPE_SEXPR) {
-            print_se_recursive(list_from_index(la, se->cdr->ptr), depth + 1, st, la);
+        if (cdr != NULL && cdr->type == TYPE_SEXPR) {
+            _print_se_rec(list_from_index(la, cdr->ptr), depth + 1, st, la);
         }
     }
     return;
 }
 
 void print_s_expr(s_expr* se, Symbol_Table* st, List_Area* la) {
-    print_se_recursive(se, 0, st, la);
+    _print_se_rec(se, 0, st, la);
     return;
 }
 
@@ -489,7 +496,7 @@ void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second) {
     if (first->head == NULL) {
         first->head = second->head;
     } else {
-        symbol_table_node* curr = first->head;
+        sym_tab_node* curr = first->head;
         while (curr->next != NULL) {
             curr = curr->next;
         }
@@ -521,6 +528,7 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
     Symbol_Table* temp_symbol_table = create_symbol_table(st->length);
     List_Area* temp_list_area = create_list_area(la->length);
     s_expr* head = NULL;
+    typed_ptr* new_tp = NULL;
     while (str[curr] && state != PARSE_ERROR) {
         switch (state) {
             case PARSE_START:
@@ -588,7 +596,8 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
                             while (stack != NULL && stack->se->cdr != NULL) {
                                 se_stack_pop(&stack);
                             }
-                            state = (stack == NULL) ? PARSE_FINISH : PARSE_READY;
+                            state = (stack == NULL) ? PARSE_FINISH : \
+                                                      PARSE_READY;
                         }
                         break;
                     default:
@@ -604,20 +613,22 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
                 switch (str[curr]) {
                     case ' ':
                         // update the current backbone node
-                        stack->se->car = install_symbol_substring(st, \
-                                                                  temp_symbol_table, \
-                                                                  str, \
-                                                                  symbol_start, \
-                                                                  curr);
+                        new_tp = install_symbol_substring(st, \
+                                                          temp_symbol_table, \
+                                                          str, \
+                                                          symbol_start, \
+                                                          curr);
+                        stack->se->car = new_tp;
                         state = PARSE_READY;
                         break;
                     case '(':
                         // update the current backbone node
-                        stack->se->car = install_symbol_substring(st,
-                                                                  temp_symbol_table,
-                                                                  str,
-                                                                  symbol_start,
-                                                                  curr);
+                        new_tp = install_symbol_substring(st, \
+                                                          temp_symbol_table, \
+                                                          str, \
+                                                          symbol_start, \
+                                                          curr);
+                        stack->se->car = new_tp;
                         // create the next backbone node
                         new_s_expr = create_s_expr(NULL, NULL);
                         stack->se->cdr = install_list(temp_list_area, \
@@ -632,11 +643,12 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
                         break;
                     case ')':
                         // update the current backbone node
-                        stack->se->car = install_symbol_substring(st,
-                                                                  temp_symbol_table,
-                                                                  str,
-                                                                  symbol_start,
-                                                                  curr);
+                        new_tp = install_symbol_substring(st, \
+                                                          temp_symbol_table, \
+                                                          str, \
+                                                          symbol_start, \
+                                                          curr);
+                        stack->se->car = new_tp;
                         if (stack == NULL) {
                             state = PARSE_ERROR;
                             error_code = PARSE_ERROR_UNBAL_PAREN;
@@ -645,7 +657,8 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
                             while (stack != NULL && stack->se->cdr != NULL) {
                                 se_stack_pop(&stack);
                             }
-                            state = (stack == NULL) ? PARSE_FINISH : PARSE_READY;
+                            state = (stack == NULL) ? PARSE_FINISH : \
+                                                      PARSE_READY;
                         }
                         break;
                     default: // just keep reading
@@ -692,9 +705,9 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
             // s-expressions pointed to on the stack are accessible from head
             free(stack_temp);
         }
-        symbol_table_node* symbol_curr = temp_symbol_table->head;
+        sym_tab_node* symbol_curr = temp_symbol_table->head;
         while (symbol_curr != NULL) {
-            symbol_table_node* symbol_temp = symbol_curr;
+            sym_tab_node* symbol_temp = symbol_curr;
             symbol_curr = symbol_curr->next;
             free(symbol_temp);
         }
@@ -744,7 +757,7 @@ typed_ptr* value_lookup(Symbol_Table* st, typed_ptr* tp) {
     if (tp == NULL) {
         return NULL;
     }
-    symbol_table_node* curr = st->head;
+    sym_tab_node* curr = st->head;
     while (curr != NULL) {
         if (curr->symbol_number == tp->ptr) {
             return create_typed_ptr(curr->type, curr->value);
@@ -757,10 +770,11 @@ typed_ptr* value_lookup(Symbol_Table* st, typed_ptr* tp) {
 // forward declaration
 typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la);
 
-typed_ptr* apply_builtin_arithmetic(s_expr* se, Symbol_Table* st, List_Area* la) {
+typed_ptr* eval_arithmetic(s_expr* se, Symbol_Table* st, List_Area* la) {
     builtin_code operation = symbol_lookup_index(st, se->car->ptr)->value;
     typed_ptr* result = create_typed_ptr(TYPE_NUM, \
-                                         (operation == BUILTIN_ADD || operation == BUILTIN_SUB) ? 0 : 1);
+                                         (operation == BUILTIN_ADD || \
+                                          operation == BUILTIN_SUB) ? 0 : 1);
     if (se->cdr == NULL) {
         if (operation == BUILTIN_SUB || operation == BUILTIN_DIV) {
             free(result);
@@ -819,7 +833,8 @@ typed_ptr* apply_builtin_arithmetic(s_expr* se, Symbol_Table* st, List_Area* la)
                     default:
                         free(curr_arg);
                         free(result);
-                        result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_UNDEF_BUILTIN);
+                        result = create_typed_ptr(TYPE_ERROR, \
+                                                  EVAL_ERROR_UNDEF_BUILTIN);
                         break;
                 }
             }
@@ -827,22 +842,25 @@ typed_ptr* apply_builtin_arithmetic(s_expr* se, Symbol_Table* st, List_Area* la)
                 se = sexpr_lookup(la, se->cdr);
                 if (se == NULL) {
                     free(result);
-                    result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_NULL_SEXPR);
+                    result = create_typed_ptr(TYPE_ERROR, \
+                                              EVAL_ERROR_NULL_SEXPR);
                 }
                 while (se->cdr != NULL) {
                     s_expr* cdr_se = sexpr_lookup(la, se->cdr);
                     if (cdr_se == NULL) {
                         free(result);
-                        result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_NULL_SEXPR);
+                        result = create_typed_ptr(TYPE_ERROR, \
+                                                  EVAL_ERROR_NULL_SEXPR);
                     } else {
                         typed_ptr* curr_arg = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
-                        if (curr_arg->type == TYPE_ERROR) { // pass errors through
+                        if (curr_arg->type == TYPE_ERROR) { // pass errors on
                             free(result);
                             result = curr_arg;
-                        } else if (curr_arg->type != TYPE_NUM) { // non-numerics -> error
+                        } else if (curr_arg->type != TYPE_NUM) {
                             free(curr_arg);
                             free(result);
-                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_NEED_NUM);
+                            result = create_typed_ptr(TYPE_ERROR, \
+                                                      EVAL_ERROR_NEED_NUM);
                         } else {
                             switch (operation) {
                                 case BUILTIN_ADD:
@@ -858,7 +876,8 @@ typed_ptr* apply_builtin_arithmetic(s_expr* se, Symbol_Table* st, List_Area* la)
                                     if (curr_arg->ptr == 0) {
                                         free(curr_arg);
                                         free(result);
-                                        result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_DIV_ZERO);
+                                        result = create_typed_ptr(TYPE_ERROR, \
+                                                                  EVAL_ERROR_DIV_ZERO);
                                     } else {
                                         result->ptr /= curr_arg->ptr;
                                     }
@@ -866,7 +885,8 @@ typed_ptr* apply_builtin_arithmetic(s_expr* se, Symbol_Table* st, List_Area* la)
                                 default:
                                     free(curr_arg);
                                     free(result);
-                                    result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_UNDEF_BUILTIN);
+                                    result = create_typed_ptr(TYPE_ERROR, \
+                                                              EVAL_ERROR_UNDEF_BUILTIN);
                                     break;
                             }
                         }
@@ -883,7 +903,7 @@ typed_ptr* apply_builtin_arithmetic(s_expr* se, Symbol_Table* st, List_Area* la)
     return result;
 }
 
-typed_ptr* apply_number_comparison(s_expr* se, Symbol_Table* st, List_Area* la) {
+typed_ptr* eval_comparison(s_expr* se, Symbol_Table* st, List_Area* la) {
     builtin_code comparison = symbol_lookup_index(st, se->car->ptr)->value;
     s_expr* cdr_se = sexpr_lookup(la, se->cdr);
     typed_ptr* result = NULL;
@@ -910,7 +930,8 @@ typed_ptr* apply_number_comparison(s_expr* se, Symbol_Table* st, List_Area* la) 
                 } else if (eval_arg->type != TYPE_NUM) {
                     free(eval_arg);
                     free(result);
-                    result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE);
+                    result = create_typed_ptr(TYPE_ERROR, \
+                                              EVAL_ERROR_BAD_ARG_TYPE);
                     break;
                 } else {
                     bool intermediate_truth;
@@ -931,7 +952,8 @@ typed_ptr* apply_number_comparison(s_expr* se, Symbol_Table* st, List_Area* la) 
                             intermediate_truth = last_num <= eval_arg->ptr;
                             break;
                         default:
-                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_UNDEF_BUILTIN);
+                            result = create_typed_ptr(TYPE_ERROR, \
+                                                      EVAL_ERROR_UNDEF_BUILTIN);
                             break;
                     }
                     result->ptr = result->ptr && intermediate_truth;
@@ -962,22 +984,25 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                 result = se->car;
                 break;
             case TYPE_BUILTIN: {
-                builtin_code builtin = symbol_lookup_index(st, se->car->ptr)->value;
+                builtin_code builtin = symbol_lookup_index(st, \
+                                                           se->car->ptr)->value;
                 switch (builtin) {
                     case BUILTIN_ADD: //    -|
                     case BUILTIN_MUL: //    -|
                     case BUILTIN_SUB: //    -|
                     case BUILTIN_DIV: //     v
-                        result = apply_builtin_arithmetic(se, st, la);
+                        result = eval_arithmetic(se, st, la);
                         break;
                     case BUILTIN_SETQ: {
                         // this special form must have exactly 2 arguments
                         s_expr* cdr_se = sexpr_lookup(la, se->cdr);
-                        s_expr* cddr_se = sexpr_lookup(la, (cdr_se == NULL) ? NULL : cdr_se->cdr);
+                        s_expr* cddr_se = sexpr_lookup(la, cdr_se->cdr);
                         if (cdr_se == NULL || cddr_se == NULL) {
-                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                            result = create_typed_ptr(TYPE_ERROR, \
+                                                      EVAL_ERROR_FEW_ARGS);
                         } else if (cddr_se->cdr != NULL) {
-                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                            result = create_typed_ptr(TYPE_ERROR, \
+                                                      EVAL_ERROR_MANY_ARGS);
                         } else {
                             unsigned int symbol_idx = cdr_se->car->ptr;
                             typed_ptr* eval_arg2 = evaluate(create_s_expr(cddr_se->car, NULL), st, la);
@@ -996,29 +1021,37 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                         s_expr* cdr_se = sexpr_lookup(la, se->cdr);
                         s_expr* cddr_se = sexpr_lookup(la, cdr_se->cdr);
                         if (cdr_se == NULL || cddr_se == NULL) {
-                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                            result = create_typed_ptr(TYPE_ERROR, \
+                                                      EVAL_ERROR_FEW_ARGS);
                         } else if (cddr_se->cdr != NULL) {
-                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                            result = create_typed_ptr(TYPE_ERROR, \
+                                                      EVAL_ERROR_MANY_ARGS);
                         } else {
                             typed_ptr* new_car = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
                             typed_ptr* new_cdr = evaluate(create_s_expr(cddr_se->car, NULL), st, la);
-                            result = install_list(la, create_s_expr(new_car, new_cdr));
+                            result = install_list(la, create_s_expr(new_car, \
+                                                                    new_cdr));
                         }
                         break;
                     }
                     case BUILTIN_CAR: {
                         s_expr* cdr_se = sexpr_lookup(la, se->cdr);
                         if (cdr_se == NULL) {
-                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                            result = create_typed_ptr(TYPE_ERROR, \
+                                                      EVAL_ERROR_FEW_ARGS);
                         } else if (cdr_se->cdr != NULL) {
-                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                            result = create_typed_ptr(TYPE_ERROR, \
+                                                      EVAL_ERROR_MANY_ARGS);
                         } else {
                             typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
-                            if (eval_arg1->type != TYPE_SEXPR || eval_arg1->ptr == EMPTY_LIST_IDX) {
-                                result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE);
+                            if (eval_arg1->type != TYPE_SEXPR || \
+                                eval_arg1->ptr == EMPTY_LIST_IDX) {
+                                result = create_typed_ptr(TYPE_ERROR, \
+                                                          EVAL_ERROR_BAD_ARG_TYPE);
                             } else {
-                                typed_ptr* arg1_car = sexpr_lookup(la, eval_arg1)->car;
-                                result = create_typed_ptr(arg1_car->type, arg1_car->ptr);
+                                s_expr* arg1_se = sexpr_lookup(la, eval_arg1);
+                                result = create_typed_ptr(arg1_se->car->type, \
+                                                          arg1_se->car->ptr);
                             }
                             free(eval_arg1);
                         }
@@ -1027,16 +1060,22 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                     case BUILTIN_CDR: {
                         s_expr* cdr_se = sexpr_lookup(la, se->cdr);
                         if (cdr_se == NULL) {
-                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                            result = create_typed_ptr(TYPE_ERROR, \
+                                                      EVAL_ERROR_FEW_ARGS);
                         } else if (cdr_se->cdr != NULL) {
-                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                            result = create_typed_ptr(TYPE_ERROR, \
+                                                      EVAL_ERROR_MANY_ARGS);
                         } else {
                             typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
-                            if (eval_arg1->type != TYPE_SEXPR || eval_arg1->ptr == EMPTY_LIST_IDX) {
-                                result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE);
+                            if (eval_arg1->type != TYPE_SEXPR || \
+                                eval_arg1->ptr == EMPTY_LIST_IDX) {
+                                result = create_typed_ptr(TYPE_ERROR, \
+                                                          EVAL_ERROR_BAD_ARG_TYPE);
                             } else {
-                                typed_ptr* arg1_cdr = sexpr_lookup(la, eval_arg1)->cdr; // only diff from BUILTIN_CAR
-                                result = create_typed_ptr(arg1_cdr->type, arg1_cdr->ptr);
+                                s_expr* arg1_se = sexpr_lookup(la, eval_arg1);
+                                // only diff from BUILTIN_CAR
+                                result = create_typed_ptr(arg1_se->cdr->type, \
+                                                          arg1_se->cdr->ptr);
                             }
                             free(eval_arg1);
                         }
@@ -1044,58 +1083,63 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                     }
                     case BUILTIN_LIST: {
                         if (se->cdr == NULL) {
-                            result = create_typed_ptr(TYPE_SEXPR, EMPTY_LIST_IDX);
+                            result = create_typed_ptr(TYPE_SEXPR, \
+                                                      EMPTY_LIST_IDX);
                         } else {
                             s_expr* cdr_se = sexpr_lookup(la, se->cdr);
                             typed_ptr* new_car = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
-                            s_expr* last_cons_cell = NULL;
-                            s_expr* curr_cons_cell = create_s_expr(new_car, \
-                                                                   create_typed_ptr(TYPE_SEXPR, EMPTY_LIST_IDX));
-                            result = install_list(la, curr_cons_cell);
+                            s_expr* last_node = NULL;
+                            typed_ptr* new_cdr = create_typed_ptr(TYPE_SEXPR,
+                                                                  EMPTY_LIST_IDX);
+                            s_expr* curr_node = create_s_expr(new_car, new_cdr);
+                            result = install_list(la, curr_node);
                             while (cdr_se->cdr != NULL) {
                                 cdr_se = sexpr_lookup(la, cdr_se->cdr);
                                 new_car = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
-                                last_cons_cell = curr_cons_cell;
-                                curr_cons_cell = create_s_expr(new_car, last_cons_cell->cdr);
-                                last_cons_cell->cdr = install_list(la, curr_cons_cell);
+                                last_node = curr_node;
+                                curr_node = create_s_expr(new_car, \
+                                                          last_node->cdr);
+                                last_node->cdr = install_list(la, curr_node);
                             }
                         }
                         break;
                     }
                     case BUILTIN_AND: {
-                        typed_ptr* last_arg_eval = create_typed_ptr(TYPE_BOOL, 1);
+                        typed_ptr* eval_prev = create_typed_ptr(TYPE_BOOL, 1);
                         s_expr* cdr_se = sexpr_lookup(la, se->cdr);
                         while (cdr_se != NULL) {
-                            free(last_arg_eval);
-                            last_arg_eval = evaluate(cdr_se, st, la);
-                            if (is_false_literal(last_arg_eval)) {
+                            free(eval_prev);
+                            eval_prev = evaluate(cdr_se, st, la);
+                            if (is_false_literal(eval_prev)) {
                                 break;
                             }
                             cdr_se = sexpr_lookup(la, cdr_se->cdr);
                         }
-                        result = last_arg_eval;
+                        result = eval_prev;
                         break;
                     }
                     case BUILTIN_OR: {
-                        typed_ptr* last_arg_eval = create_typed_ptr(TYPE_BOOL, 0);
+                        typed_ptr* eval_prev = create_typed_ptr(TYPE_BOOL, 0);
                         s_expr* cdr_se = sexpr_lookup(la, se->cdr);
                         while (cdr_se != NULL) {
-                            free(last_arg_eval);
-                            last_arg_eval = evaluate(cdr_se, st, la);
-                            if (!is_false_literal(last_arg_eval)) {
+                            free(eval_prev);
+                            eval_prev = evaluate(cdr_se, st, la);
+                            if (!is_false_literal(eval_prev)) {
                                 break;
                             }
                             cdr_se = sexpr_lookup(la, cdr_se->cdr);
                         }
-                        result = last_arg_eval;
+                        result = eval_prev;
                         break;
                     }
                     case BUILTIN_NOT: {
                         s_expr* cdr_se = sexpr_lookup(la, se->cdr);
                         if (cdr_se == NULL) {
-                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                            result = create_typed_ptr(TYPE_ERROR, \
+                                                      EVAL_ERROR_FEW_ARGS);
                         } else if (cdr_se->cdr != NULL) {
-                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                            result = create_typed_ptr(TYPE_ERROR, \
+                                                      EVAL_ERROR_MANY_ARGS);
                         } else {
                             result = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
                             if (result->type != TYPE_ERROR) {
@@ -1110,7 +1154,7 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                         break;
                     }
                     case BUILTIN_COND: {
-                        typed_ptr* eval_intermediate = create_typed_ptr(TYPE_VOID, 0);
+                        typed_ptr* eval_interm = create_typed_ptr(TYPE_VOID, 0);
                         s_expr* cdr_se = sexpr_lookup(la, se->cdr);
                         bool pred_true = false;
                         s_expr* then_bodies = NULL;
@@ -1120,20 +1164,21 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                             if (pred->type == TYPE_SYM && \
                                 !strcmp(symbol_lookup_index(st, pred->ptr)->symbol, "else")) {
                                 if (cdr_se->cdr != NULL) {
-                                    free(eval_intermediate);
-                                    eval_intermediate = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_NONTERMINAL_ELSE);
-                                    then_bodies = NULL; // strictly unnecessary, but I'm feeling paranoid
+                                    free(eval_interm);
+                                    eval_interm = create_typed_ptr(TYPE_ERROR, \
+                                                                   EVAL_ERROR_NONTERMINAL_ELSE);
+                                    then_bodies = NULL;
                                 } else {
                                     then_bodies = sexpr_lookup(la, cond_clause->cdr);
                                 }
                                 pred_true = true;
                             } else {
-                                free(eval_intermediate);
-                                eval_intermediate = evaluate(create_s_expr(pred, NULL), st, la);
-                                if (eval_intermediate->type == TYPE_ERROR) {
+                                free(eval_interm);
+                                eval_interm = evaluate(create_s_expr(pred, NULL), st, la);
+                                if (eval_interm->type == TYPE_ERROR) {
                                     then_bodies = NULL;
                                     pred_true = true;
-                                } else if (!is_false_literal(eval_intermediate)) {
+                                } else if (!is_false_literal(eval_interm)) {
                                     then_bodies = sexpr_lookup(la, cond_clause->cdr);
                                     pred_true = true;
                                 }
@@ -1143,19 +1188,21 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                         // then evaluate the then-bodies and return the last one
                         // (or eval_pred if there are none)
                         while (then_bodies != NULL) {
-                            free(eval_intermediate);
-                            eval_intermediate = evaluate(create_s_expr(then_bodies->car, NULL), st, la);
+                            free(eval_interm);
+                            eval_interm = evaluate(create_s_expr(then_bodies->car, NULL), st, la);
                             then_bodies = sexpr_lookup(la, then_bodies->cdr);
                         }
-                        result = eval_intermediate;
+                        result = eval_interm;
                         break;
                     }
                     case BUILTIN_PAIRPRED: {
                         s_expr* cdr_se = sexpr_lookup(la, se->cdr);
                         if (cdr_se == NULL) {
-                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                            result = create_typed_ptr(TYPE_ERROR, \
+                                                      EVAL_ERROR_FEW_ARGS);
                         } else if (cdr_se->cdr != NULL) {
-                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                            result = create_typed_ptr(TYPE_ERROR, \
+                                                      EVAL_ERROR_MANY_ARGS);
                         } else {
                             typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
                             if (eval_arg1->type == TYPE_ERROR) {
@@ -1170,9 +1217,11 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                     case BUILTIN_LISTPRED: {
                         s_expr* cdr_se = sexpr_lookup(la, se->cdr);
                         if (cdr_se == NULL) {
-                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                            result = create_typed_ptr(TYPE_ERROR, \
+                                                      EVAL_ERROR_FEW_ARGS);
                         } else if (cdr_se->cdr != NULL) {
-                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                            result = create_typed_ptr(TYPE_ERROR, \
+                                                      EVAL_ERROR_MANY_ARGS);
                         } else {
                             typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
                             if (eval_arg1->type == TYPE_ERROR) {
@@ -1207,9 +1256,11 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                     case BUILTIN_NUMBERPRED: {
                         s_expr* cdr_se = sexpr_lookup(la, se->cdr);
                         if (cdr_se == NULL) {
-                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                            result = create_typed_ptr(TYPE_ERROR, \
+                                                      EVAL_ERROR_FEW_ARGS);
                         } else if (cdr_se->cdr != NULL) {
-                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                            result = create_typed_ptr(TYPE_ERROR, \
+                                                      EVAL_ERROR_MANY_ARGS);
                         } else {
                             typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
                             if (eval_arg1->type == TYPE_ERROR) {
@@ -1224,9 +1275,11 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                     case BUILTIN_BOOLPRED: {
                         s_expr* cdr_se = sexpr_lookup(la, se->cdr);
                         if (cdr_se == NULL) {
-                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                            result = create_typed_ptr(TYPE_ERROR, \
+                                                      EVAL_ERROR_FEW_ARGS);
                         } else if (cdr_se->cdr != NULL) {
-                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                            result = create_typed_ptr(TYPE_ERROR, \
+                                                      EVAL_ERROR_MANY_ARGS);
                         } else {
                             typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
                             if (eval_arg1->type == TYPE_ERROR) {
@@ -1241,9 +1294,11 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                     case BUILTIN_VOIDPRED: {
                         s_expr* cdr_se = sexpr_lookup(la, se->cdr);
                         if (cdr_se == NULL) {
-                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                            result = create_typed_ptr(TYPE_ERROR, \
+                                                      EVAL_ERROR_FEW_ARGS);
                         } else if (cdr_se->cdr != NULL) {
-                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                            result = create_typed_ptr(TYPE_ERROR, \
+                                                      EVAL_ERROR_MANY_ARGS);
                         } else {
                             typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
                             if (eval_arg1->type == TYPE_ERROR) {
@@ -1261,10 +1316,11 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                     case BUILTIN_NUMBERLT: //    -|
                     case BUILTIN_NUMBERGE: //    -|
                     case BUILTIN_NUMBERLE: //    -V
-                        result = apply_number_comparison(se, st, la);
+                        result = eval_comparison(se, st, la);
                         break;
                     default:
-                        result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_UNDEF_BUILTIN);
+                        result = create_typed_ptr(TYPE_ERROR, \
+                                                  EVAL_ERROR_UNDEF_BUILTIN);
                         break;
                 }
                 break;
