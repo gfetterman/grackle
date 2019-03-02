@@ -342,7 +342,7 @@ void se_stack_pop(s_expr_storage** stack) {
     return;
 }
 
-bool is_number(char str[]) {
+bool string_is_number(char str[]) {
     char c;
     bool ok = true;
     while ((c = *str++)) {
@@ -360,7 +360,7 @@ typed_ptr* install_symbol_substring(Symbol_Table* st, \
                                     unsigned int start, \
                                     unsigned int end) {
     char* symbol = substring(str, start, end);
-    if (is_number(symbol)) {
+    if (string_is_number(symbol)) {
         unsigned int value = atoi(symbol);
         free(symbol);
         return create_typed_ptr(TYPE_NUM, value);
