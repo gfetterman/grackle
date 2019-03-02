@@ -791,7 +791,7 @@ typed_ptr* eval_arithmetic(s_expr* se, Symbol_Table* st, List_Area* la) {
             result = create_error(EVAL_ERROR_NULL_SEXPR);
         } else {
             s_expr* cdr_se = sexpr_lookup(la, se->cdr);
-            typed_ptr* curr_arg = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+            typed_ptr* curr_arg = evaluate(cdr_se, st, la);
             if (curr_arg->type == TYPE_ERROR) { // pass errors through
                 free(result);
                 result = curr_arg;
@@ -853,7 +853,7 @@ typed_ptr* eval_arithmetic(s_expr* se, Symbol_Table* st, List_Area* la) {
                         free(result);
                         result = create_error(EVAL_ERROR_NULL_SEXPR);
                     } else {
-                        typed_ptr* curr_arg = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                        typed_ptr* curr_arg = evaluate(cdr_se, st, la);
                         if (curr_arg->type == TYPE_ERROR) { // pass errors on
                             free(result);
                             result = curr_arg;
@@ -908,7 +908,7 @@ typed_ptr* eval_comparison(s_expr* se, Symbol_Table* st, List_Area* la) {
     if (cdr_se == NULL || cdr_se->cdr == NULL) {
         result = create_error(EVAL_ERROR_FEW_ARGS);
     } else {
-        typed_ptr* eval_arg = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+        typed_ptr* eval_arg = evaluate(cdr_se, st, la);
         if (eval_arg->type == TYPE_ERROR) {
             result = eval_arg;
         } else if (eval_arg->type != TYPE_NUM) {
@@ -920,7 +920,7 @@ typed_ptr* eval_comparison(s_expr* se, Symbol_Table* st, List_Area* la) {
             result = create_typed_ptr(TYPE_BOOL, 1);
             while (cdr_se != NULL) {
                 free(eval_arg);
-                eval_arg = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                eval_arg = evaluate(cdr_se, st, la);
                 if (eval_arg->type == TYPE_ERROR) {
                     free(result);
                     result = eval_arg;
@@ -999,7 +999,7 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                             result = create_error(EVAL_ERROR_MANY_ARGS);
                         } else {
                             unsigned int symbol_idx = cdr_se->car->ptr;
-                            typed_ptr* eval_arg2 = evaluate(create_s_expr(cddr_se->car, NULL), st, la);
+                            typed_ptr* eval_arg2 = evaluate(cddr_se, st, la);
                             result = install_symbol(st, \
                                                     strdup(symbol_lookup_index(st, symbol_idx)->symbol), \
                                                     eval_arg2->type, \
@@ -1019,8 +1019,8 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                         } else if (cddr_se->cdr != NULL) {
                             result = create_error(EVAL_ERROR_MANY_ARGS);
                         } else {
-                            typed_ptr* new_car = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
-                            typed_ptr* new_cdr = evaluate(create_s_expr(cddr_se->car, NULL), st, la);
+                            typed_ptr* new_car = evaluate(cdr_se, st, la);
+                            typed_ptr* new_cdr = evaluate(cddr_se, st, la);
                             result = install_list(la, create_s_expr(new_car, \
                                                                     new_cdr));
                         }
@@ -1033,7 +1033,7 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                         } else if (cdr_se->cdr != NULL) {
                             result = create_error(EVAL_ERROR_MANY_ARGS);
                         } else {
-                            typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                            typed_ptr* eval_arg1 = evaluate(cdr_se, st, la);
                             if (eval_arg1->type != TYPE_SEXPR || \
                                 eval_arg1->ptr == EMPTY_LIST_IDX) {
                                 result = create_error(EVAL_ERROR_BAD_ARG_TYPE);
@@ -1053,7 +1053,7 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                         } else if (cdr_se->cdr != NULL) {
                             result = create_error(EVAL_ERROR_MANY_ARGS);
                         } else {
-                            typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                            typed_ptr* eval_arg1 = evaluate(cdr_se, st, la);
                             if (eval_arg1->type != TYPE_SEXPR || \
                                 eval_arg1->ptr == EMPTY_LIST_IDX) {
                                 result = create_error(EVAL_ERROR_BAD_ARG_TYPE);
@@ -1073,7 +1073,7 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                                                       EMPTY_LIST_IDX);
                         } else {
                             s_expr* cdr_se = sexpr_lookup(la, se->cdr);
-                            typed_ptr* new_car = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                            typed_ptr* new_car = evaluate(cdr_se, st, la);
                             s_expr* last_node = NULL;
                             typed_ptr* new_cdr = create_typed_ptr(TYPE_SEXPR,
                                                                   EMPTY_LIST_IDX);
@@ -1081,7 +1081,7 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                             result = install_list(la, curr_node);
                             while (cdr_se->cdr != NULL) {
                                 cdr_se = sexpr_lookup(la, cdr_se->cdr);
-                                new_car = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                                new_car = evaluate(cdr_se, st, la);
                                 last_node = curr_node;
                                 curr_node = create_s_expr(new_car, \
                                                           last_node->cdr);
@@ -1125,7 +1125,7 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                         } else if (cdr_se->cdr != NULL) {
                             result = create_error(EVAL_ERROR_MANY_ARGS);
                         } else {
-                            result = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                            result = evaluate(cdr_se, st, la);
                             if (result->type != TYPE_ERROR) {
                                 if (is_false_literal(result)) {
                                     result->ptr = 1;
@@ -1157,7 +1157,8 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                                 pred_true = true;
                             } else {
                                 free(eval_interm);
-                                eval_interm = evaluate(create_s_expr(pred, NULL), st, la);
+                                s_expr* pred_se = sexpr_lookup(la, pred);
+                                eval_interm = evaluate(pred_se, st, la);
                                 if (eval_interm->type == TYPE_ERROR) {
                                     then_bodies = NULL;
                                     pred_true = true;
@@ -1172,7 +1173,7 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                         // (or eval_pred if there are none)
                         while (then_bodies != NULL) {
                             free(eval_interm);
-                            eval_interm = evaluate(create_s_expr(then_bodies->car, NULL), st, la);
+                            eval_interm = evaluate(then_bodies, st, la);
                             then_bodies = sexpr_lookup(la, then_bodies->cdr);
                         }
                         result = eval_interm;
@@ -1185,7 +1186,7 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                         } else if (cdr_se->cdr != NULL) {
                             result = create_error(EVAL_ERROR_MANY_ARGS);
                         } else {
-                            typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                            typed_ptr* eval_arg1 = evaluate(cdr_se, st, la);
                             if (eval_arg1->type == TYPE_ERROR) {
                                 result = eval_arg1;
                             } else {
@@ -1202,7 +1203,7 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                         } else if (cdr_se->cdr != NULL) {
                             result = create_error(EVAL_ERROR_MANY_ARGS);
                         } else {
-                            typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                            typed_ptr* eval_arg1 = evaluate(cdr_se, st, la);
                             if (eval_arg1->type == TYPE_ERROR) {
                                 result = eval_arg1;
                             } else {
@@ -1236,7 +1237,7 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                         } else if (cdr_se->cdr != NULL) {
                             result = create_error(EVAL_ERROR_MANY_ARGS);
                         } else {
-                            typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                            typed_ptr* eval_arg1 = evaluate(cdr_se, st, la);
                             if (eval_arg1->type == TYPE_ERROR) {
                                 result = eval_arg1;
                             } else {
@@ -1253,7 +1254,7 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                         } else if (cdr_se->cdr != NULL) {
                             result = create_error(EVAL_ERROR_MANY_ARGS);
                         } else {
-                            typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                            typed_ptr* eval_arg1 = evaluate(cdr_se, st, la);
                             if (eval_arg1->type == TYPE_ERROR) {
                                 result = eval_arg1;
                             } else {
@@ -1270,7 +1271,7 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                         } else if (cdr_se->cdr != NULL) {
                             result = create_error(EVAL_ERROR_MANY_ARGS);
                         } else {
-                            typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                            typed_ptr* eval_arg1 = evaluate(cdr_se, st, la);
                             if (eval_arg1->type == TYPE_ERROR) {
                                 result = eval_arg1;
                             } else {
