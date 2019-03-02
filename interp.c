@@ -1027,6 +1027,28 @@ typed_ptr* eval_atom_pred(s_expr* se, Symbol_Table* st, List_Area* la, type t) {
     return result;
 }
 
+typed_ptr* eval_list_construction(s_expr* se, Symbol_Table* st, List_Area* la) {
+    typed_ptr* result = NULL;
+    if (se->cdr == NULL) {
+        result = create_typed_ptr(TYPE_SEXPR, EMPTY_LIST_IDX);
+    } else {
+        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+        typed_ptr* new_car = evaluate(cdr_se, st, la);
+        s_expr* last_node = NULL;
+        typed_ptr* new_cdr = create_typed_ptr(TYPE_SEXPR, EMPTY_LIST_IDX);
+        s_expr* curr_node = create_s_expr(new_car, new_cdr);
+        result = install_list(la, curr_node);
+        while (cdr_se->cdr != NULL) {
+            cdr_se = sexpr_lookup(la, cdr_se->cdr);
+            new_car = evaluate(cdr_se, st, la);
+            last_node = curr_node;
+            curr_node = create_s_expr(new_car, last_node->cdr);
+            last_node->cdr = install_list(la, curr_node);
+        }
+    }
+    return result;
+}
+
 bool is_false_literal(typed_ptr* tp) {
     return (tp->type == TYPE_BOOL && tp->ptr == 0);
 }
@@ -1080,29 +1102,9 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                     case BUILTIN_CDR: //    -V
                         result = eval_car_cdr(se, st, la);
                         break;
-                    case BUILTIN_LIST: {
-                        if (se->cdr == NULL) {
-                            result = create_typed_ptr(TYPE_SEXPR, \
-                                                      EMPTY_LIST_IDX);
-                        } else {
-                            s_expr* cdr_se = sexpr_lookup(la, se->cdr);
-                            typed_ptr* new_car = evaluate(cdr_se, st, la);
-                            s_expr* last_node = NULL;
-                            typed_ptr* new_cdr = create_typed_ptr(TYPE_SEXPR,
-                                                                  EMPTY_LIST_IDX);
-                            s_expr* curr_node = create_s_expr(new_car, new_cdr);
-                            result = install_list(la, curr_node);
-                            while (cdr_se->cdr != NULL) {
-                                cdr_se = sexpr_lookup(la, cdr_se->cdr);
-                                new_car = evaluate(cdr_se, st, la);
-                                last_node = curr_node;
-                                curr_node = create_s_expr(new_car, \
-                                                          last_node->cdr);
-                                last_node->cdr = install_list(la, curr_node);
-                            }
-                        }
+                    case BUILTIN_LIST:
+                        result = eval_list_construction(se, st, la);
                         break;
-                    }
                     case BUILTIN_AND: {
                         typed_ptr* eval_prev = create_typed_ptr(TYPE_BOOL, 1);
                         s_expr* cdr_se = sexpr_lookup(la, se->cdr);
