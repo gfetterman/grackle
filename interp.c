@@ -1053,6 +1053,48 @@ bool is_false_literal(typed_ptr* tp) {
     return (tp->type == TYPE_BOOL && tp->ptr == 0);
 }
 
+typed_ptr* eval_cond(s_expr* se, Symbol_Table* st, List_Area* la) {
+    typed_ptr* eval_interm = create_typed_ptr(TYPE_VOID, 0);
+    s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+    bool pred_true = false;
+    s_expr* then_bodies = NULL;
+    while (cdr_se != NULL && pred_true == false) {
+        s_expr* cond_clause = sexpr_lookup(la, cdr_se->car);
+        typed_ptr* pred = cond_clause->car;
+        if (pred->type == TYPE_SYM && \
+            !strcmp(symbol_lookup_index(st, pred->ptr)->symbol, "else")) {
+            if (cdr_se->cdr != NULL) {
+                free(eval_interm);
+                eval_interm = create_error(EVAL_ERROR_NONTERMINAL_ELSE);
+                then_bodies = NULL;
+            } else {
+                then_bodies = sexpr_lookup(la, cond_clause->cdr);
+            }
+            pred_true = true;
+        } else {
+            free(eval_interm);
+            s_expr* pred_se = sexpr_lookup(la, pred);
+            eval_interm = evaluate(pred_se, st, la);
+            if (eval_interm->type == TYPE_ERROR) {
+                then_bodies = NULL;
+                pred_true = true;
+            } else if (!is_false_literal(eval_interm)) {
+                then_bodies = sexpr_lookup(la, cond_clause->cdr);
+                pred_true = true;
+            }
+        }
+        cdr_se = sexpr_lookup(la, cdr_se->cdr);
+    }
+    // then evaluate the then-bodies and return the last one
+    // (or eval_pred if there are none)
+    while (then_bodies != NULL) {
+        free(eval_interm);
+        eval_interm = evaluate(then_bodies, st, la);
+        then_bodies = sexpr_lookup(la, then_bodies->cdr);
+    }
+    return eval_interm;
+}
+
 typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
     typed_ptr* result = NULL;
     if (se == NULL) {
@@ -1152,48 +1194,9 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                         }
                         break;
                     }
-                    case BUILTIN_COND: {
-                        typed_ptr* eval_interm = create_typed_ptr(TYPE_VOID, 0);
-                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
-                        bool pred_true = false;
-                        s_expr* then_bodies = NULL;
-                        while (cdr_se != NULL && pred_true == false) {
-                            s_expr* cond_clause = sexpr_lookup(la, cdr_se->car);
-                            typed_ptr* pred = cond_clause->car;
-                            if (pred->type == TYPE_SYM && \
-                                !strcmp(symbol_lookup_index(st, pred->ptr)->symbol, "else")) {
-                                if (cdr_se->cdr != NULL) {
-                                    free(eval_interm);
-                                    eval_interm = create_error(EVAL_ERROR_NONTERMINAL_ELSE);
-                                    then_bodies = NULL;
-                                } else {
-                                    then_bodies = sexpr_lookup(la, cond_clause->cdr);
-                                }
-                                pred_true = true;
-                            } else {
-                                free(eval_interm);
-                                s_expr* pred_se = sexpr_lookup(la, pred);
-                                eval_interm = evaluate(pred_se, st, la);
-                                if (eval_interm->type == TYPE_ERROR) {
-                                    then_bodies = NULL;
-                                    pred_true = true;
-                                } else if (!is_false_literal(eval_interm)) {
-                                    then_bodies = sexpr_lookup(la, cond_clause->cdr);
-                                    pred_true = true;
-                                }
-                            }
-                            cdr_se = sexpr_lookup(la, cdr_se->cdr);
-                        }
-                        // then evaluate the then-bodies and return the last one
-                        // (or eval_pred if there are none)
-                        while (then_bodies != NULL) {
-                            free(eval_interm);
-                            eval_interm = evaluate(then_bodies, st, la);
-                            then_bodies = sexpr_lookup(la, then_bodies->cdr);
-                        }
-                        result = eval_interm;
+                    case BUILTIN_COND:
+                        result = eval_cond(se, st, la);
                         break;
-                    }
                     case BUILTIN_LISTPRED: {
                         s_expr* cdr_se = sexpr_lookup(la, se->cdr);
                         if (cdr_se == NULL) {
