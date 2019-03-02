@@ -24,7 +24,7 @@ typedef struct TYPED_PTR {
 typed_ptr* create_typed_ptr(type type, unsigned int ptr) {
     typed_ptr* new_tp = malloc(sizeof(typed_ptr));
     if (new_tp == NULL) {
-        printf("malloc failed in create_typed_ptr()\n");
+        fprintf(stderr, "malloc failed in create_typed_ptr()\n");
         exit(-1);
     }
     new_tp->type = type;
@@ -66,7 +66,7 @@ typedef struct SYMBOL_TABLE {
 Symbol_Table* create_symbol_table(unsigned int offset) {
     Symbol_Table* new_st = malloc(sizeof(Symbol_Table));
     if (new_st == NULL) {
-        printf("malloc failed in create_symbol_table()\n");
+        fprintf(stderr, "malloc failed in create_symbol_table()\n");
         exit(-1);
     }
     new_st->head = NULL;
@@ -234,7 +234,7 @@ typedef struct S_EXPR_NODE {
 s_expr* create_s_expr(typed_ptr* car, typed_ptr* cdr) {
     s_expr* new_se = malloc(sizeof(s_expr));
     if (new_se == NULL) {
-        printf("malloc failed in create_s_expr()\n");
+        fprintf(stderr, "malloc failed in create_s_expr()\n");
         exit(-1);
     }
     new_se->car = car;
@@ -260,7 +260,7 @@ typedef struct S_EXPR_STACK_NODE {
 s_expr_stack_node* create_s_expr_stack_node(unsigned int list_number, s_expr* se) {
     s_expr_stack_node* new_sesn = malloc(sizeof(s_expr_stack_node));
     if (new_sesn == NULL) {
-        printf("malloc failed in create_s_expr_stack_node()\n");
+        fprintf(stderr, "malloc failed in create_s_expr_stack_node()\n");
         exit(-1);
     }
     new_sesn->list_number = list_number;
@@ -278,7 +278,7 @@ typedef struct LIST_AREA {
 List_Area* create_list_area(unsigned int offset) {
     List_Area* new_la = malloc(sizeof(List_Area));
     if (new_la == NULL) {
-        printf("malloc failed in create_list_area()\n");
+        fprintf(stderr, "malloc failed in create_list_area()\n");
         exit(-1);
     }
     new_la->head = NULL;
@@ -313,7 +313,7 @@ void setup_list_area(List_Area* la) {
 
 void se_stack_push(s_expr_stack_node** stack, s_expr* new_se) {
     if (stack == NULL) {
-        printf("stack double pointer NULL in se_stack_push()\n");
+        fprintf(stderr, "stack double pointer NULL in se_stack_push()\n");
         exit(-1);
     }
     s_expr_stack_node* new_node = create_s_expr_stack_node(0, new_se);
@@ -324,11 +324,11 @@ void se_stack_push(s_expr_stack_node** stack, s_expr* new_se) {
 
 void se_stack_pop(s_expr_stack_node** stack) {
     if (stack == NULL) {
-        printf("stack double pointer NULL in se_stack_pop()\n");
+        fprintf(stderr, "stack double pointer NULL in se_stack_pop()\n");
         exit(-1);
     }
     if (*stack == NULL) {
-        printf("cannot pop() from empty se_stack\n");
+        fprintf(stderr, "cannot pop() from empty se_stack\n");
         exit(-1);
     }
     s_expr_stack_node* old_head = *stack;
@@ -661,7 +661,7 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
                 }
                 break;
             default:
-                printf("fatal error: parser in unknown state\n");
+                fprintf(stderr, "fatal error: parser in unknown state\n");
                 exit(-1);
         }
         curr++;
