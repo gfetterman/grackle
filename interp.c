@@ -13,7 +13,9 @@ typedef enum {TYPE_UNDEF, \
               TYPE_BUILTIN, \
               TYPE_NUM, \
               TYPE_SEXPR, \
-              TYPE_SYM} type;
+              TYPE_SYM, \
+              TYPE_BOOL, \
+              TYPE_VOID} type;
 
 typedef struct TYPED_PTR {
     type type;
@@ -167,7 +169,21 @@ typedef enum {BUILTIN_ADD, \
               BUILTIN_CONS, \
               BUILTIN_CAR, \
               BUILTIN_CDR, \
-              BUILTIN_LIST} builtin_code;
+              BUILTIN_LIST, \
+              BUILTIN_AND, \
+              BUILTIN_OR, \
+              BUILTIN_NOT, \
+              BUILTIN_COND, \
+              BUILTIN_PAIRPRED, \
+              BUILTIN_LISTPRED, \
+              BUILTIN_NUMBERPRED, \
+              BUILTIN_BOOLPRED, \
+              BUILTIN_VOIDPRED, \
+              BUILTIN_NUMBEREQ, \
+              BUILTIN_NUMBERGT, \
+              BUILTIN_NUMBERLT, \
+              BUILTIN_NUMBERGE, \
+              BUILTIN_NUMBERLE} builtin_code;
 
 void setup_symbol_table(Symbol_Table* st) {
     blind_install_symbol(st, "NULL_SENTINEL", TYPE_UNDEF, 0);
@@ -180,8 +196,24 @@ void setup_symbol_table(Symbol_Table* st) {
     blind_install_symbol(st, "cons", TYPE_BUILTIN, BUILTIN_CONS);
     blind_install_symbol(st, "car", TYPE_BUILTIN, BUILTIN_CAR);
     blind_install_symbol(st, "cdr", TYPE_BUILTIN, BUILTIN_CDR);
+    blind_install_symbol(st, "and", TYPE_BUILTIN, BUILTIN_AND);
+    blind_install_symbol(st, "or", TYPE_BUILTIN, BUILTIN_OR);
+    blind_install_symbol(st, "not", TYPE_BUILTIN, BUILTIN_NOT);
+    blind_install_symbol(st, "cond", TYPE_BUILTIN, BUILTIN_COND);
     blind_install_symbol(st, "list", TYPE_BUILTIN, BUILTIN_LIST);
+    blind_install_symbol(st, "pair?", TYPE_BUILTIN, BUILTIN_PAIRPRED);
+    blind_install_symbol(st, "list?", TYPE_BUILTIN, BUILTIN_LISTPRED);
+    blind_install_symbol(st, "number?", TYPE_BUILTIN, BUILTIN_NUMBERPRED);
+    blind_install_symbol(st, "boolean?", TYPE_BUILTIN, BUILTIN_BOOLPRED);
+    blind_install_symbol(st, "void?", TYPE_BUILTIN, BUILTIN_VOIDPRED);
+    blind_install_symbol(st, "=", TYPE_BUILTIN, BUILTIN_NUMBEREQ);
+    blind_install_symbol(st, ">", TYPE_BUILTIN, BUILTIN_NUMBERGT);
+    blind_install_symbol(st, "<", TYPE_BUILTIN, BUILTIN_NUMBERLT);
+    blind_install_symbol(st, ">=", TYPE_BUILTIN, BUILTIN_NUMBERGE);
+    blind_install_symbol(st, "<=", TYPE_BUILTIN, BUILTIN_NUMBERLE);
     blind_install_symbol(st, "null", TYPE_SEXPR, EMPTY_LIST_IDX);
+    blind_install_symbol(st, "#t", TYPE_BOOL, 1);
+    blind_install_symbol(st, "#f", TYPE_BOOL, 0);
     return;
 }
 
@@ -380,6 +412,11 @@ void print_se_recursive(s_expr* se, unsigned int depth, Symbol_Table* st, List_A
                 case TYPE_BUILTIN:
                     printf("car: built-in operator with symbol #%u, ", se->car->ptr);
                     break;
+                case TYPE_BOOL:
+                    printf("car: boolean %s, ", (se->car->ptr == 0) ? "#f" : "#t");
+                    break;
+                case TYPE_VOID:
+                    printf("car: #<void>, ");
                 default:
                     printf("car: unrecognized type: %d, ", se->car->type);
             }
@@ -400,6 +437,11 @@ void print_se_recursive(s_expr* se, unsigned int depth, Symbol_Table* st, List_A
                 case TYPE_BUILTIN:
                     printf("cdr: built-in operator with symbol #%u, ", se->cdr->ptr);
                     break;
+                case TYPE_BOOL:
+                    printf("cdr: boolean %s, ", (se->cdr->ptr == 0) ? "#f" : "#t");
+                    break;
+                case TYPE_VOID:
+                    printf("cdr: #<void>\n");
                 default:
                     printf("cdr: unrecognized type: %d\n", se->cdr->type);
             }
@@ -691,7 +733,8 @@ typedef enum {EVAL_ERROR_EXIT, \
               EVAL_ERROR_MANY_ARGS, \
               EVAL_ERROR_BAD_ARG_TYPE, \
               EVAL_ERROR_NEED_NUM, \
-              EVAL_ERROR_DIV_ZERO} eval_error;
+              EVAL_ERROR_DIV_ZERO, \
+              EVAL_ERROR_NONTERMINAL_ELSE} eval_error;
 
 s_expr* sexpr_lookup(List_Area* la, typed_ptr* tp) {
     if (tp == NULL) {
@@ -829,6 +872,70 @@ typed_ptr* apply_builtin_arithmetic(s_expr* se, Symbol_Table* st, List_Area* la)
     }
 }
 
+typed_ptr* apply_number_comparison(s_expr* se, Symbol_Table* st, List_Area* la) {
+    builtin_code comparison = symbol_from_index(st, se->car->ptr)->value;
+    s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+    typed_ptr* result = NULL;
+    if (cdr_se == NULL || cdr_se->cdr == NULL) {
+        result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+    } else {
+        typed_ptr* eval_arg = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+        if (eval_arg->type == TYPE_ERROR) {
+            result = eval_arg;
+        } else if (eval_arg->type != TYPE_NUM) {
+            free(eval_arg);
+            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE);
+        } else {
+            unsigned int last_num = eval_arg->ptr;
+            cdr_se = sexpr_lookup(la, cdr_se->cdr);
+            result = create_typed_ptr(TYPE_BOOL, 1);
+            while (cdr_se != NULL) {
+                free(eval_arg);
+                eval_arg = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                if (eval_arg->type == TYPE_ERROR) {
+                    free(result);
+                    result = eval_arg;
+                    break;
+                } else if (eval_arg->type != TYPE_NUM) {
+                    free(eval_arg);
+                    free(result);
+                    result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE);
+                    break;
+                } else {
+                    bool intermediate_truth;
+                    switch (comparison) {
+                        case BUILTIN_NUMBEREQ:
+                            intermediate_truth = last_num == eval_arg->ptr;
+                            break;
+                        case BUILTIN_NUMBERGT:
+                            intermediate_truth = last_num > eval_arg->ptr;
+                            break;
+                        case BUILTIN_NUMBERLT:
+                            intermediate_truth = last_num < eval_arg->ptr;
+                            break;
+                        case BUILTIN_NUMBERGE:
+                            intermediate_truth = last_num >= eval_arg->ptr;
+                            break;
+                        case BUILTIN_NUMBERLE:
+                            intermediate_truth = last_num <= eval_arg->ptr;
+                            break;
+                        default:
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_UNDEF_BUILTIN);
+                            break;
+                    }
+                    result->ptr = result->ptr && intermediate_truth;
+                }
+                cdr_se = sexpr_lookup(la, cdr_se->cdr);
+            }
+        }
+    }
+    return result;
+}
+
+bool is_false(typed_ptr* tp) {
+    return (tp->type == TYPE_BOOL && tp->ptr == 0);
+}
+
 typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
     typed_ptr* result = NULL;
     if (se == NULL) {
@@ -944,6 +1051,207 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                         }
                         break;
                     }
+                    case BUILTIN_AND: {
+                        typed_ptr* last_arg_eval = create_typed_ptr(TYPE_BOOL, 1);
+                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        while (cdr_se != NULL) {
+                            free(last_arg_eval);
+                            last_arg_eval = evaluate(cdr_se, st, la);
+                            if (is_false(last_arg_eval)) {
+                                break;
+                            }
+                            cdr_se = sexpr_lookup(la, cdr_se->cdr);
+                        }
+                        result = last_arg_eval;
+                        break;
+                    }
+                    case BUILTIN_OR: {
+                        typed_ptr* last_arg_eval = create_typed_ptr(TYPE_BOOL, 0);
+                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        while (cdr_se != NULL) {
+                            free(last_arg_eval);
+                            last_arg_eval = evaluate(cdr_se, st, la);
+                            if (!is_false(last_arg_eval)) {
+                                break;
+                            }
+                            cdr_se = sexpr_lookup(la, cdr_se->cdr);
+                        }
+                        result = last_arg_eval;
+                        break;
+                    }
+                    case BUILTIN_NOT: {
+                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        if (cdr_se == NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                        } else if (cdr_se->cdr != NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                        } else {
+                            result = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                            if (result->type != TYPE_ERROR) {
+                                if (is_false(result)) {
+                                    result->ptr = 1;
+                                } else {
+                                    result->type = TYPE_BOOL;
+                                    result->ptr = 0;
+                                }
+                            }
+                        }
+                        break;
+                    }
+                    case BUILTIN_COND: {
+                        typed_ptr* eval_intermediate = create_typed_ptr(TYPE_VOID, 0);
+                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        bool pred_true = false;
+                        s_expr* then_bodies = NULL;
+                        while (cdr_se != NULL && pred_true == false) {
+                            s_expr* cond_clause = sexpr_lookup(la, cdr_se->car);
+                            typed_ptr* pred = cond_clause->car;
+                            if (pred->type == TYPE_SYM && \
+                                !strcmp(symbol_from_index(st, pred->ptr)->symbol, "else")) {
+                                if (cdr_se->cdr != NULL) {
+                                    free(eval_intermediate);
+                                    eval_intermediate = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_NONTERMINAL_ELSE);
+                                    then_bodies = NULL; // strictly unnecessary, but I'm feeling paranoid
+                                } else {
+                                    then_bodies = sexpr_lookup(la, cond_clause->cdr);
+                                }
+                                pred_true = true;
+                            } else {
+                                free(eval_intermediate);
+                                eval_intermediate = evaluate(create_s_expr(pred, NULL), st, la);
+                                if (eval_intermediate->type == TYPE_ERROR) {
+                                    then_bodies = NULL;
+                                    pred_true = true;
+                                } else if (!is_false(eval_intermediate)) {
+                                    then_bodies = sexpr_lookup(la, cond_clause->cdr);
+                                    pred_true = true;
+                                }
+                            }
+                            cdr_se = sexpr_lookup(la, cdr_se->cdr);
+                        }
+                        // then evaluate the then-bodies and return the last one
+                        // (or eval_pred if there are none)
+                        while (then_bodies != NULL) {
+                            free(eval_intermediate);
+                            eval_intermediate = evaluate(create_s_expr(then_bodies->car, NULL), st, la);
+                            then_bodies = sexpr_lookup(la, then_bodies->cdr);
+                        }
+                        result = eval_intermediate;
+                        break;
+                    }
+                    case BUILTIN_PAIRPRED: {
+                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        if (cdr_se == NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                        } else if (cdr_se->cdr != NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                        } else {
+                            typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                            if (eval_arg1->type == TYPE_ERROR) {
+                                result = eval_arg1;
+                            } else {
+                                result = create_typed_ptr(TYPE_BOOL, eval_arg1->type == TYPE_SEXPR);
+                                free(eval_arg1);
+                            }
+                        }
+                        break;
+                    }
+                    case BUILTIN_LISTPRED: {
+                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        if (cdr_se == NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                        } else if (cdr_se->cdr != NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                        } else {
+                            typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                            if (eval_arg1->type == TYPE_ERROR) {
+                                result = eval_arg1;
+                            } else {
+                                result = create_typed_ptr(TYPE_BOOL, 0);
+                                if (eval_arg1->type == TYPE_SEXPR) {
+                                    if (eval_arg1->ptr == EMPTY_LIST_IDX) {
+                                        result->ptr = 1;
+                                    } else {
+                                        s_expr* curr = sexpr_lookup(la, eval_arg1);
+                                        while (curr != NULL) {
+                                            if (curr->cdr->type != TYPE_SEXPR) {
+                                                break;
+                                            }
+                                            printf("  node %p ", curr->car);
+                                            printf("has car value %u & type %d ", curr->car->ptr, curr->car->type);
+                                            printf("and cdr value %u & type %d\n", curr->cdr->ptr, curr->cdr->type);
+                                            if (curr->cdr->ptr == EMPTY_LIST_IDX) {
+                                                result->ptr = 1;
+                                                break;
+                                            }
+                                            curr = sexpr_lookup(la, curr->cdr);
+                                        }
+                                    }
+                                }
+                                free(eval_arg1);
+                            }
+                        }
+                        break;
+                    }
+                    case BUILTIN_NUMBERPRED: {
+                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        if (cdr_se == NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                        } else if (cdr_se->cdr != NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                        } else {
+                            typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                            if (eval_arg1->type == TYPE_ERROR) {
+                                result = eval_arg1;
+                            } else {
+                                result = create_typed_ptr(TYPE_BOOL, eval_arg1->type == TYPE_NUM);
+                                free(eval_arg1);
+                            }
+                        }
+                        break;
+                    }
+                    case BUILTIN_BOOLPRED: {
+                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        if (cdr_se == NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                        } else if (cdr_se->cdr != NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                        } else {
+                            typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                            if (eval_arg1->type == TYPE_ERROR) {
+                                result = eval_arg1;
+                            } else {
+                                result = create_typed_ptr(TYPE_BOOL, eval_arg1->type == TYPE_BOOL);
+                                free(eval_arg1);
+                            }
+                        }
+                        break;
+                    }
+                    case BUILTIN_VOIDPRED: {
+                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        if (cdr_se == NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                        } else if (cdr_se->cdr != NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                        } else {
+                            typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                            if (eval_arg1->type == TYPE_ERROR) {
+                                result = eval_arg1;
+                            } else {
+                                result = create_typed_ptr(TYPE_BOOL, eval_arg1->type == TYPE_VOID);
+                                free(eval_arg1);
+                            }
+                        }
+                        break;
+
+                    }
+                    case BUILTIN_NUMBEREQ: //    -|
+                    case BUILTIN_NUMBERGT: //    -|
+                    case BUILTIN_NUMBERLT: //    -|
+                    case BUILTIN_NUMBERGE: //    -|
+                    case BUILTIN_NUMBERLE: //    -V
+                        result = apply_number_comparison(se, st, la);
+                        break;
                     default:
                         result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_UNDEF_BUILTIN);
                         break;
@@ -958,6 +1266,12 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                 break;
             case TYPE_SYM:
                 result = value_lookup(st, se->car);
+                break;
+            case TYPE_BOOL:
+                result = create_typed_ptr(se->car->type, se->car->ptr);
+                break;
+            case TYPE_VOID:
+                result = create_typed_ptr(TYPE_VOID, 0);
                 break;
             default:
                 result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_UNDEF_TYPE);
