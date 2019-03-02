@@ -847,6 +847,7 @@ s_expr* sexpr_lookup(List_Area* la, const typed_ptr* tp) {
     }
     return NULL;
 }
+
 // Primary method to look up symbol values.
 // The typed_ptr returned is the caller's responsibility to free; it may be
 //   (shallow) freed without harm to the symbol table or any other object.
@@ -1226,7 +1227,7 @@ typed_ptr* eval_atom_pred(const s_expr* se, \
 // There is no restriction on the type of the arguments.
 // Returns a typed_ptr containing an error code (if the evaluation failed) or
 //   the resulting s-expression (if it succeeded).
-// If no arguments are provided, the resulting s-expression points to the empty
+// If no arguments are provided, the resulting typed_ptr points to the empty
 //   list.
 // In either case, the returned typed_ptr is the caller's responsibility to
 //   free, and is safe to (shallow) free without harm to the symbol table, list
@@ -1261,7 +1262,7 @@ bool is_false_literal(typed_ptr* tp) {
 
 // Evaluates an s-expression whose car is the built-in special form
 //   BUILTIN_COND.
-// This function takes any number of arguments.
+// This special form takes any number of arguments.
 // The arguments must take the form (predicate [then-body...]).
 // The predicates of the arguments are evaluated until one evaluates to anything
 //   other than a boolean false value. After this, no predicates are evaluated.
@@ -1320,7 +1321,7 @@ typed_ptr* eval_cond(const s_expr* se, Symbol_Table* st, List_Area* la) {
 }
 
 // Evaluates an s-expression of any kind within the context of the provided
-//   symbol table and list area, and returns a typed_ptr containing the result.
+//   symbol table and list area.
 // Returns a typed_ptr containing an error code (if the evaluation failed) or
 //   the result (if it succeeded).
 // In either case, the returned typed_ptr is the caller's responsibility to
