@@ -500,10 +500,19 @@ void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second) {
 }
 
 s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
-    enum Parse_State {START, NEW_SE, READY, READ_SYMBOL, FINISH, ERROR};
-    enum Parse_State state = START;
-    enum Error_Code {NONE, UNBAL_PAREN, BARE_SYM, EMPTY_PAREN, TOO_MANY};
-    enum Error_Code error_code = NONE;
+    enum Parse_State {PARSE_START, \
+                      PARSE_NEW_SEXPR, \
+                      PARSE_READY, \
+                      PARSE_READ_SYMBOL, \
+                      PARSE_FINISH, \
+                      PARSE_ERROR};
+    enum Parse_State state = PARSE_START;
+    enum Error_Code {PARSE_ERROR_NONE, \
+                     PARSE_ERROR_UNBAL_PAREN, \
+                     PARSE_ERROR_BARE_SYM, \
+                     PARSE_ERROR_EMPTY_PAREN, \
+                     PARSE_ERROR_TOO_MANY};
+    enum Error_Code error_code = PARSE_ERROR_NONE;
     s_expr_storage* stack = NULL;
     s_expr* new_s_expr = NULL;
     unsigned int curr = 0;
@@ -511,28 +520,28 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
     Symbol_Table* temp_symbol_table = create_symbol_table(st->length);
     List_Area* temp_list_area = create_list_area(la->length);
     s_expr* head = NULL;
-    while (str[curr] && state != ERROR) {
+    while (str[curr] && state != PARSE_ERROR) {
         switch (state) {
-            case START:
+            case PARSE_START:
                 switch (str[curr]) {
                     case ' ': // ignore leading whitespace
                         break;
                     case '(':
                         head = create_s_expr(NULL, NULL);
                         se_stack_push(&stack, head);
-                        state = NEW_SE;
+                        state = PARSE_NEW_SEXPR;
                         break;
                     case ')':
-                        state = ERROR;
-                        error_code = UNBAL_PAREN;
+                        state = PARSE_ERROR;
+                        error_code = PARSE_ERROR_UNBAL_PAREN;
                         break;
                     default:
-                        state = ERROR;
-                        error_code = BARE_SYM;
+                        state = PARSE_ERROR;
+                        error_code = PARSE_ERROR_BARE_SYM;
                         break;
                 }
                 break;
-            case NEW_SE:
+            case PARSE_NEW_SEXPR:
                 switch (str[curr]) {
                     case ' ': // ignore leading whitespace
                         break;
@@ -543,16 +552,16 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
                         se_stack_push(&stack, new_s_expr);
                         break;
                     case ')':
-                        state = ERROR;
-                        error_code = EMPTY_PAREN;
+                        state = PARSE_ERROR;
+                        error_code = PARSE_ERROR_EMPTY_PAREN;
                         break;
                     default:
                         symbol_start = curr;
-                        state = READ_SYMBOL;
+                        state = PARSE_READ_SYMBOL;
                         break;
                 }
                 break;
-            case READY:
+            case PARSE_READY:
                 switch (str[curr]) {
                     case ' ': // lump whitespace together
                         break;
@@ -567,18 +576,18 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
                         stack->se->car = install_list(temp_list_area, \
                                                       new_s_expr);
                         se_stack_push(&stack, new_s_expr);
-                        state = NEW_SE;
+                        state = PARSE_NEW_SEXPR;
                         break;
                     case ')':
                         if (stack == NULL) {
-                            state = ERROR;
-                            error_code = UNBAL_PAREN;
+                            state = PARSE_ERROR;
+                            error_code = PARSE_ERROR_UNBAL_PAREN;
                         } else {
                             se_stack_pop(&stack);
                             while (stack != NULL && stack->se->cdr != NULL) {
                                 se_stack_pop(&stack);
                             }
-                            state = (stack == NULL) ? FINISH : READY;
+                            state = (stack == NULL) ? PARSE_FINISH : PARSE_READY;
                         }
                         break;
                     default:
@@ -586,11 +595,11 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
                         se_stack_push(&stack, create_s_expr(NULL, NULL));
                         stack->next->se->cdr = install_list(temp_list_area, \
                                                             stack->se);
-                        state = READ_SYMBOL;
+                        state = PARSE_READ_SYMBOL;
                         break;
                 }
                 break;
-            case READ_SYMBOL:
+            case PARSE_READ_SYMBOL:
                 switch (str[curr]) {
                     case ' ':
                         // update the current backbone node
@@ -599,7 +608,7 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
                                                                   str, \
                                                                   symbol_start, \
                                                                   curr);
-                        state = READY;
+                        state = PARSE_READY;
                         break;
                     case '(':
                         // update the current backbone node
@@ -618,7 +627,7 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
                         stack->se->car = install_list(temp_list_area, \
                                                       new_s_expr);
                         se_stack_push(&stack, new_s_expr);
-                        state = NEW_SE;
+                        state = PARSE_NEW_SEXPR;
                         break;
                     case ')':
                         // update the current backbone node
@@ -628,35 +637,35 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
                                                                   symbol_start,
                                                                   curr);
                         if (stack == NULL) {
-                            state = ERROR;
-                            error_code = UNBAL_PAREN;
+                            state = PARSE_ERROR;
+                            error_code = PARSE_ERROR_UNBAL_PAREN;
                         } else {
                             se_stack_pop(&stack);
                             while (stack != NULL && stack->se->cdr != NULL) {
                                 se_stack_pop(&stack);
                             }
-                            state = (stack == NULL) ? FINISH : READY;
+                            state = (stack == NULL) ? PARSE_FINISH : PARSE_READY;
                         }
                         break;
                     default: // just keep reading
                         break;
                 }
                 break;
-            case FINISH:
+            case PARSE_FINISH:
                 switch (str[curr]) {
                     case ' ': // ignore trailing whitespace
                         break;
                     case '(':
-                        state = ERROR;
-                        error_code = TOO_MANY;
+                        state = PARSE_ERROR;
+                        error_code = PARSE_ERROR_TOO_MANY;
                         break;
                     case ')':
-                        state = ERROR;
-                        error_code = UNBAL_PAREN;
+                        state = PARSE_ERROR;
+                        error_code = PARSE_ERROR_UNBAL_PAREN;
                         break;
                     default:
-                        state = ERROR;
-                        error_code = BARE_SYM;
+                        state = PARSE_ERROR;
+                        error_code = PARSE_ERROR_BARE_SYM;
                         break;
                 }
                 break;
@@ -667,29 +676,29 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
         curr++;
     }
     if (stack != NULL) {
-        state = ERROR;
-        error_code = UNBAL_PAREN;
+        state = PARSE_ERROR;
+        error_code = PARSE_ERROR_UNBAL_PAREN;
     }
     switch (error_code) {
-        case NONE: // do nothing
+        case PARSE_ERROR_NONE: // do nothing
             break;
-        case UNBAL_PAREN:
+        case PARSE_ERROR_UNBAL_PAREN:
             printf("parse error: unbalanced parentheses\n");
             break;
-        case BARE_SYM:
+        case PARSE_ERROR_BARE_SYM:
             printf("parse error: symbol outside of parentheses\n");
             break;
-        case EMPTY_PAREN:
+        case PARSE_ERROR_EMPTY_PAREN:
             printf("parse error: '()' is not allowed\n");
             break;
-        case TOO_MANY:
+        case PARSE_ERROR_TOO_MANY:
             printf("parse error: too many statements in input\n");
             break;
         default:
             printf("parse error: unrecognized code (%d)\n", error_code);
             break;
     }
-    if (error_code == NONE) {
+    if (error_code == PARSE_ERROR_NONE) {
         merge_list_areas(la, temp_list_area);
         free(temp_list_area);
         merge_symbol_tables(st, temp_symbol_table);
