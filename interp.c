@@ -5,7 +5,6 @@
 
 #define PROMPT ">>>"
 #define BUF_SIZE 80
-#define EXIT_KEYWORD "(exit)"
 #define EMPTY_LIST_IDX 0
 
 typedef enum {TYPE_UNDEF, \
