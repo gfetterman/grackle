@@ -173,7 +173,12 @@ typedef enum {BUILTIN_ADD, \
               BUILTIN_AND, \
               BUILTIN_OR, \
               BUILTIN_NOT, \
-              BUILTIN_COND} builtin_code;
+              BUILTIN_COND, \
+              BUILTIN_PAIRPRED, \
+              BUILTIN_LISTPRED, \
+              BUILTIN_NUMBERPRED, \
+              BUILTIN_BOOLPRED, \
+              BUILTIN_VOIDPRED} builtin_code;
 
 void setup_symbol_table(Symbol_Table* st) {
     blind_install_symbol(st, "NULL_SENTINEL", TYPE_UNDEF, 0);
@@ -191,6 +196,11 @@ void setup_symbol_table(Symbol_Table* st) {
     blind_install_symbol(st, "not", TYPE_BUILTIN, BUILTIN_NOT);
     blind_install_symbol(st, "cond", TYPE_BUILTIN, BUILTIN_COND);
     blind_install_symbol(st, "list", TYPE_BUILTIN, BUILTIN_LIST);
+    blind_install_symbol(st, "pair?", TYPE_BUILTIN, BUILTIN_PAIRPRED);
+    blind_install_symbol(st, "list?", TYPE_BUILTIN, BUILTIN_LISTPRED);
+    blind_install_symbol(st, "number?", TYPE_BUILTIN, BUILTIN_NUMBERPRED);
+    blind_install_symbol(st, "boolean?", TYPE_BUILTIN, BUILTIN_BOOLPRED);
+    blind_install_symbol(st, "void?", TYPE_BUILTIN, BUILTIN_VOIDPRED);
     blind_install_symbol(st, "null", TYPE_SEXPR, EMPTY_LIST_IDX);
     blind_install_symbol(st, "#t", TYPE_BOOL, 1);
     blind_install_symbol(st, "#f", TYPE_BOOL, 0);
@@ -1058,6 +1068,112 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                         }
                         result = eval_intermediate;
                         break;
+                    }
+                    case BUILTIN_PAIRPRED: {
+                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        if (cdr_se == NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                        } else if (cdr_se->cdr != NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                        } else {
+                            typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                            if (eval_arg1->type == TYPE_ERROR) {
+                                result = eval_arg1;
+                            } else {
+                                result = create_typed_ptr(TYPE_BOOL, eval_arg1->type == TYPE_SEXPR);
+                                free(eval_arg1);
+                            }
+                        }
+                        break;
+                    }
+                    case BUILTIN_LISTPRED: {
+                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        if (cdr_se == NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                        } else if (cdr_se->cdr != NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                        } else {
+                            typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                            if (eval_arg1->type == TYPE_ERROR) {
+                                result = eval_arg1;
+                            } else {
+                                result = create_typed_ptr(TYPE_BOOL, 0);
+                                if (eval_arg1->type == TYPE_SEXPR) {
+                                    if (eval_arg1->ptr == EMPTY_LIST_IDX) {
+                                        result->ptr = 1;
+                                    } else {
+                                        s_expr* curr = sexpr_lookup(la, eval_arg1);
+                                        while (curr != NULL) {
+                                            if (curr->cdr->type != TYPE_SEXPR) {
+                                                break;
+                                            }
+                                            printf("  node %p ", curr->car);
+                                            printf("has car value %u & type %d ", curr->car->ptr, curr->car->type);
+                                            printf("and cdr value %u & type %d\n", curr->cdr->ptr, curr->cdr->type);
+                                            if (curr->cdr->ptr == EMPTY_LIST_IDX) {
+                                                result->ptr = 1;
+                                                break;
+                                            }
+                                            curr = sexpr_lookup(la, curr->cdr);
+                                        }
+                                    }
+                                }
+                                free(eval_arg1);
+                            }
+                        }
+                        break;
+                    }
+                    case BUILTIN_NUMBERPRED: {
+                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        if (cdr_se == NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                        } else if (cdr_se->cdr != NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                        } else {
+                            typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                            if (eval_arg1->type == TYPE_ERROR) {
+                                result = eval_arg1;
+                            } else {
+                                result = create_typed_ptr(TYPE_BOOL, eval_arg1->type == TYPE_NUM);
+                                free(eval_arg1);
+                            }
+                        }
+                        break;
+                    }
+                    case BUILTIN_BOOLPRED: {
+                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        if (cdr_se == NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                        } else if (cdr_se->cdr != NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                        } else {
+                            typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                            if (eval_arg1->type == TYPE_ERROR) {
+                                result = eval_arg1;
+                            } else {
+                                result = create_typed_ptr(TYPE_BOOL, eval_arg1->type == TYPE_BOOL);
+                                free(eval_arg1);
+                            }
+                        }
+                        break;
+                    }
+                    case BUILTIN_VOIDPRED: {
+                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        if (cdr_se == NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+                        } else if (cdr_se->cdr != NULL) {
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                        } else {
+                            typed_ptr* eval_arg1 = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                            if (eval_arg1->type == TYPE_ERROR) {
+                                result = eval_arg1;
+                            } else {
+                                result = create_typed_ptr(TYPE_BOOL, eval_arg1->type == TYPE_VOID);
+                                free(eval_arg1);
+                            }
+                        }
+                        break;
+
                     }
                     default:
                         result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_UNDEF_BUILTIN);
