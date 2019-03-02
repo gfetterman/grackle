@@ -1008,6 +1008,42 @@ typed_ptr* eval_car_cdr(s_expr* se, Symbol_Table* st, List_Area* la) {
     return result;
 }
 
+typed_ptr* eval_list_pred(s_expr* se, Symbol_Table* st, List_Area* la) {
+    typed_ptr* result = NULL;
+    s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+    if (cdr_se == NULL) {
+        result = create_error(EVAL_ERROR_FEW_ARGS);
+    } else if (cdr_se->cdr != NULL) {
+        result = create_error(EVAL_ERROR_MANY_ARGS);
+    } else {
+        typed_ptr* eval_arg1 = evaluate(cdr_se, st, la);
+        if (eval_arg1->type == TYPE_ERROR) {
+            result = eval_arg1;
+        } else {
+            result = create_typed_ptr(TYPE_BOOL, 0);
+            if (eval_arg1->type == TYPE_SEXPR) {
+                if (eval_arg1->ptr == EMPTY_LIST_IDX) {
+                    result->ptr = 1;
+                } else {
+                    s_expr* curr = sexpr_lookup(la, eval_arg1);
+                    while (curr != NULL) {
+                        if (curr->cdr->type != TYPE_SEXPR) {
+                            break;
+                        }
+                        if (curr->cdr->ptr == EMPTY_LIST_IDX) {
+                            result->ptr = 1;
+                            break;
+                        }
+                        curr = sexpr_lookup(la, curr->cdr);
+                    }
+                }
+            }
+            free(eval_arg1);
+        }
+    }
+    return result;
+}
+
 typed_ptr* eval_atom_pred(s_expr* se, Symbol_Table* st, List_Area* la, type t) {
     typed_ptr* result = NULL;
     s_expr* cdr_se = sexpr_lookup(la, se->cdr);
@@ -1197,40 +1233,9 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                     case BUILTIN_COND:
                         result = eval_cond(se, st, la);
                         break;
-                    case BUILTIN_LISTPRED: {
-                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
-                        if (cdr_se == NULL) {
-                            result = create_error(EVAL_ERROR_FEW_ARGS);
-                        } else if (cdr_se->cdr != NULL) {
-                            result = create_error(EVAL_ERROR_MANY_ARGS);
-                        } else {
-                            typed_ptr* eval_arg1 = evaluate(cdr_se, st, la);
-                            if (eval_arg1->type == TYPE_ERROR) {
-                                result = eval_arg1;
-                            } else {
-                                result = create_typed_ptr(TYPE_BOOL, 0);
-                                if (eval_arg1->type == TYPE_SEXPR) {
-                                    if (eval_arg1->ptr == EMPTY_LIST_IDX) {
-                                        result->ptr = 1;
-                                    } else {
-                                        s_expr* curr = sexpr_lookup(la, eval_arg1);
-                                        while (curr != NULL) {
-                                            if (curr->cdr->type != TYPE_SEXPR) {
-                                                break;
-                                            }
-                                            if (curr->cdr->ptr == EMPTY_LIST_IDX) {
-                                                result->ptr = 1;
-                                                break;
-                                            }
-                                            curr = sexpr_lookup(la, curr->cdr);
-                                        }
-                                    }
-                                }
-                                free(eval_arg1);
-                            }
-                        }
+                    case BUILTIN_LISTPRED:
+                        result = eval_list_pred(se, st, la);
                         break;
-                    }
                     case BUILTIN_PAIRPRED:
                         result = eval_atom_pred(se, st, la, TYPE_SEXPR);
                         break;
