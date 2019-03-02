@@ -961,6 +961,24 @@ typed_ptr* eval_comparison(s_expr* se, Symbol_Table* st, List_Area* la) {
     return result;
 }
 
+typed_ptr* eval_set_variable(s_expr* se, Symbol_Table* st, List_Area* la) {
+    typed_ptr* result = NULL;
+    s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+    s_expr* cddr_se = sexpr_lookup(la, cdr_se->cdr);
+    if (cdr_se == NULL || cddr_se == NULL) {
+        result = create_error(EVAL_ERROR_FEW_ARGS);
+    } else if (cddr_se->cdr != NULL) {
+        result = create_error(EVAL_ERROR_MANY_ARGS);
+    } else {
+        unsigned int symbol_idx = cdr_se->car->ptr;
+        typed_ptr* eval_arg2 = evaluate(cddr_se, st, la);
+        char* name = strdup(symbol_lookup_index(st, symbol_idx)->symbol);
+        result = install_symbol(st, name, eval_arg2->type, eval_arg2->ptr);
+        free(eval_arg2);
+    }
+    return result;
+}
+
 bool is_false_literal(typed_ptr* tp) {
     return (tp->type == TYPE_BOOL && tp->ptr == 0);
 }
@@ -989,25 +1007,9 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                     case BUILTIN_DIV: //     v
                         result = eval_arithmetic(se, st, la);
                         break;
-                    case BUILTIN_SETQ: {
-                        // this special form must have exactly 2 arguments
-                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
-                        s_expr* cddr_se = sexpr_lookup(la, cdr_se->cdr);
-                        if (cdr_se == NULL || cddr_se == NULL) {
-                            result = create_error(EVAL_ERROR_FEW_ARGS);
-                        } else if (cddr_se->cdr != NULL) {
-                            result = create_error(EVAL_ERROR_MANY_ARGS);
-                        } else {
-                            unsigned int symbol_idx = cdr_se->car->ptr;
-                            typed_ptr* eval_arg2 = evaluate(cddr_se, st, la);
-                            result = install_symbol(st, \
-                                                    strdup(symbol_lookup_index(st, symbol_idx)->symbol), \
-                                                    eval_arg2->type, \
-                                                    eval_arg2->ptr);
-                            free(eval_arg2);
-                        }
+                    case BUILTIN_SETQ:
+                        result = eval_set_variable(se, st, la);
                         break;
-                    }
                     case BUILTIN_EXIT:
                         result = create_error(EVAL_ERROR_EXIT);
                         break;
