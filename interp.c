@@ -32,21 +32,21 @@ typed_ptr* create_typed_ptr(type type, unsigned int ptr) {
     return new_tp;
 }
 
-typedef struct LLNODE {
+typedef struct SYMBOL_TABLE_NODE {
     unsigned int symbol_number;
     char* symbol;
     type type;
     unsigned int value;
-    struct LLNODE* next;
-} Node;
+    struct SYMBOL_TABLE_NODE* next;
+} symbol_table_node;
 
-Node* create_node(unsigned int symbol_number, \
-                  char* symbol, \
-                  type type, \
-                  unsigned int value) {
-    Node* new_node = malloc(sizeof(Node));
+symbol_table_node* create_st_node(unsigned int symbol_number, \
+                                  char* symbol, \
+                                  type type, \
+                                  unsigned int value) {
+    symbol_table_node* new_node = malloc(sizeof(symbol_table_node));
     if (new_node == NULL) {
-        fprintf(stderr, "fatal error: malloc failed in create_node()\n");
+        fprintf(stderr, "fatal error: malloc failed in create_st_node()\n");
         exit(-1);
     }
     new_node->symbol_number = symbol_number;
@@ -58,7 +58,7 @@ Node* create_node(unsigned int symbol_number, \
 }
 
 typedef struct SYMBOL_TABLE {
-    Node* head;
+    symbol_table_node* head;
     unsigned int length;
     unsigned int symbol_number_offset;
 } Symbol_Table;
@@ -75,8 +75,8 @@ Symbol_Table* create_symbol_table(unsigned int offset) {
     return new_st;
 }
 
-Node* search_list(Symbol_Table* st, char* symbol) {
-    Node* curr = st->head;
+symbol_table_node* search_list(Symbol_Table* st, char* symbol) {
+    symbol_table_node* curr = st->head;
     while (curr != NULL) {
         if (!strcmp(curr->symbol, symbol)) {
             return curr;
@@ -86,8 +86,8 @@ Node* search_list(Symbol_Table* st, char* symbol) {
     return NULL;
 }
 
-Node* symbol_from_index(Symbol_Table* st, unsigned int index) {
-    Node* curr = st->head;
+symbol_table_node* symbol_from_index(Symbol_Table* st, unsigned int index) {
+    symbol_table_node* curr = st->head;
     while (curr != NULL) {
         if (curr->symbol_number == index) {
             break;
@@ -102,9 +102,9 @@ typed_ptr* install_symbol(Symbol_Table* st, \
                           type type, \
                           unsigned int value) {
     unsigned int symbol_number = st->length + st->symbol_number_offset;
-    Node* found = search_list(st, symbol);
+    symbol_table_node* found = search_list(st, symbol);
     if (found == NULL) {
-        Node* new_node = create_node(symbol_number, symbol, type, value);
+        symbol_table_node* new_node = create_st_node(symbol_number, symbol, type, value);
         new_node->next = st->head;
         st->head = new_node;
         st->length++;
@@ -146,7 +146,7 @@ char* substring(char* str, unsigned int start, unsigned int end) {
 }
 
 void print_symbol_table(Symbol_Table* st) {
-    Node* curr = st->head;
+    symbol_table_node* curr = st->head;
     printf("current symbol table:\n");
     while (curr != NULL) {
         printf("  symbol #%d, \"%s\", has type \"%d\" and value %u\n", \
@@ -365,7 +365,7 @@ typed_ptr* install_symbol_substring(Symbol_Table* st, \
         free(symbol);
         return create_typed_ptr(TYPE_NUM, value);
     } else {
-        Node* found = search_list(st, symbol);
+        symbol_table_node* found = search_list(st, symbol);
         if (found == NULL) {
             found = search_list(temp_st, symbol);
             if (found == NULL) {
@@ -489,7 +489,7 @@ void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second) {
     if (first->head == NULL) {
         first->head = second->head;
     } else {
-        Node* curr = first->head;
+        symbol_table_node* curr = first->head;
         while (curr->next != NULL) {
             curr = curr->next;
         }
@@ -701,9 +701,9 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
             // s-expressions pointed to on the stack are accessible from head
             free(stack_temp);
         }
-        Node* symbol_curr = temp_symbol_table->head;
+        symbol_table_node* symbol_curr = temp_symbol_table->head;
         while (symbol_curr != NULL) {
-            Node* symbol_temp = symbol_curr;
+            symbol_table_node* symbol_temp = symbol_curr;
             symbol_curr = symbol_curr->next;
             free(symbol_temp);
         }
@@ -753,7 +753,7 @@ typed_ptr* value_lookup(Symbol_Table* st, typed_ptr* tp) {
     if (tp == NULL) {
         return NULL;
     }
-    Node* curr = st->head;
+    symbol_table_node* curr = st->head;
     while (curr != NULL) {
         if (curr->symbol_number == tp->ptr) {
             return create_typed_ptr(curr->type, curr->value);
