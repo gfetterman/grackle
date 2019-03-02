@@ -518,7 +518,21 @@ typedef enum {PARSE_ERROR_NONE, \
               PARSE_ERROR_UNBAL_PAREN, \
               PARSE_ERROR_BARE_SYM, \
               PARSE_ERROR_EMPTY_PAREN, \
-              PARSE_ERROR_TOO_MANY} parse_error;
+              PARSE_ERROR_TOO_MANY, \
+              // ^  parsing errors above     ^
+              // v  evaluation errors below  v
+              EVAL_ERROR_EXIT, \
+              EVAL_ERROR_NULL_SEXPR, \
+              EVAL_ERROR_NULL_CAR, \
+              EVAL_ERROR_UNDEF_SYM, \
+              EVAL_ERROR_UNDEF_TYPE, \
+              EVAL_ERROR_UNDEF_BUILTIN, \
+              EVAL_ERROR_FEW_ARGS, \
+              EVAL_ERROR_MANY_ARGS, \
+              EVAL_ERROR_BAD_ARG_TYPE, \
+              EVAL_ERROR_NEED_NUM, \
+              EVAL_ERROR_DIV_ZERO, \
+              EVAL_ERROR_NONTERMINAL_ELSE} interpreter_error;
 
 s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
     enum Parse_State {PARSE_START, \
@@ -528,7 +542,7 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
                       PARSE_FINISH, \
                       PARSE_ERROR};
     enum Parse_State state = PARSE_START;
-    parse_error error_code = PARSE_ERROR_NONE;
+    interpreter_error error_code = PARSE_ERROR_NONE;
     s_expr_storage* stack = NULL;
     s_expr* new_s_expr = NULL;
     unsigned int curr = 0;
@@ -733,19 +747,6 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
     }
     return head;
 }
-
-typedef enum {EVAL_ERROR_EXIT, \
-              EVAL_ERROR_NULL_SEXPR, \
-              EVAL_ERROR_NULL_CAR, \
-              EVAL_ERROR_UNDEF_SYM, \
-              EVAL_ERROR_UNDEF_TYPE, \
-              EVAL_ERROR_UNDEF_BUILTIN, \
-              EVAL_ERROR_FEW_ARGS, \
-              EVAL_ERROR_MANY_ARGS, \
-              EVAL_ERROR_BAD_ARG_TYPE, \
-              EVAL_ERROR_NEED_NUM, \
-              EVAL_ERROR_DIV_ZERO, \
-              EVAL_ERROR_NONTERMINAL_ELSE} eval_error;
 
 s_expr* sexpr_lookup(List_Area* la, typed_ptr* tp) {
     if (tp == NULL) {
