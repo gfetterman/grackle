@@ -251,26 +251,26 @@ void delete_s_expr(s_expr* se) {
     return;
 }
 
-typedef struct S_EXPR_STACK_NODE {
+typedef struct S_EXPR_STORAGE_NODE {
     unsigned int list_number;
     s_expr* se;
-    struct S_EXPR_STACK_NODE* next;
-} s_expr_stack_node;
+    struct S_EXPR_STORAGE_NODE* next;
+} s_expr_storage;
 
-s_expr_stack_node* create_s_expr_stack_node(unsigned int list_number, s_expr* se) {
-    s_expr_stack_node* new_sesn = malloc(sizeof(s_expr_stack_node));
-    if (new_sesn == NULL) {
-        fprintf(stderr, "malloc failed in create_s_expr_stack_node()\n");
+s_expr_storage* create_s_expr_storage(unsigned int list_number, s_expr* se) {
+    s_expr_storage* new_ses = malloc(sizeof(s_expr_storage));
+    if (new_ses == NULL) {
+        fprintf(stderr, "malloc failed in create_s_expr_storage()\n");
         exit(-1);
     }
-    new_sesn->list_number = list_number;
-    new_sesn->se = se;
-    new_sesn->next = NULL;
-    return new_sesn;
+    new_ses->list_number = list_number;
+    new_ses->se = se;
+    new_ses->next = NULL;
+    return new_ses;
 }
 
 typedef struct LIST_AREA {
-    s_expr_stack_node* head;
+    s_expr_storage* head;
     unsigned int length;
     unsigned int offset;
 } List_Area;
@@ -290,18 +290,18 @@ List_Area* create_list_area(unsigned int offset) {
 typed_ptr* install_list(List_Area* la, s_expr* new_se) {
     // we don't check for duplicates - that'd take forever
     unsigned int num = la->length + la->offset;
-    s_expr_stack_node* new_sesn = create_s_expr_stack_node(num, new_se);
-    new_sesn->next = la->head;
-    la->head = new_sesn;
+    s_expr_storage* new_ses = create_s_expr_storage(num, new_se);
+    new_ses->next = la->head;
+    la->head = new_ses;
     la->length++;
     return create_typed_ptr(TYPE_SEXPR, num);
 }
 
 void set_list_area_member(List_Area* la, unsigned int idx, s_expr* new_se) {
     // this is a bit of a kludge
-    s_expr_stack_node* new_sesn = create_s_expr_stack_node(idx, new_se);
-    new_sesn->next = la->head;
-    la->head = new_sesn;
+    s_expr_storage* new_ses = create_s_expr_storage(idx, new_se);
+    new_ses->next = la->head;
+    la->head = new_ses;
     la->length++;
     return;
 }
@@ -311,18 +311,18 @@ void setup_list_area(List_Area* la) {
     return;
 }
 
-void se_stack_push(s_expr_stack_node** stack, s_expr* new_se) {
+void se_stack_push(s_expr_storage** stack, s_expr* new_se) {
     if (stack == NULL) {
         fprintf(stderr, "stack double pointer NULL in se_stack_push()\n");
         exit(-1);
     }
-    s_expr_stack_node* new_node = create_s_expr_stack_node(0, new_se);
+    s_expr_storage* new_node = create_s_expr_storage(0, new_se);
     new_node->next = *stack;
     *stack = new_node;
     return;
 }
 
-void se_stack_pop(s_expr_stack_node** stack) {
+void se_stack_pop(s_expr_storage** stack) {
     if (stack == NULL) {
         fprintf(stderr, "stack double pointer NULL in se_stack_pop()\n");
         exit(-1);
@@ -331,7 +331,7 @@ void se_stack_pop(s_expr_stack_node** stack) {
         fprintf(stderr, "cannot pop() from empty se_stack\n");
         exit(-1);
     }
-    s_expr_stack_node* old_head = *stack;
+    s_expr_storage* old_head = *stack;
     *stack = old_head->next;
     // note that we don't free() the s_expr contained in this se_stack_node
     // (bug-free) parsing ensures that it is still reachable from the head
@@ -378,7 +378,7 @@ typed_ptr* install_symbol_substring(Symbol_Table* st, \
 }
 
 s_expr* list_from_index(List_Area* la, unsigned int index) {
-    s_expr_stack_node* curr = la->head;
+    s_expr_storage* curr = la->head;
     while (curr != NULL) {
         if (curr->list_number == index) {
             break;
@@ -461,7 +461,7 @@ void print_s_expr(s_expr* se, Symbol_Table* st, List_Area* la) {
 }
 
 void print_list_area(Symbol_Table* st, List_Area* la) {
-    s_expr_stack_node* curr = la->head;
+    s_expr_storage* curr = la->head;
     printf("current list area:\n");
     while (curr != NULL) {
         printf("  list #%u:\n", curr->list_number);
@@ -475,7 +475,7 @@ void merge_list_areas(List_Area* first, List_Area* second) {
     if (first->head == NULL) {
         first->head = second->head;
     } else {
-        s_expr_stack_node* curr = first->head;
+        s_expr_storage* curr = first->head;
         while (curr->next != NULL) {
             curr = curr->next;
         }
@@ -504,7 +504,7 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
     enum Parse_State state = START;
     enum Error_Code {NONE, UNBAL_PAREN, BARE_SYM, EMPTY_PAREN, TOO_MANY};
     enum Error_Code error_code = NONE;
-    s_expr_stack_node* stack = NULL;
+    s_expr_storage* stack = NULL;
     s_expr* new_s_expr = NULL;
     unsigned int curr = 0;
     unsigned int symbol_start = 0;
@@ -696,7 +696,7 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
         free(temp_symbol_table);
     } else {
         while (stack != NULL) {
-            s_expr_stack_node* stack_temp = stack;
+            s_expr_storage* stack_temp = stack;
             stack = stack->next;
             // s-expressions pointed to on the stack are accessible from head
             free(stack_temp);
@@ -708,9 +708,9 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
             free(symbol_temp);
         }
         free(temp_symbol_table);
-        s_expr_stack_node* list_curr = temp_list_area->head;
+        s_expr_storage* list_curr = temp_list_area->head;
         while (list_curr != NULL) {
-            s_expr_stack_node* list_temp = list_curr;
+            s_expr_storage* list_temp = list_curr;
             list_curr = list_curr->next;
             delete_s_expr(list_temp->se);
             free(list_temp);
@@ -739,7 +739,7 @@ s_expr* sexpr_lookup(List_Area* la, typed_ptr* tp) {
     if (tp == NULL) {
         return NULL;
     }
-    s_expr_stack_node* curr = la->head;
+    s_expr_storage* curr = la->head;
     while (curr != NULL) {
         if (curr->list_number == tp->ptr) {
             return curr->se;
