@@ -178,7 +178,12 @@ typedef enum {BUILTIN_ADD, \
               BUILTIN_LISTPRED, \
               BUILTIN_NUMBERPRED, \
               BUILTIN_BOOLPRED, \
-              BUILTIN_VOIDPRED} builtin_code;
+              BUILTIN_VOIDPRED, \
+              BUILTIN_NUMBEREQ, \
+              BUILTIN_NUMBERGT, \
+              BUILTIN_NUMBERLT, \
+              BUILTIN_NUMBERGE, \
+              BUILTIN_NUMBERLE} builtin_code;
 
 void setup_symbol_table(Symbol_Table* st) {
     blind_install_symbol(st, "NULL_SENTINEL", TYPE_UNDEF, 0);
@@ -201,6 +206,11 @@ void setup_symbol_table(Symbol_Table* st) {
     blind_install_symbol(st, "number?", TYPE_BUILTIN, BUILTIN_NUMBERPRED);
     blind_install_symbol(st, "boolean?", TYPE_BUILTIN, BUILTIN_BOOLPRED);
     blind_install_symbol(st, "void?", TYPE_BUILTIN, BUILTIN_VOIDPRED);
+    blind_install_symbol(st, "=", TYPE_BUILTIN, BUILTIN_NUMBEREQ);
+    blind_install_symbol(st, ">", TYPE_BUILTIN, BUILTIN_NUMBERGT);
+    blind_install_symbol(st, "<", TYPE_BUILTIN, BUILTIN_NUMBERLT);
+    blind_install_symbol(st, ">=", TYPE_BUILTIN, BUILTIN_NUMBERGE);
+    blind_install_symbol(st, "<=", TYPE_BUILTIN, BUILTIN_NUMBERLE);
     blind_install_symbol(st, "null", TYPE_SEXPR, EMPTY_LIST_IDX);
     blind_install_symbol(st, "#t", TYPE_BOOL, 1);
     blind_install_symbol(st, "#f", TYPE_BOOL, 0);
@@ -862,6 +872,66 @@ typed_ptr* apply_builtin_arithmetic(s_expr* se, Symbol_Table* st, List_Area* la)
     }
 }
 
+typed_ptr* apply_number_comparison(s_expr* se, Symbol_Table* st, List_Area* la) {
+    builtin_code comparison = symbol_from_index(st, se->car->ptr)->value;
+    s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+    typed_ptr* result = NULL;
+    if (cdr_se == NULL || cdr_se->cdr == NULL) {
+        result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+    } else {
+        typed_ptr* eval_arg = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+        if (eval_arg->type == TYPE_ERROR) {
+            result = eval_arg;
+        } else if (eval_arg->type != TYPE_NUM) {
+            free(eval_arg);
+            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE);
+        } else {
+            unsigned int last_num = eval_arg->ptr;
+            cdr_se = sexpr_lookup(la, cdr_se->cdr);
+            result = create_typed_ptr(TYPE_BOOL, 1);
+            while (cdr_se != NULL) {
+                free(eval_arg);
+                eval_arg = evaluate(create_s_expr(cdr_se->car, NULL), st, la);
+                if (eval_arg->type == TYPE_ERROR) {
+                    free(result);
+                    result = eval_arg;
+                    break;
+                } else if (eval_arg->type != TYPE_NUM) {
+                    free(eval_arg);
+                    free(result);
+                    result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE);
+                    break;
+                } else {
+                    bool intermediate_truth;
+                    switch (comparison) {
+                        case BUILTIN_NUMBEREQ:
+                            intermediate_truth = last_num == eval_arg->ptr;
+                            break;
+                        case BUILTIN_NUMBERGT:
+                            intermediate_truth = last_num > eval_arg->ptr;
+                            break;
+                        case BUILTIN_NUMBERLT:
+                            intermediate_truth = last_num < eval_arg->ptr;
+                            break;
+                        case BUILTIN_NUMBERGE:
+                            intermediate_truth = last_num >= eval_arg->ptr;
+                            break;
+                        case BUILTIN_NUMBERLE:
+                            intermediate_truth = last_num <= eval_arg->ptr;
+                            break;
+                        default:
+                            result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_UNDEF_BUILTIN);
+                            break;
+                    }
+                    result->ptr = result->ptr && intermediate_truth;
+                }
+                cdr_se = sexpr_lookup(la, cdr_se->cdr);
+            }
+        }
+    }
+    return result;
+}
+
 bool is_false(typed_ptr* tp) {
     return (tp->type == TYPE_BOOL && tp->ptr == 0);
 }
@@ -1175,6 +1245,13 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
                         break;
 
                     }
+                    case BUILTIN_NUMBEREQ: //    -|
+                    case BUILTIN_NUMBERGT: //    -|
+                    case BUILTIN_NUMBERLT: //    -|
+                    case BUILTIN_NUMBERGE: //    -|
+                    case BUILTIN_NUMBERLE: //    -V
+                        result = apply_number_comparison(se, st, la);
+                        break;
                     default:
                         result = create_typed_ptr(TYPE_ERROR, EVAL_ERROR_UNDEF_BUILTIN);
                         break;
