@@ -21,6 +21,8 @@ typedef struct TYPED_PTR {
     unsigned int ptr;
 } typed_ptr;
 
+// The returned typed_ptr is the caller's responsibility to free; it can be
+//   safely (shallow) freed without harm to any other object.
 typed_ptr* create_typed_ptr(type type, unsigned int ptr) {
     typed_ptr* new_tp = malloc(sizeof(typed_ptr));
     if (new_tp == NULL) {
@@ -32,11 +34,15 @@ typed_ptr* create_typed_ptr(type type, unsigned int ptr) {
     return new_tp;
 }
 
+// The returned typed_ptr is the caller's responsibility to free; it can be
+//   safely (shallow) freed without harm to any other object.
 typed_ptr* create_error(unsigned int err_code) {
     return create_typed_ptr(TYPE_ERROR, err_code);
 }
 
-typed_ptr* copy_typed_ptr(typed_ptr* tp) {
+// The returned typed_ptr is the caller's responsibility to free; it can be
+//   safely (shallow) freed without harm to any other object.
+typed_ptr* copy_typed_ptr(const typed_ptr* tp) {
     return create_typed_ptr(tp->type, tp->ptr);
 }
 
@@ -48,17 +54,24 @@ typedef struct SYMBOL_TABLE_NODE {
     struct SYMBOL_TABLE_NODE* next;
 } sym_tab_node;
 
+// The caller should ensure that the node's symbol number in the symbol table
+//   will be unique.
+// The string pointed to by name is now the symbol table's responsibility
+//   to free. It also must be safe to free (i.e., it must be heap-allocated)
+//   and nobody else should free it.
+// The returned sym_tab_node is the caller's (i.e., the symbol table's)
+//   responsibility to free.
 sym_tab_node* create_st_node(unsigned int symbol_number, \
-                                  char* symbol, \
-                                  type type, \
-                                  unsigned int value) {
+                             char* name, \
+                             type type, \
+                             unsigned int value) {
     sym_tab_node* new_node = malloc(sizeof(sym_tab_node));
     if (new_node == NULL) {
         fprintf(stderr, "fatal error: malloc failed in create_st_node()\n");
         exit(-1);
     }
     new_node->symbol_number = symbol_number;
-    new_node->symbol = symbol;
+    new_node->symbol = name;
     new_node->type = type;
     new_node->value = value;
     new_node->next = NULL;
@@ -71,6 +84,10 @@ typedef struct SYMBOL_TABLE {
     unsigned int symbol_number_offset;
 } Symbol_Table;
 
+// The offset allows a temporary symbol table (used while parsing for easy
+//   walkback if the parsing fails) to avoid symbol number collisions with the
+//   real symbol table. This makes merging the two after a successful parse much
+//   easier.
 Symbol_Table* create_symbol_table(unsigned int offset) {
     Symbol_Table* new_st = malloc(sizeof(Symbol_Table));
     if (new_st == NULL) {
@@ -83,10 +100,12 @@ Symbol_Table* create_symbol_table(unsigned int offset) {
     return new_st;
 }
 
-sym_tab_node* symbol_lookup_string(Symbol_Table* st, char* symbol) {
+// The returned sym_tab_node should (usually) not be freed.
+// If the given name does not match any symbol table entry, NULL is returned.
+sym_tab_node* symbol_lookup_string(Symbol_Table* st, const char* name) {
     sym_tab_node* curr = st->head;
     while (curr != NULL) {
-        if (!strcmp(curr->symbol, symbol)) {
+        if (!strcmp(curr->symbol, name)) {
             return curr;
         }
         curr = curr->next;
@@ -94,6 +113,8 @@ sym_tab_node* symbol_lookup_string(Symbol_Table* st, char* symbol) {
     return NULL;
 }
 
+// The returned sym_tab_node should (usually) not be freed.
+// If the given index does not match any symbol table entry, NULL is returned.
 sym_tab_node* symbol_lookup_index(Symbol_Table* st, unsigned int index) {
     sym_tab_node* curr = st->head;
     while (curr != NULL) {
@@ -105,6 +126,16 @@ sym_tab_node* symbol_lookup_index(Symbol_Table* st, unsigned int index) {
     return curr;
 }
 
+// The string pointed to by name is now the symbol table's responsibility to
+//   free. It also must be safe to free (i.e., it must be heap-allocated), and
+//   nobody else should free it.
+// If a symbol already exists in the given symbol table with that name, the type
+//   and value associated with it will be updated, and the string pointed to by
+//   this function's parameter "name" will be freed. Otherwise, the symbol is
+//   installed into the symbol table.
+// The returned typed_ptr is the caller's responsibility to free; it can be
+//   safely (shallow) freed without harm to the symbol table or any other
+//   object.
 typed_ptr* install_symbol(Symbol_Table* st, \
                           char* name, \
                           type type, \
@@ -125,6 +156,9 @@ typed_ptr* install_symbol(Symbol_Table* st, \
     return create_typed_ptr((type != TYPE_BUILTIN) ? TYPE_SYM : type, sym_num);
 }
 
+// All considerations attendant upon the function "install_symbol()" above apply
+//   here.
+// This is a convenience function for use in initial symbol table setup.
 void blind_install_symbol(Symbol_Table* st, \
                           char* symbol, \
                           type type, \
@@ -134,6 +168,8 @@ void blind_install_symbol(Symbol_Table* st, \
     return;
 }
 
+// The string returned is a valid null-terminated C string.
+// The string returned is the caller's responsibility to free.
 char* substring(char* str, unsigned int start, unsigned int end) {
     unsigned int len = strlen(str);
     if (str == NULL || len < (end - start)) {
@@ -240,6 +276,7 @@ typedef struct S_EXPR_NODE {
     typed_ptr* cdr;
 } s_expr;
 
+// The s-expression returned is the caller's responsibility to free.
 s_expr* create_s_expr(typed_ptr* car, typed_ptr* cdr) {
     s_expr* new_se = malloc(sizeof(s_expr));
     if (new_se == NULL) {
@@ -251,6 +288,9 @@ s_expr* create_s_expr(typed_ptr* car, typed_ptr* cdr) {
     return new_se;
 }
 
+// The s-expression is only shallow-deleted - this function will not follow
+// the car or cdr pointers recursively.
+// Obviously the s-expression and its car and cdr pointers must be safe to free.
 void delete_s_expr(s_expr* se) {
     if (se != NULL) {
         free(se->car);
@@ -266,6 +306,7 @@ typedef struct S_EXPR_STORAGE_NODE {
     struct S_EXPR_STORAGE_NODE* next;
 } s_expr_storage;
 
+// The s-expression storage node is the caller's responsibility to free.
 s_expr_storage* create_s_expr_storage(unsigned int list_number, s_expr* se) {
     s_expr_storage* new_ses = malloc(sizeof(s_expr_storage));
     if (new_ses == NULL) {
@@ -284,6 +325,9 @@ typedef struct LIST_AREA {
     unsigned int offset;
 } List_Area;
 
+// As for the symbol table, the offset allows the creation of a temporary list
+//   area (as in parse(), below) which can be easily merged into the real list
+//   area upon a successful parse.
 List_Area* create_list_area(unsigned int offset) {
     List_Area* new_la = malloc(sizeof(List_Area));
     if (new_la == NULL) {
@@ -296,8 +340,13 @@ List_Area* create_list_area(unsigned int offset) {
     return new_la;
 }
 
+// The s-expression to be installed is now the list area's responsibility to
+//   free. It must be safe to free.
+// No attempt is made to check for duplicate s-expressions already present in
+//   the list area.
+// The typed_ptr returned is the caller's responsibility to free; it can be
+//   safely (shallow) freed without harm to the list area or any other objects.
 typed_ptr* install_list(List_Area* la, s_expr* new_se) {
-    // we don't check for duplicates - that'd take forever
     unsigned int num = la->length + la->offset;
     s_expr_storage* new_ses = create_s_expr_storage(num, new_se);
     new_ses->next = la->head;
@@ -306,8 +355,10 @@ typed_ptr* install_list(List_Area* la, s_expr* new_se) {
     return create_typed_ptr(TYPE_SEXPR, num);
 }
 
+// This is a bit of kludge to allow the installation of the empty list into the
+//   list area during setup.
+// No guarantee is made that the index "idx" will be unique in the list area.
 void set_list_area_member(List_Area* la, unsigned int idx, s_expr* new_se) {
-    // this is a bit of a kludge
     s_expr_storage* new_ses = create_s_expr_storage(idx, new_se);
     new_ses->next = la->head;
     la->head = new_ses;
@@ -320,6 +371,9 @@ void setup_list_area(List_Area* la) {
     return;
 }
 
+// This stack is used in to keep track of open s-expressions during parsing.
+// It doesn't use the list_number member of s_expr_storage, so this function
+//   should not be used to install s-expressions into the list area.
 void se_stack_push(s_expr_storage** stack, s_expr* new_se) {
     if (stack == NULL) {
         fprintf(stderr, "stack double pointer NULL in se_stack_push()\n");
@@ -331,6 +385,11 @@ void se_stack_push(s_expr_storage** stack, s_expr* new_se) {
     return;
 }
 
+// This stack is used in to keep track of open s-expressions during parsing.
+// This function should not be used to remove s-expressions from the list area.
+// While it pops the top item off of the stack and frees the s_expr_storage, it
+//   does not free the s-expressions stored therein.
+// If the stack is empty, this will fail and exit the interpreter.
 void se_stack_pop(s_expr_storage** stack) {
     if (stack == NULL) {
         fprintf(stderr, "stack double pointer NULL in se_stack_pop()\n");
@@ -342,16 +401,13 @@ void se_stack_pop(s_expr_storage** stack) {
     }
     s_expr_storage* old_head = *stack;
     *stack = old_head->next;
-    // note that we don't free() the s_expr contained in this se_stack_node
-    // (bug-free) parsing ensures that it is still reachable from the head
-    // variable in parse()
-    // so it can be cleaned up as needed later
-    // and in the meantime, it's still needed
     free(old_head);
     return;
 }
 
-bool string_is_number(char str[]) {
+// Determines whether a string represents a number (rather than a symbol).
+// Currently only recognizes nonnegative integers.
+bool string_is_number(const char str[]) {
     char c;
     bool ok = true;
     while ((c = *str++)) {
@@ -363,30 +419,39 @@ bool string_is_number(char str[]) {
     return ok;
 }
 
+// A convenience function for use in parse().
+// If there is a symbol whose name matches the specified substring in either
+//   the symbol table or the temporary symbol table, a pointer to that symbol is
+//   returned. If not, the appropriate symbol is installed in the temporary
+//   symbol table, with type TYPE_UNDEF.
+// In all cases, the returned typed_ptr is the caller's responsibility to free;
+//   it is always safe to free without harm to either symbol table or any other
+//   object.
 typed_ptr* install_symbol_substring(Symbol_Table* st, \
                                     Symbol_Table* temp_st, \
                                     char str[], \
                                     unsigned int start, \
                                     unsigned int end) {
-    char* symbol = substring(str, start, end);
-    if (string_is_number(symbol)) {
-        unsigned int value = atoi(symbol);
-        free(symbol);
+    char* name = substring(str, start, end);
+    if (string_is_number(name)) {
+        unsigned int value = atoi(name);
+        free(name);
         return create_typed_ptr(TYPE_NUM, value);
     } else {
-        sym_tab_node* found = symbol_lookup_string(st, symbol);
+        sym_tab_node* found = symbol_lookup_string(st, name);
         if (found == NULL) {
-            found = symbol_lookup_string(temp_st, symbol);
+            found = symbol_lookup_string(temp_st, name);
             if (found == NULL) {
-                return install_symbol(temp_st, symbol, TYPE_UNDEF, 0);
+                return install_symbol(temp_st, name, TYPE_UNDEF, 0);
             }
         }
-        free(symbol);
+        free(name);
         type tp_type = (found->type == TYPE_BUILTIN) ? found->type : TYPE_SYM;
         return create_typed_ptr(tp_type, found->symbol_number);
     }
 }
 
+// The returned s-expression (usually) shouldn't be freed.
 s_expr* list_from_index(List_Area* la, unsigned int index) {
     s_expr_storage* curr = la->head;
     while (curr != NULL) {
@@ -470,6 +535,7 @@ void _print_se_rec(s_expr* se, \
     return;
 }
 
+// Recursively prints the given s-expression.
 void print_s_expr(s_expr* se, Symbol_Table* st, List_Area* la) {
     _print_se_rec(se, 0, st, la);
     return;
@@ -486,6 +552,8 @@ void print_list_area(Symbol_Table* st, List_Area* la) {
     return;
 }
 
+// Merges the second list area into the first; the second pointer remains valid.
+// Makes no attempt to guard against list number collisions.
 void merge_list_areas(List_Area* first, List_Area* second) {
     if (first->head == NULL) {
         first->head = second->head;
@@ -500,6 +568,9 @@ void merge_list_areas(List_Area* first, List_Area* second) {
     return;
 }
 
+// Merges the second symbol table into the first; the second pointer remains
+//   valid.
+// Makes no attempt to guard against name or symbol number collisions.
 void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second) {
     if (first->head == NULL) {
         first->head = second->head;
@@ -534,6 +605,17 @@ typedef enum {PARSE_ERROR_NONE, \
               EVAL_ERROR_DIV_ZERO, \
               EVAL_ERROR_NONTERMINAL_ELSE} interpreter_error;
 
+// Takes an input string and attempts to parse it into a valid s-expression.
+// If it cannot be parsed, returns an s-expression containing an error
+//   typed_ptr. In this case, no changes are made to the given symbol table or
+//   list area.
+// If successful, returns an s-expression. The given symbol table is updated to
+//   include any new symbols encountered during the parse; their type is
+//   TYPE_UNDEF. The given list area is updated to include the new s-expression
+//   command's nodes.
+// In either case, the s-expression returned is the caller's responsibility to
+//   free; it may be (shallow) freed without harm to the list area, symbol
+//   table, or any other object.
 s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
     enum Parse_State {PARSE_START, \
                       PARSE_NEW_SEXPR, \
@@ -748,7 +830,11 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
     return head;
 }
 
-s_expr* sexpr_lookup(List_Area* la, typed_ptr* tp) {
+// Primary method to walk nested s-expressions.
+// The s-expression returned (usually) shouldn't be freed.
+// If the given typed_ptr does not point to a valid list area entry, or if it is
+//   NULL, NULL is returned.
+s_expr* sexpr_lookup(List_Area* la, const typed_ptr* tp) {
     if (tp == NULL) {
         return NULL;
     }
@@ -761,7 +847,11 @@ s_expr* sexpr_lookup(List_Area* la, typed_ptr* tp) {
     }
     return NULL;
 }
-
+// Primary method to look up symbol values.
+// The typed_ptr returned is the caller's responsibility to free; it may be
+//   (shallow) freed without harm to the symbol table or any other object.
+// If the given typed_ptr does not point to a valid symbol table entry, or if
+//   it is NULL, NULL is returned.
 typed_ptr* value_lookup(Symbol_Table* st, typed_ptr* tp) {
     if (tp == NULL) {
         return NULL;
@@ -777,9 +867,20 @@ typed_ptr* value_lookup(Symbol_Table* st, typed_ptr* tp) {
 }
 
 // forward declaration
-typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la);
+typed_ptr* evaluate(const s_expr* se, Symbol_Table* st, List_Area* la);
 
-typed_ptr* eval_arithmetic(s_expr* se, Symbol_Table* st, List_Area* la) {
+// Evaluates an s-expression whose car is a built-in function in the set
+//   {BUILTIN_xxx | xxx in {ADD, MUL, SUB, DIV}}.
+// BUILTIN_ADD and BUILTIN_MUL take any number of arguments.
+// BUILTIN_SUB and BUILTIN_DIV take at least 1 argument.
+// All arguments are expected to (evaluate to) be numbers.
+// Every argument to the built-in function is evaluated.
+// Returns a typed_ptr containing an error code (if the evaluation failed) or
+//   the resulting number (if it succeeded).
+// In either case, the returned typed_ptr is the caller's responsibility to
+//   free, and is safe to (shallow) free without harm to the symbol table, list
+//   area, or any other object.
+typed_ptr* eval_arithmetic(const s_expr* se, Symbol_Table* st, List_Area* la) {
     builtin_code operation = symbol_lookup_index(st, se->car->ptr)->value;
     typed_ptr* result = create_typed_ptr(TYPE_NUM, \
                                          (operation == BUILTIN_ADD || \
@@ -906,7 +1007,17 @@ typed_ptr* eval_arithmetic(s_expr* se, Symbol_Table* st, List_Area* la) {
     return result;
 }
 
-typed_ptr* eval_comparison(s_expr* se, Symbol_Table* st, List_Area* la) {
+// Evaluates an s-expression whose car is a built-in function in the set
+//   {BUILTIN_NUMBERxx | xx in {EQ, GT, LT, GE, LE}}.
+// These functions take at least 1 argument.
+// All arguments are expected to (evaluate to) be numbers.
+// Every argument to the built-in function is evaluated.
+// Returns a typed_ptr containing an error code (if the evaluation failed) or
+//   the (boolean) truth value of the expression (if it succeeded).
+// In either case, the returned typed_ptr is the caller's responsibility to
+//   free, and is safe to (shallow) free without harm to the symbol table, list
+//   area, or any other object.
+typed_ptr* eval_comparison(const s_expr* se, Symbol_Table* st, List_Area* la) {
     builtin_code comparison = symbol_lookup_index(st, se->car->ptr)->value;
     s_expr* cdr_se = sexpr_lookup(la, se->cdr);
     typed_ptr* result = NULL;
@@ -966,7 +1077,21 @@ typed_ptr* eval_comparison(s_expr* se, Symbol_Table* st, List_Area* la) {
     return result;
 }
 
-typed_ptr* eval_set_variable(s_expr* se, Symbol_Table* st, List_Area* la) {
+// Evaluates an s-expression whose car is the built-in special form
+//   BUILTIN_SETQ.
+// This special form takes exactly two arguments.
+// The first argument is expected to be a symbol name, and not evaluated.
+// There is no restriction on the type of the second argument; it is evaluated.
+// The first argument's symbol table entry's value is set to the result of
+//   evaluating the second argument.
+// Returns a typed_ptr containing an error code (if the evaluation failed) or
+//   the resulting symbol (if it succeeded).
+// In either case, the returned typed_ptr is the caller's responsibility to
+//   free, and is safe to (shallow) free without harm to the symbol table, list
+//   area, or any other object.
+typed_ptr* eval_set_variable(const s_expr* se, \
+                             Symbol_Table* st, \
+                             List_Area* la) {
     typed_ptr* result = NULL;
     s_expr* cdr_se = sexpr_lookup(la, se->cdr);
     s_expr* cddr_se = sexpr_lookup(la, cdr_se->cdr);
@@ -984,7 +1109,16 @@ typed_ptr* eval_set_variable(s_expr* se, Symbol_Table* st, List_Area* la) {
     return result;
 }
 
-typed_ptr* eval_car_cdr(s_expr* se, Symbol_Table* st, List_Area* la) {
+// Evaluates an s-expression whose car is in the set
+//   {BUILTIN_xxx | xxx in {CAR, CDR}}.
+// This function takes exactly one argument, which is evaluated.
+// The first argument is expected to be TYPE_SEXPR.
+// Returns a typed_ptr containing an error code (if the evaluation failed) or
+//   the resulting object (if it succeeded).
+// In either case, the returned typed_ptr is the caller's responsibility to
+//   free, and is safe to (shallow) free without harm to the symbol table, list
+//   area, or any other object.
+typed_ptr* eval_car_cdr(const s_expr* se, Symbol_Table* st, List_Area* la) {
     typed_ptr* result = NULL;
     s_expr* cdr_se = sexpr_lookup(la, se->cdr);
     if (cdr_se == NULL) {
@@ -1009,7 +1143,16 @@ typed_ptr* eval_car_cdr(s_expr* se, Symbol_Table* st, List_Area* la) {
     return result;
 }
 
-typed_ptr* eval_list_pred(s_expr* se, Symbol_Table* st, List_Area* la) {
+// Evaluates an s-expression whose car is the built-in function 
+//   BUILTIN_LISTPRED.
+// This function takes one argument, which is evaluated.
+// There is no restriction on the type of the argument.
+// Returns a typed_ptr containing an error code (if the evaluation failed) or
+//   the (boolean) truth value of the predicate (if it succeeded).
+// In either case, the returned typed_ptr is the caller's responsibility to
+//   free, and is safe to (shallow) free without harm to the symbol table, list
+//   area, or any other object.
+typed_ptr* eval_list_pred(const s_expr* se, Symbol_Table* st, List_Area* la) {
     typed_ptr* result = NULL;
     s_expr* cdr_se = sexpr_lookup(la, se->cdr);
     if (cdr_se == NULL) {
@@ -1045,7 +1188,21 @@ typed_ptr* eval_list_pred(s_expr* se, Symbol_Table* st, List_Area* la) {
     return result;
 }
 
-typed_ptr* eval_atom_pred(s_expr* se, Symbol_Table* st, List_Area* la, type t) {
+// Evaluates an s-expression whose car is a built-in function in the set
+//   {BUILTIN_xxxxPRED | xxxx in {PAIR, BOOL, NUM, VOID}}.
+// For convenience, the (C, not Lisp) function takes the type to be tested
+//   against as an additional parameter.
+// This function takes one argument, which is evaluated.
+// There is no restriction on the type of the argument.
+// Returns a typed_ptr containing an error code (if the evaluation failed) or
+//   the (boolean) truth value of the predicate (if it succeeded).
+// In either case, the returned typed_ptr is the caller's responsibility to
+//   free, and is safe to (shallow) free without harm to the symbol table, list
+//   area, or any other object.
+typed_ptr* eval_atom_pred(const s_expr* se, \
+                          Symbol_Table* st, \
+                          List_Area* la, \
+                          type t) {
     typed_ptr* result = NULL;
     s_expr* cdr_se = sexpr_lookup(la, se->cdr);
     if (cdr_se == NULL) {
@@ -1064,7 +1221,19 @@ typed_ptr* eval_atom_pred(s_expr* se, Symbol_Table* st, List_Area* la, type t) {
     return result;
 }
 
-typed_ptr* eval_list_construction(s_expr* se, Symbol_Table* st, List_Area* la) {
+// Evaluates an s-expression whose car is the built-in function BUILTIN_LIST.
+// This function takes any number of arguments, which are all evaluated.
+// There is no restriction on the type of the arguments.
+// Returns a typed_ptr containing an error code (if the evaluation failed) or
+//   the resulting s-expression (if it succeeded).
+// If no arguments are provided, the resulting s-expression points to the empty
+//   list.
+// In either case, the returned typed_ptr is the caller's responsibility to
+//   free, and is safe to (shallow) free without harm to the symbol table, list
+//   area, or any other object.
+typed_ptr* eval_list_construction(const s_expr* se, \
+                                  Symbol_Table* st, \
+                                  List_Area* la) {
     typed_ptr* result = NULL;
     if (se->cdr == NULL) {
         result = create_typed_ptr(TYPE_SEXPR, EMPTY_LIST_IDX);
@@ -1090,7 +1259,25 @@ bool is_false_literal(typed_ptr* tp) {
     return (tp->type == TYPE_BOOL && tp->ptr == 0);
 }
 
-typed_ptr* eval_cond(s_expr* se, Symbol_Table* st, List_Area* la) {
+// Evaluates an s-expression whose car is the built-in special form
+//   BUILTIN_COND.
+// This function takes any number of arguments.
+// The arguments must take the form (predicate [then-body...]).
+// The predicates of the arguments are evaluated until one evaluates to anything
+//   other than a boolean false value. After this, no predicates are evaluated.
+// For an argument whose predicate evaluates to non-false, its then-bodies are
+//   evaluated in order. If there are no then-bodies, the return value is the
+//   result of the evaluation of the predicate.
+// One special predicate, named "else", is allowed, which is a fall-through
+//   case. It may only appear as the predicate of the last argument.
+// Returns a typed_ptr containing an error code (if any evaluation failed) or
+//   the result of the last then-body evaluation.
+// If no arguments are provided, or if no argument's predicate evaluates to
+//   not-false, the resulting s-expression is a void value.
+// In either case, the returned typed_ptr is the caller's responsibility to
+//   free, and is safe to (shallow) free without harm to the symbol table, list
+//   area, or any other object.
+typed_ptr* eval_cond(const s_expr* se, Symbol_Table* st, List_Area* la) {
     typed_ptr* eval_interm = create_typed_ptr(TYPE_VOID, 0);
     s_expr* cdr_se = sexpr_lookup(la, se->cdr);
     bool pred_true = false;
@@ -1132,7 +1319,14 @@ typed_ptr* eval_cond(s_expr* se, Symbol_Table* st, List_Area* la) {
     return eval_interm;
 }
 
-typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
+// Evaluates an s-expression of any kind within the context of the provided
+//   symbol table and list area, and returns a typed_ptr containing the result.
+// Returns a typed_ptr containing an error code (if the evaluation failed) or
+//   the result (if it succeeded).
+// In either case, the returned typed_ptr is the caller's responsibility to
+//   free, and is safe to (shallow) free without harm to the symbol table, list
+//   area, or any other object.
+typed_ptr* evaluate(const s_expr* se, Symbol_Table* st, List_Area* la) {
     typed_ptr* result = NULL;
     if (se == NULL) {
         result = create_error(EVAL_ERROR_NULL_SEXPR);
@@ -1285,6 +1479,7 @@ typed_ptr* evaluate(s_expr* se, Symbol_Table* st, List_Area* la) {
     return result;
 }
 
+// Sets up the environment for execution, and runs the REPL.
 int main() {
     bool exit = 0;
     char input[BUF_SIZE];
