@@ -486,10 +486,14 @@ void _print_se_rec(s_expr* se, \
                     printf("car: s-expression #%u, ", car->ptr);
                     break;
                 case TYPE_SYM:
-                    printf("car: symbol #%u, ", car->ptr);
+                    printf("car: symbol \"%s\" (#%u), ", \
+                           symbol_lookup_index(st, car->ptr)->symbol, \
+                           car->ptr);
                     break;
                 case TYPE_BUILTIN:
-                    printf("car: built-in with symbol #%u, ", car->ptr);
+                    printf("car: built-in with symbol \"%s\" (#%u), ",
+                           symbol_lookup_index(st, car->ptr)->symbol, \
+                           car->ptr);
                     break;
                 case TYPE_BOOL:
                     printf("car: boolean %s, ", (car->ptr == 0) ? "#f" : "#t");
@@ -511,10 +515,14 @@ void _print_se_rec(s_expr* se, \
                     printf("cdr: s-expression #%u\n", cdr->ptr);
                     break;
                 case TYPE_SYM:
-                    printf("cdr: symbol #%u\n", cdr->ptr);
+                    printf("cdr: symbol \"%s\" (#%u), ", \
+                           symbol_lookup_index(st, cdr->ptr)->symbol, \
+                           cdr->ptr);
                     break;
                 case TYPE_BUILTIN:
-                    printf("cdr: built-in with symbol #%u\n", cdr->ptr);
+                    printf("cdr: built-in with symbol \"%s\" (#%u), ",
+                           symbol_lookup_index(st, cdr->ptr)->symbol, \
+                           cdr->ptr);
                     break;
                 case TYPE_BOOL:
                     printf("cdr: boolean %s\n", (cdr->ptr == 0) ? "#f" : "#t");
