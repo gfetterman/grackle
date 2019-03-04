@@ -462,89 +462,194 @@ s_expr* list_from_index(List_Area* la, unsigned int index) {
     return curr->se;
 }
 
-void _print_se_rec(s_expr* se, \
-                   unsigned int depth, \
-                   Symbol_Table* st, \
-                   List_Area* la) {
-    for (unsigned int i = 0; i < depth; i++) {
-        printf("  ");
+sym_tab_node* lookup_builtin(Symbol_Table* st, builtin_code bc) {
+    sym_tab_node* curr = st->head;
+    while (curr != NULL) {
+        if (curr->type == TYPE_BUILTIN && curr->value == bc) {
+            return curr;
+        }
+        curr = curr->next;
     }
-    if (se == NULL) {
-        printf("null\n");
-    } else {
-        typed_ptr* car = se->car;
-        typed_ptr* cdr = se->cdr;
-        if (car == NULL) {
-            printf("car: NULL, ");
-        } else {
-            switch (car->type) {
-                case TYPE_NUM:
-                    printf("car: number %u, ", car->ptr);
-                    break;
-                case TYPE_SEXPR:
-                    printf("car: s-expression #%u, ", car->ptr);
-                    break;
-                case TYPE_SYM:
-                    printf("car: symbol \"%s\" (#%u), ", \
-                           symbol_lookup_index(st, car->ptr)->symbol, \
-                           car->ptr);
-                    break;
-                case TYPE_BUILTIN:
-                    printf("car: built-in with symbol \"%s\" (#%u), ",
-                           symbol_lookup_index(st, car->ptr)->symbol, \
-                           car->ptr);
-                    break;
-                case TYPE_BOOL:
-                    printf("car: boolean %s, ", (car->ptr == 0) ? "#f" : "#t");
-                    break;
-                case TYPE_VOID:
-                    printf("car: #<void>, ");
-                default:
-                    printf("car: unrecognized type: %d, ", car->type);
-            }
+    return curr;
+}
+
+// Primary method to walk nested s-expressions.
+// The s-expression returned (usually) shouldn't be freed.
+// If the given typed_ptr does not point to a valid list area entry, or if it is
+//   NULL, NULL is returned.
+s_expr* sexpr_lookup(List_Area* la, const typed_ptr* tp) {
+    if (tp == NULL) {
+        return NULL;
+    }
+    s_expr_storage* curr = la->head;
+    while (curr != NULL) {
+        if (curr->list_number == tp->ptr) {
+            return curr->se;
         }
-        if (cdr == NULL) {
-            printf("cdr: NULL\n");
-        } else {
-            switch (cdr->type) {
-                case TYPE_NUM:
-                    printf("cdr: number %u, ", cdr->ptr);
-                    break;
-                case TYPE_SEXPR:
-                    printf("cdr: s-expression #%u\n", cdr->ptr);
-                    break;
-                case TYPE_SYM:
-                    printf("cdr: symbol \"%s\" (#%u), ", \
-                           symbol_lookup_index(st, cdr->ptr)->symbol, \
-                           cdr->ptr);
-                    break;
-                case TYPE_BUILTIN:
-                    printf("cdr: built-in with symbol \"%s\" (#%u), ",
-                           symbol_lookup_index(st, cdr->ptr)->symbol, \
-                           cdr->ptr);
-                    break;
-                case TYPE_BOOL:
-                    printf("cdr: boolean %s\n", (cdr->ptr == 0) ? "#f" : "#t");
-                    break;
-                case TYPE_VOID:
-                    printf("cdr: #<void>\n");
-                default:
-                    printf("cdr: unrecognized type: %d\n", cdr->type);
-            }
+        curr = curr->next;
+    }
+    return NULL;
+}
+
+// Primary method to look up symbol values.
+// The typed_ptr returned is the caller's responsibility to free; it may be
+//   (shallow) freed without harm to the symbol table or any other object.
+// If the given typed_ptr does not point to a valid symbol table entry, or if
+//   it is NULL, NULL is returned.
+typed_ptr* value_lookup(Symbol_Table* st, typed_ptr* tp) {
+    if (tp == NULL) {
+        return NULL;
+    }
+    sym_tab_node* curr = st->head;
+    while (curr != NULL) {
+        if (curr->symbol_number == tp->ptr) {
+            return create_typed_ptr(curr->type, curr->value);
         }
-        if (car != NULL && car->type == TYPE_SEXPR) {
-            _print_se_rec(list_from_index(la, car->ptr), depth + 1, st, la);
-        }
-        if (cdr != NULL && cdr->type == TYPE_SEXPR) {
-            _print_se_rec(list_from_index(la, cdr->ptr), depth + 1, st, la);
-        }
+        curr = curr->next;
+    }
+    return NULL;
+}
+
+typedef enum {PARSE_ERROR_NONE, \
+              PARSE_ERROR_UNBAL_PAREN, \
+              PARSE_ERROR_BARE_SYM, \
+              PARSE_ERROR_EMPTY_PAREN, \
+              PARSE_ERROR_TOO_MANY, \
+              // ^  parsing errors above     ^
+              // v  evaluation errors below  v
+              EVAL_ERROR_EXIT, \
+              EVAL_ERROR_NULL_SEXPR, \
+              EVAL_ERROR_NULL_CAR, \
+              EVAL_ERROR_UNDEF_SYM, \
+              EVAL_ERROR_UNDEF_TYPE, \
+              EVAL_ERROR_UNDEF_BUILTIN, \
+              EVAL_ERROR_FEW_ARGS, \
+              EVAL_ERROR_MANY_ARGS, \
+              EVAL_ERROR_BAD_ARG_TYPE, \
+              EVAL_ERROR_NEED_NUM, \
+              EVAL_ERROR_DIV_ZERO, \
+              EVAL_ERROR_NONTERMINAL_ELSE, \
+              EVAL_ERROR_CAR_NOT_CALLABLE} interpreter_error;
+
+void print_error(const typed_ptr* tp) {
+    if (tp->ptr != EVAL_ERROR_EXIT) {
+        printf("error: ");
+    }
+    switch (tp->ptr) {
+        case PARSE_ERROR_NONE:
+            printf("none (this indicates an interpreter problem)");
+            break;
+        case PARSE_ERROR_UNBAL_PAREN:
+            printf("parsing: unbalanced parentheses");
+            break;
+        case PARSE_ERROR_BARE_SYM:
+            printf("parsing: bare symbol outside s-expression");
+            break;
+        case PARSE_ERROR_EMPTY_PAREN:
+            printf("parsing: empty parentheses (no procedure expression)");
+            break;
+        case PARSE_ERROR_TOO_MANY:
+            printf("parsing: too many s-expressions (only one allowed)");
+            break;
+        case EVAL_ERROR_EXIT:
+            break; // exit is handled in the REPL
+        case EVAL_ERROR_NULL_SEXPR:
+            printf("evaluation: an s-expression was NULL");
+            break;
+        case EVAL_ERROR_NULL_CAR:
+            printf("evaluation: the car of an s-expression was NULL");
+            break;
+        case EVAL_ERROR_UNDEF_SYM:
+            printf("evaluation: undefined symbol");
+            break;
+        case EVAL_ERROR_UNDEF_TYPE:
+            printf("evaluation: undefined type");
+            break;
+        case EVAL_ERROR_UNDEF_BUILTIN:
+            printf("evaluation: undefined built-in function or special form");
+            break;
+        case EVAL_ERROR_FEW_ARGS:
+            printf("evaluation: too few arguments to function or special form");
+            break;
+        case EVAL_ERROR_MANY_ARGS:
+            printf("evaluation: too many arguments to function or special form");
+            break;
+        case EVAL_ERROR_BAD_ARG_TYPE:
+            printf("evaluation: argument to function or special form had the wrong type");
+            break;
+        case EVAL_ERROR_NEED_NUM:
+            printf("evaluation: function or special form takes only number arguments");
+            break;
+        case EVAL_ERROR_DIV_ZERO:
+            printf("evaluation: cannot divide by zero");
+            break;
+        case EVAL_ERROR_NONTERMINAL_ELSE:
+            printf("'else' must be terminal clause in 'cond' special form");
+            break;
+        case EVAL_ERROR_CAR_NOT_CALLABLE:
+            printf("evaluation: car of s-expression was not a callable");
+            break;
+        default:
+            printf("unknown error: error code %u", tp->ptr);
+            break;
     }
     return;
 }
 
-// Recursively prints the given s-expression.
-void print_s_expr(s_expr* se, Symbol_Table* st, List_Area* la) {
-    _print_se_rec(se, 0, st, la);
+// forward declaration
+void print_result(const typed_ptr* tp, Symbol_Table* st, List_Area* la);
+
+void print_s_expression(const s_expr* se, Symbol_Table* st, List_Area* la) {
+    printf("'(");
+    while (se->car != NULL) { // which would indicate the empty list
+        print_result(se->car, st, la);
+        if (se->cdr != NULL && se->cdr->type == TYPE_SEXPR) { // list
+            se = sexpr_lookup(la, se->cdr);
+            if (se->car != NULL) {
+                printf(" ");
+            }
+        } else if (se->cdr != NULL) { // pair
+            printf(" . ");
+            print_result(se->cdr, st, la);
+            break;
+        } else {
+            printf("error: NULL cdr in s-expression");
+            break;
+        }
+    }
+    printf(")");
+    return;
+}
+
+void print_result(const typed_ptr* tp, Symbol_Table* st, List_Area* la) {
+    switch (tp->type) {
+        case TYPE_UNDEF:
+            printf("undefined symbol");
+            break;
+        case TYPE_ERROR:
+            print_error(tp);
+            break;
+        case TYPE_NUM:
+            printf("%u", tp->ptr);
+            break;
+        case TYPE_SEXPR:
+            print_s_expression(sexpr_lookup(la, tp), st, la);
+            break;
+        case TYPE_SYM:
+            printf("'%s", symbol_lookup_index(st, tp->ptr)->symbol);
+            break;
+        case TYPE_BUILTIN:
+            printf("#<procedure:%s>", lookup_builtin(st, tp->ptr)->symbol);
+            break;
+        case TYPE_BOOL:
+            printf("%s", (tp->ptr == 0) ? "#f" : "#t");
+            break;
+        case TYPE_VOID:
+            break; // print nothing
+        default:
+            printf("unrecognized type: %d", tp->type);
+            break;
+    }
     return;
 }
 
@@ -591,27 +696,6 @@ void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second) {
     first->length += second->length;
     return;
 }
-
-typedef enum {PARSE_ERROR_NONE, \
-              PARSE_ERROR_UNBAL_PAREN, \
-              PARSE_ERROR_BARE_SYM, \
-              PARSE_ERROR_EMPTY_PAREN, \
-              PARSE_ERROR_TOO_MANY, \
-              // ^  parsing errors above     ^
-              // v  evaluation errors below  v
-              EVAL_ERROR_EXIT, \
-              EVAL_ERROR_NULL_SEXPR, \
-              EVAL_ERROR_NULL_CAR, \
-              EVAL_ERROR_UNDEF_SYM, \
-              EVAL_ERROR_UNDEF_TYPE, \
-              EVAL_ERROR_UNDEF_BUILTIN, \
-              EVAL_ERROR_FEW_ARGS, \
-              EVAL_ERROR_MANY_ARGS, \
-              EVAL_ERROR_BAD_ARG_TYPE, \
-              EVAL_ERROR_NEED_NUM, \
-              EVAL_ERROR_DIV_ZERO, \
-              EVAL_ERROR_NONTERMINAL_ELSE, \
-              EVAL_ERROR_CAR_NOT_CALLABLE} interpreter_error;
 
 // Takes an input string and attempts to parse it into a valid s-expression.
 // If it cannot be parsed, returns an s-expression containing an error
@@ -836,43 +920,6 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
         head = create_s_expr(create_error(error_code), NULL);
     }
     return head;
-}
-
-// Primary method to walk nested s-expressions.
-// The s-expression returned (usually) shouldn't be freed.
-// If the given typed_ptr does not point to a valid list area entry, or if it is
-//   NULL, NULL is returned.
-s_expr* sexpr_lookup(List_Area* la, const typed_ptr* tp) {
-    if (tp == NULL) {
-        return NULL;
-    }
-    s_expr_storage* curr = la->head;
-    while (curr != NULL) {
-        if (curr->list_number == tp->ptr) {
-            return curr->se;
-        }
-        curr = curr->next;
-    }
-    return NULL;
-}
-
-// Primary method to look up symbol values.
-// The typed_ptr returned is the caller's responsibility to free; it may be
-//   (shallow) freed without harm to the symbol table or any other object.
-// If the given typed_ptr does not point to a valid symbol table entry, or if
-//   it is NULL, NULL is returned.
-typed_ptr* value_lookup(Symbol_Table* st, typed_ptr* tp) {
-    if (tp == NULL) {
-        return NULL;
-    }
-    sym_tab_node* curr = st->head;
-    while (curr != NULL) {
-        if (curr->symbol_number == tp->ptr) {
-            return create_typed_ptr(curr->type, curr->value);
-        }
-        curr = curr->next;
-    }
-    return NULL;
 }
 
 // forward declaration
@@ -1514,13 +1561,15 @@ int main() {
         get_input(PROMPT, input, BUF_SIZE);
         s_expr* input_s_expr = parse(input, symbol_table, list_area);
         if (input_s_expr->car->type == TYPE_ERROR) {
-            printf("parse error: %u\n", input_s_expr->car->ptr);
+            print_error(input_s_expr->car);
+            printf("\n");
             delete_s_expr(input_s_expr);
         } else {
             typed_ptr* input_tp = install_list(list_area, input_s_expr);
             s_expr* super_se = create_s_expr(input_tp, NULL);
             typed_ptr* result = evaluate(super_se, symbol_table, list_area);
-            printf("result: %u (type %d)\n", result->ptr, result->type);
+            print_result(result, symbol_table, list_area);
+            printf("\n");
             if (result->type == TYPE_ERROR && result->ptr == EVAL_ERROR_EXIT) {
                 exit = true;
             }
