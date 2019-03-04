@@ -22,8 +22,8 @@ have time.
 Binaries are not currently available. Compilation from source requires `make`
 and `gcc`.
 
-    $ git clone https://github.com/gfetterman/lisp_interpreter.git
-    $ cd lisp_interpreter
+    $ git clone https://github.com/gfetterman/grackle.git
+    $ cd grackle
     $ make
 
 The executable produced is named `grackle`; it is not installed globally.
