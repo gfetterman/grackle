@@ -208,7 +208,7 @@ typedef enum {BUILTIN_ADD, \
               BUILTIN_MUL, \
               BUILTIN_SUB, \
               BUILTIN_DIV, \
-              BUILTIN_SETQ, \
+              BUILTIN_SETVAR, \
               BUILTIN_EXIT, \
               BUILTIN_CONS, \
               BUILTIN_CAR, \
@@ -235,7 +235,7 @@ void setup_symbol_table(Symbol_Table* st) {
     blind_install_symbol(st, "*", TYPE_BUILTIN, BUILTIN_MUL);
     blind_install_symbol(st, "-", TYPE_BUILTIN, BUILTIN_SUB);
     blind_install_symbol(st, "/", TYPE_BUILTIN, BUILTIN_DIV);
-    blind_install_symbol(st, "setq", TYPE_BUILTIN, BUILTIN_SETQ);
+    blind_install_symbol(st, "set!", TYPE_BUILTIN, BUILTIN_SETVAR);
     blind_install_symbol(st, "exit", TYPE_BUILTIN, BUILTIN_EXIT);
     blind_install_symbol(st, "cons", TYPE_BUILTIN, BUILTIN_CONS);
     blind_install_symbol(st, "car", TYPE_BUILTIN, BUILTIN_CAR);
@@ -1134,7 +1134,7 @@ typed_ptr* eval_comparison(const s_expr* se, Symbol_Table* st, List_Area* la) {
 }
 
 // Evaluates an s-expression whose car is the built-in special form
-//   BUILTIN_SETQ.
+//   BUILTIN_SETVAR.
 // This special form takes exactly two arguments.
 // The first argument is expected to be a symbol name, and not evaluated.
 // There is no restriction on the type of the second argument; it is evaluated.
@@ -1404,7 +1404,7 @@ typed_ptr* evaluate(const s_expr* se, Symbol_Table* st, List_Area* la) {
                     case BUILTIN_DIV: //     v
                         result = eval_arithmetic(se, st, la);
                         break;
-                    case BUILTIN_SETQ:
+                    case BUILTIN_SETVAR:
                         result = eval_set_variable(se, st, la);
                         break;
                     case BUILTIN_EXIT:
