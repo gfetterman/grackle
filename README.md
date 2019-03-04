@@ -8,7 +8,7 @@ have time.
 
 ## Supported language features
 
-* arbitrarily-nested s-expression arithmetic
+* arbitrarily-nested s-expression arithmetic (on unsigned integers)
 * variable definition
 * list manipulation
 * predicate and conditional expressions
