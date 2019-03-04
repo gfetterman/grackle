@@ -153,7 +153,7 @@ typed_ptr* install_symbol(Symbol_Table* st, \
         found->value = value;
         sym_num = found->symbol_number;
     }
-    return create_typed_ptr((type != TYPE_BUILTIN) ? TYPE_SYM : type, sym_num);
+    return create_typed_ptr(TYPE_SYM, sym_num);
 }
 
 // All considerations attendant upon the function "install_symbol()" above apply
@@ -446,8 +446,7 @@ typed_ptr* install_symbol_substring(Symbol_Table* st, \
             }
         }
         free(name);
-        type tp_type = (found->type == TYPE_BUILTIN) ? found->type : TYPE_SYM;
-        return create_typed_ptr(tp_type, found->symbol_number);
+        return create_typed_ptr(TYPE_SYM, found->symbol_number);
     }
 }
 
@@ -486,10 +485,14 @@ void _print_se_rec(s_expr* se, \
                     printf("car: s-expression #%u, ", car->ptr);
                     break;
                 case TYPE_SYM:
-                    printf("car: symbol #%u, ", car->ptr);
+                    printf("car: symbol \"%s\" (#%u), ", \
+                           symbol_lookup_index(st, car->ptr)->symbol, \
+                           car->ptr);
                     break;
                 case TYPE_BUILTIN:
-                    printf("car: built-in with symbol #%u, ", car->ptr);
+                    printf("car: built-in with symbol \"%s\" (#%u), ",
+                           symbol_lookup_index(st, car->ptr)->symbol, \
+                           car->ptr);
                     break;
                 case TYPE_BOOL:
                     printf("car: boolean %s, ", (car->ptr == 0) ? "#f" : "#t");
@@ -511,10 +514,14 @@ void _print_se_rec(s_expr* se, \
                     printf("cdr: s-expression #%u\n", cdr->ptr);
                     break;
                 case TYPE_SYM:
-                    printf("cdr: symbol #%u\n", cdr->ptr);
+                    printf("cdr: symbol \"%s\" (#%u), ", \
+                           symbol_lookup_index(st, cdr->ptr)->symbol, \
+                           cdr->ptr);
                     break;
                 case TYPE_BUILTIN:
-                    printf("cdr: built-in with symbol #%u\n", cdr->ptr);
+                    printf("cdr: built-in with symbol \"%s\" (#%u), ",
+                           symbol_lookup_index(st, cdr->ptr)->symbol, \
+                           cdr->ptr);
                     break;
                 case TYPE_BOOL:
                     printf("cdr: boolean %s\n", (cdr->ptr == 0) ? "#f" : "#t");
@@ -603,7 +610,8 @@ typedef enum {PARSE_ERROR_NONE, \
               EVAL_ERROR_BAD_ARG_TYPE, \
               EVAL_ERROR_NEED_NUM, \
               EVAL_ERROR_DIV_ZERO, \
-              EVAL_ERROR_NONTERMINAL_ELSE} interpreter_error;
+              EVAL_ERROR_NONTERMINAL_ELSE, \
+              EVAL_ERROR_CAR_NOT_CALLABLE} interpreter_error;
 
 // Takes an input string and attempts to parse it into a valid s-expression.
 // If it cannot be parsed, returns an s-expression containing an error
@@ -882,7 +890,7 @@ typed_ptr* evaluate(const s_expr* se, Symbol_Table* st, List_Area* la);
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
 typed_ptr* eval_arithmetic(const s_expr* se, Symbol_Table* st, List_Area* la) {
-    builtin_code operation = symbol_lookup_index(st, se->car->ptr)->value;
+    builtin_code operation = se->car->ptr;
     typed_ptr* result = create_typed_ptr(TYPE_NUM, \
                                          (operation == BUILTIN_ADD || \
                                           operation == BUILTIN_SUB) ? 0 : 1);
@@ -1019,7 +1027,7 @@ typed_ptr* eval_arithmetic(const s_expr* se, Symbol_Table* st, List_Area* la) {
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
 typed_ptr* eval_comparison(const s_expr* se, Symbol_Table* st, List_Area* la) {
-    builtin_code comparison = symbol_lookup_index(st, se->car->ptr)->value;
+    builtin_code comparison = se->car->ptr;
     s_expr* cdr_se = sexpr_lookup(la, se->cdr);
     typed_ptr* result = NULL;
     if (cdr_se == NULL || cdr_se->cdr == NULL) {
@@ -1342,9 +1350,7 @@ typed_ptr* evaluate(const s_expr* se, Symbol_Table* st, List_Area* la) {
                 result = se->car;
                 break;
             case TYPE_BUILTIN: {
-                builtin_code builtin = symbol_lookup_index(st, \
-                                                           se->car->ptr)->value;
-                switch (builtin) {
+                switch (se->car->ptr) {
                     case BUILTIN_ADD: //    -|
                     case BUILTIN_MUL: //    -|
                     case BUILTIN_SUB: //    -|
@@ -1460,9 +1466,25 @@ typed_ptr* evaluate(const s_expr* se, Symbol_Table* st, List_Area* la) {
             case TYPE_NUM:
                 result = create_typed_ptr(se->car->type, se->car->ptr);
                 break;
-            case TYPE_SEXPR:
-                result = evaluate(sexpr_lookup(la, se->car), st, la);
+            case TYPE_SEXPR: {
+                s_expr* se_to_eval = sexpr_lookup(la, se->car);
+                s_expr* caar_se = create_s_expr(se_to_eval->car, NULL);
+                typed_ptr* fn = evaluate(caar_se, st, la);
+                free(caar_se);
+                if (fn->type == TYPE_ERROR) {
+                    result = fn;
+                } else {
+                    if (fn->type == TYPE_BUILTIN) { // will need to change later
+                        s_expr* temp_se = create_s_expr(fn, se_to_eval->cdr);
+                        result = evaluate(temp_se, st, la);
+                        free(temp_se);
+                    } else {
+                        result = create_error(EVAL_ERROR_CAR_NOT_CALLABLE);
+                    }
+                    free(fn);
+                }
                 break;
+            }
             case TYPE_SYM:
                 result = value_lookup(st, se->car);
                 break;
@@ -1495,12 +1517,16 @@ int main() {
             printf("parse error: %u\n", input_s_expr->car->ptr);
             delete_s_expr(input_s_expr);
         } else {
-            typed_ptr* result = evaluate(input_s_expr, symbol_table, list_area);
+            typed_ptr* input_tp = install_list(list_area, input_s_expr);
+            s_expr* super_se = create_s_expr(input_tp, NULL);
+            typed_ptr* result = evaluate(super_se, symbol_table, list_area);
             printf("result: %u (type %d)\n", result->ptr, result->type);
             if (result->type == TYPE_ERROR && result->ptr == EVAL_ERROR_EXIT) {
                 exit = true;
             }
             free(result);
+            free(input_tp);
+            free(super_se);
         }
     }
     printf("exiting...\n");
