@@ -529,7 +529,8 @@ typedef enum {PARSE_ERROR_NONE, \
               EVAL_ERROR_NEED_NUM, \
               EVAL_ERROR_DIV_ZERO, \
               EVAL_ERROR_NONTERMINAL_ELSE, \
-              EVAL_ERROR_CAR_NOT_CALLABLE} interpreter_error;
+              EVAL_ERROR_CAR_NOT_CALLABLE, \
+              EVAL_ERROR_NOT_ID} interpreter_error;
 
 void print_error(const typed_ptr* tp) {
     if (tp->ptr != EVAL_ERROR_EXIT) {
@@ -588,6 +589,9 @@ void print_error(const typed_ptr* tp) {
             break;
         case EVAL_ERROR_CAR_NOT_CALLABLE:
             printf("evaluation: car of s-expression was not a callable");
+            break;
+        case EVAL_ERROR_NOT_ID:
+            printf("evaluation: first argument to 'set!' must be an identifier");
             break;
         default:
             printf("unknown error: error code %u", tp->ptr);
@@ -1155,12 +1159,18 @@ typed_ptr* eval_set_variable(const s_expr* se, \
         result = create_error(EVAL_ERROR_FEW_ARGS);
     } else if (cddr_se->cdr != NULL) {
         result = create_error(EVAL_ERROR_MANY_ARGS);
+    } else if (cdr_se->car->type != TYPE_SYM) {
+        result = create_error(EVAL_ERROR_NOT_ID);
     } else {
         unsigned int symbol_idx = cdr_se->car->ptr;
         typed_ptr* eval_arg2 = evaluate(cddr_se, st, la);
-        char* name = strdup(symbol_lookup_index(st, symbol_idx)->symbol);
-        result = install_symbol(st, name, eval_arg2->type, eval_arg2->ptr);
-        free(eval_arg2);
+        if (eval_arg2->type == TYPE_ERROR) {
+            result = eval_arg2;
+        } else {
+            char* name = strdup(symbol_lookup_index(st, symbol_idx)->symbol);
+            result = install_symbol(st, name, eval_arg2->type, eval_arg2->ptr);
+            free(eval_arg2);
+        }
     }
     return result;
 }
