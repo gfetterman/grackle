@@ -1132,6 +1132,18 @@ typed_ptr* eval_comparison(const s_expr* se, Symbol_Table* st, List_Area* la) {
     return result;
 }
 
+// Evaluates an s-expression whose car is the built-in special form
+//   BUILTIN_DEFINE.
+// This special form takes exactly two arguments.
+// The first argument is expected to be a symbol name, and not evaluated.
+// There is no restriction on the type of the second argument; it is evaluated.
+// The first argument's symbol table entry's value is set to the result of
+//   evaluating the second argument.
+// Returns a typed_ptr containing an error code (if the evaluation failed) or
+//   the resulting symbol (if it succeeded).
+// In either case, the returned typed_ptr is the caller's responsibility to
+//   free, and is safe to (shallow) free without harm to the symbol table, list
+//   area, or any other object.
 typed_ptr* eval_define(const s_expr* se, Symbol_Table* st, List_Area* la) {
     typed_ptr* result = NULL;
     s_expr* cdr_se = sexpr_lookup(la, se->cdr);
