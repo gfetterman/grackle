@@ -208,7 +208,8 @@ typedef enum {BUILTIN_ADD, \
               BUILTIN_MUL, \
               BUILTIN_SUB, \
               BUILTIN_DIV, \
-              BUILTIN_SETQ, \
+              BUILTIN_DEFINE, \
+              BUILTIN_SETVAR, \
               BUILTIN_EXIT, \
               BUILTIN_CONS, \
               BUILTIN_CAR, \
@@ -235,7 +236,8 @@ void setup_symbol_table(Symbol_Table* st) {
     blind_install_symbol(st, "*", TYPE_BUILTIN, BUILTIN_MUL);
     blind_install_symbol(st, "-", TYPE_BUILTIN, BUILTIN_SUB);
     blind_install_symbol(st, "/", TYPE_BUILTIN, BUILTIN_DIV);
-    blind_install_symbol(st, "setq", TYPE_BUILTIN, BUILTIN_SETQ);
+    blind_install_symbol(st, "define", TYPE_BUILTIN, BUILTIN_DEFINE);
+    blind_install_symbol(st, "set!", TYPE_BUILTIN, BUILTIN_SETVAR);
     blind_install_symbol(st, "exit", TYPE_BUILTIN, BUILTIN_EXIT);
     blind_install_symbol(st, "cons", TYPE_BUILTIN, BUILTIN_CONS);
     blind_install_symbol(st, "car", TYPE_BUILTIN, BUILTIN_CAR);
@@ -473,6 +475,28 @@ sym_tab_node* lookup_builtin(Symbol_Table* st, builtin_code bc) {
     return curr;
 }
 
+typedef enum {PARSE_ERROR_NONE, \
+              PARSE_ERROR_UNBAL_PAREN, \
+              PARSE_ERROR_BARE_SYM, \
+              PARSE_ERROR_EMPTY_PAREN, \
+              PARSE_ERROR_TOO_MANY, \
+              // ^  parsing errors above     ^
+              // v  evaluation errors below  v
+              EVAL_ERROR_EXIT, \
+              EVAL_ERROR_NULL_SEXPR, \
+              EVAL_ERROR_NULL_CAR, \
+              EVAL_ERROR_UNDEF_SYM, \
+              EVAL_ERROR_UNDEF_TYPE, \
+              EVAL_ERROR_UNDEF_BUILTIN, \
+              EVAL_ERROR_FEW_ARGS, \
+              EVAL_ERROR_MANY_ARGS, \
+              EVAL_ERROR_BAD_ARG_TYPE, \
+              EVAL_ERROR_NEED_NUM, \
+              EVAL_ERROR_DIV_ZERO, \
+              EVAL_ERROR_NONTERMINAL_ELSE, \
+              EVAL_ERROR_CAR_NOT_CALLABLE, \
+              EVAL_ERROR_NOT_ID} interpreter_error;
+
 // Primary method to walk nested s-expressions.
 // The s-expression returned (usually) shouldn't be freed.
 // If the given typed_ptr does not point to a valid list area entry, or if it is
@@ -503,33 +527,16 @@ typed_ptr* value_lookup(Symbol_Table* st, typed_ptr* tp) {
     sym_tab_node* curr = st->head;
     while (curr != NULL) {
         if (curr->symbol_number == tp->ptr) {
-            return create_typed_ptr(curr->type, curr->value);
+            if (curr->type == TYPE_UNDEF) {
+                return create_error(EVAL_ERROR_UNDEF_SYM);
+            } else {
+                return create_typed_ptr(curr->type, curr->value);
+            }
         }
         curr = curr->next;
     }
     return NULL;
 }
-
-typedef enum {PARSE_ERROR_NONE, \
-              PARSE_ERROR_UNBAL_PAREN, \
-              PARSE_ERROR_BARE_SYM, \
-              PARSE_ERROR_EMPTY_PAREN, \
-              PARSE_ERROR_TOO_MANY, \
-              // ^  parsing errors above     ^
-              // v  evaluation errors below  v
-              EVAL_ERROR_EXIT, \
-              EVAL_ERROR_NULL_SEXPR, \
-              EVAL_ERROR_NULL_CAR, \
-              EVAL_ERROR_UNDEF_SYM, \
-              EVAL_ERROR_UNDEF_TYPE, \
-              EVAL_ERROR_UNDEF_BUILTIN, \
-              EVAL_ERROR_FEW_ARGS, \
-              EVAL_ERROR_MANY_ARGS, \
-              EVAL_ERROR_BAD_ARG_TYPE, \
-              EVAL_ERROR_NEED_NUM, \
-              EVAL_ERROR_DIV_ZERO, \
-              EVAL_ERROR_NONTERMINAL_ELSE, \
-              EVAL_ERROR_CAR_NOT_CALLABLE} interpreter_error;
 
 void print_error(const typed_ptr* tp) {
     if (tp->ptr != EVAL_ERROR_EXIT) {
@@ -588,6 +595,9 @@ void print_error(const typed_ptr* tp) {
             break;
         case EVAL_ERROR_CAR_NOT_CALLABLE:
             printf("evaluation: car of s-expression was not a callable");
+            break;
+        case EVAL_ERROR_NOT_ID:
+            printf("evaluation: first argument to 'set!' must be an identifier");
             break;
         default:
             printf("unknown error: error code %u", tp->ptr);
@@ -649,17 +659,6 @@ void print_result(const typed_ptr* tp, Symbol_Table* st, List_Area* la) {
         default:
             printf("unrecognized type: %d", tp->type);
             break;
-    }
-    return;
-}
-
-void print_list_area(Symbol_Table* st, List_Area* la) {
-    s_expr_storage* curr = la->head;
-    printf("current list area:\n");
-    while (curr != NULL) {
-        printf("  list #%u:\n", curr->list_number);
-        print_s_expr(curr->se, st, la);
-        curr = curr->next;
     }
     return;
 }
@@ -1134,9 +1133,48 @@ typed_ptr* eval_comparison(const s_expr* se, Symbol_Table* st, List_Area* la) {
 }
 
 // Evaluates an s-expression whose car is the built-in special form
-//   BUILTIN_SETQ.
+//   BUILTIN_DEFINE.
 // This special form takes exactly two arguments.
 // The first argument is expected to be a symbol name, and not evaluated.
+// There is no restriction on the type of the second argument; it is evaluated.
+// The first argument's symbol table entry's value is set to the result of
+//   evaluating the second argument.
+// Returns a typed_ptr containing an error code (if the evaluation failed) or
+//   the resulting symbol (if it succeeded).
+// In either case, the returned typed_ptr is the caller's responsibility to
+//   free, and is safe to (shallow) free without harm to the symbol table, list
+//   area, or any other object.
+typed_ptr* eval_define(const s_expr* se, Symbol_Table* st, List_Area* la) {
+    typed_ptr* result = NULL;
+    s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+    s_expr* cddr_se = sexpr_lookup(la, cdr_se->cdr);
+    if (cdr_se == NULL || cddr_se == NULL) {
+        result = create_error(EVAL_ERROR_FEW_ARGS);
+    } else if (cddr_se->cdr != NULL) {
+        result = create_error(EVAL_ERROR_MANY_ARGS);
+    } else if (cdr_se->car->type != TYPE_SYM) {
+        result = create_error(EVAL_ERROR_NOT_ID);
+    } else {
+        sym_tab_node* symbol_entry = symbol_lookup_index(st, cdr_se->car->ptr);
+        typed_ptr* eval_arg2 = evaluate(cddr_se, st, la);
+        if (eval_arg2->type == TYPE_ERROR) {
+            result = eval_arg2;
+        } else {
+            char* name = strdup(symbol_entry->symbol);
+            result = install_symbol(st, name, eval_arg2->type, eval_arg2->ptr);
+            free(result);
+            result = create_typed_ptr(TYPE_VOID, 0);
+            free(eval_arg2);
+        }
+    }
+    return result;
+}
+
+// Evaluates an s-expression whose car is the built-in special form
+//   BUILTIN_SETVAR.
+// This special form takes exactly two arguments.
+// The first argument is expected to be a symbol name, and not evaluated. It
+//   must not be TYPE_UNDEF. (It must be defined first.)
 // There is no restriction on the type of the second argument; it is evaluated.
 // The first argument's symbol table entry's value is set to the result of
 //   evaluating the second argument.
@@ -1155,12 +1193,24 @@ typed_ptr* eval_set_variable(const s_expr* se, \
         result = create_error(EVAL_ERROR_FEW_ARGS);
     } else if (cddr_se->cdr != NULL) {
         result = create_error(EVAL_ERROR_MANY_ARGS);
+    } else if (cdr_se->car->type != TYPE_SYM) {
+        result = create_error(EVAL_ERROR_NOT_ID);
     } else {
-        unsigned int symbol_idx = cdr_se->car->ptr;
-        typed_ptr* eval_arg2 = evaluate(cddr_se, st, la);
-        char* name = strdup(symbol_lookup_index(st, symbol_idx)->symbol);
-        result = install_symbol(st, name, eval_arg2->type, eval_arg2->ptr);
-        free(eval_arg2);
+        sym_tab_node* symbol_entry = symbol_lookup_index(st, cdr_se->car->ptr);
+        if (symbol_entry->type == TYPE_UNDEF) {
+            result = create_error(EVAL_ERROR_UNDEF_SYM);
+        } else {
+            typed_ptr* eval_arg2 = evaluate(cddr_se, st, la);
+            if (eval_arg2->type == TYPE_ERROR) {
+                result = eval_arg2;
+            } else {
+                char* name = strdup(symbol_entry->symbol);
+                result = install_symbol(st, name, eval_arg2->type, eval_arg2->ptr);
+                free(result);
+                result = create_typed_ptr(TYPE_VOID, 0);
+                free(eval_arg2);
+            }
+        }
     }
     return result;
 }
@@ -1404,7 +1454,10 @@ typed_ptr* evaluate(const s_expr* se, Symbol_Table* st, List_Area* la) {
                     case BUILTIN_DIV: //     v
                         result = eval_arithmetic(se, st, la);
                         break;
-                    case BUILTIN_SETQ:
+                    case BUILTIN_DEFINE:
+                        result = eval_define(se, st, la);
+                        break;
+                    case BUILTIN_SETVAR:
                         result = eval_set_variable(se, st, la);
                         break;
                     case BUILTIN_EXIT:
