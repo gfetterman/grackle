@@ -928,7 +928,7 @@ s_expr* parse(char str[], environment* env) {
         }
         curr++;
     }
-    if (stack != NULL) {
+    if (state != PARSE_ERROR && stack != NULL) {
         state = PARSE_ERROR;
         error_code = PARSE_ERROR_UNBAL_PAREN;
     }
