@@ -540,7 +540,8 @@ typedef enum {PARSE_ERROR_NONE, \
               EVAL_ERROR_DIV_ZERO, \
               EVAL_ERROR_NONTERMINAL_ELSE, \
               EVAL_ERROR_CAR_NOT_CALLABLE, \
-              EVAL_ERROR_NOT_ID} interpreter_error;
+              EVAL_ERROR_NOT_ID, \
+              EVAL_ERROR_MISSING_PROCEDURE} interpreter_error;
 
 // Primary method to walk nested s-expressions.
 // The s-expression returned (usually) shouldn't be freed.
@@ -643,6 +644,9 @@ void print_error(const typed_ptr* tp) {
             break;
         case EVAL_ERROR_NOT_ID:
             printf("evaluation: first argument to 'set!' must be an identifier");
+            break;
+        case EVAL_ERROR_MISSING_PROCEDURE:
+            printf("evaluation: missing procedure expression; probably originally bare ()");
             break;
         default:
             printf("unknown error: error code %u", tp->ptr);
@@ -804,8 +808,20 @@ s_expr* parse(char str[], environment* env) {
                         se_stack_push(&stack, new_s_expr);
                         break;
                     case ')':
-                        state = PARSE_ERROR;
+                        /*state = PARSE_ERROR;
                         error_code = PARSE_ERROR_EMPTY_PAREN;
+                        break;*/
+                        if (stack == NULL) {
+                            state = PARSE_ERROR;
+                            error_code = PARSE_ERROR_UNBAL_PAREN;
+                        } else {
+                            se_stack_pop(&stack);
+                            while (stack != NULL && stack->se->cdr != NULL) {
+                                se_stack_pop(&stack);
+                            }
+                            state = (stack == NULL) ? PARSE_FINISH : \
+                                                      PARSE_READY;
+                        }
                         break;
                     default:
                         symbol_start = curr;
@@ -1474,6 +1490,15 @@ void delete_st_node_list(sym_tab_node* stn) {
     return;
 }
 
+bool is_empty_list(s_expr* se) {
+    if (se == NULL) {
+        printf("cannot determine if NULL se is empty list\n");
+        exit(-1);
+    } else {
+        return (se->car == NULL && se->cdr == NULL);
+    }
+}
+
 // At first, we will restrict user-defined functions to have a finite number of
 //   parameters.
 // tp is expected to be a pointer to an s-expression. If it's empty, NULL is
@@ -1486,10 +1511,10 @@ void delete_st_node_list(sym_tab_node* stn) {
 //   caller's responsibility to free).
 sym_tab_node* collect_parameters(typed_ptr* tp, environment* env) {
     sym_tab_node* arg_list = NULL;
-    if (tp->ptr == EMPTY_LIST_IDX) {
+    s_expr* se = sexpr_lookup(env, tp);
+    if (is_empty_list(se)) {
         return arg_list;
     }
-    s_expr* se = sexpr_lookup(env, tp);
     if (se->car->type != TYPE_SYM) {
         arg_list = create_st_node(0, NULL, TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE);
     } else {
@@ -1746,7 +1771,7 @@ typed_ptr* eval_user_function(const s_expr* se, environment* env) {
     typed_ptr* result = NULL;
     fun_tab_node* ftn = function_lookup(env, se->car);
     sym_tab_node* bound_args = bind_args(env, ftn, se->cdr);
-    if (bound_args->type == TYPE_ERROR) {
+    if (bound_args != NULL && bound_args->type == TYPE_ERROR) {
         result = create_error(bound_args->value);
     } else {
         environment* bound_env = make_eval_env(ftn->closure_env, bound_args);
@@ -1905,20 +1930,24 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
                 break;
             case TYPE_SEXPR: {
                 s_expr* se_to_eval = sexpr_lookup(env, se->car);
-                s_expr* caar_se = create_s_expr(se_to_eval->car, NULL);
-                typed_ptr* fn = evaluate(caar_se, env);
-                free(caar_se);
-                if (fn->type == TYPE_ERROR) {
-                    result = fn;
+                if (se_to_eval->car == NULL) { // se_to_eval is the empty s-expression
+                    result = create_error(EVAL_ERROR_MISSING_PROCEDURE);
                 } else {
-                    if (fn->type == TYPE_BUILTIN || fn->type == TYPE_USER_FN) {
-                        s_expr* temp_se = create_s_expr(fn, se_to_eval->cdr);
-                        result = evaluate(temp_se, env);
-                        free(temp_se);
+                    s_expr* caar_se = create_s_expr(se_to_eval->car, NULL);
+                    typed_ptr* fn = evaluate(caar_se, env);
+                    free(caar_se);
+                    if (fn->type == TYPE_ERROR) {
+                        result = fn;
                     } else {
-                        result = create_error(EVAL_ERROR_CAR_NOT_CALLABLE);
+                        if (fn->type == TYPE_BUILTIN || fn->type == TYPE_USER_FN) {
+                            s_expr* temp_se = create_s_expr(fn, se_to_eval->cdr);
+                            result = evaluate(temp_se, env);
+                            free(temp_se);
+                        } else {
+                            result = create_error(EVAL_ERROR_CAR_NOT_CALLABLE);
+                        }
+                        free(fn);
                     }
-                    free(fn);
                 }
                 break;
             }
@@ -1951,7 +1980,8 @@ int main() {
     while (!exit) {
         get_input(PROMPT, input, BUF_SIZE);
         s_expr* input_s_expr = parse(input, env);
-        if (input_s_expr->car->type == TYPE_ERROR) {
+        if (input_s_expr->car != NULL && \
+            input_s_expr->car->type == TYPE_ERROR) {
             print_error(input_s_expr->car);
             printf("\n");
             delete_s_expr(input_s_expr);
