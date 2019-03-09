@@ -541,7 +541,8 @@ typedef enum {PARSE_ERROR_NONE, \
               EVAL_ERROR_NONTERMINAL_ELSE, \
               EVAL_ERROR_CAR_NOT_CALLABLE, \
               EVAL_ERROR_NOT_ID, \
-              EVAL_ERROR_MISSING_PROCEDURE} interpreter_error;
+              EVAL_ERROR_MISSING_PROCEDURE, \
+              EVAL_ERROR_BAD_SYNTAX} interpreter_error;
 
 // Primary method to walk nested s-expressions.
 // The s-expression returned (usually) shouldn't be freed.
@@ -647,6 +648,9 @@ void print_error(const typed_ptr* tp) {
             break;
         case EVAL_ERROR_MISSING_PROCEDURE:
             printf("evaluation: missing procedure expression; probably originally bare ()");
+            break;
+        case EVAL_ERROR_BAD_SYNTAX:
+            printf("evaluation: bad syntax for a function or special form");
             break;
         default:
             printf("unknown error: error code %u", tp->ptr);
@@ -1194,6 +1198,9 @@ typed_ptr* eval_comparison(const s_expr* se, environment* env) {
     return result;
 }
 
+// forward declaration
+typed_ptr* eval_lambda(const s_expr* se, environment* env);
+
 // Evaluates an s-expression whose car is the built-in special form
 //   BUILTIN_DEFINE.
 // This special form takes exactly two arguments.
@@ -1214,6 +1221,43 @@ typed_ptr* eval_define(const s_expr* se, environment* env) {
         result = create_error(EVAL_ERROR_FEW_ARGS);
     } else if (cddr_se->cdr != NULL) {
         result = create_error(EVAL_ERROR_MANY_ARGS);
+    } else if (cdr_se->car->type == TYPE_SEXPR) {
+        s_expr* cdar_se = sexpr_lookup(env, cdr_se->car);
+        if (cdar_se->car == NULL || cdar_se->car->type != TYPE_SYM) {
+            result = create_error(EVAL_ERROR_BAD_SYNTAX);
+        } else {
+            typed_ptr* fn_sym = cdar_se->car;
+            sym_tab_node* symbol_entry = symbol_lookup_index(env, fn_sym->ptr);
+            if (symbol_entry == NULL) {
+                result = create_error(EVAL_ERROR_UNDEF_SYM);
+            } else {
+                typed_ptr* arg_list = cdar_se->cdr;
+                if (arg_list == NULL) {
+                    arg_list = create_typed_ptr(TYPE_SEXPR, EMPTY_LIST_IDX);
+                }
+                typed_ptr* fn_body = cdr_se->cdr;
+                // create a fake lambda expression and execute that to produce
+                // the function
+                sym_tab_node* lambda = symbol_lookup_string(env, "lambda");
+                typed_ptr* lambda_ptr = create_typed_ptr(TYPE_SYM, \
+                                                         lambda->symbol_number);
+                s_expr* dummy_lambda_body = create_s_expr(arg_list, fn_body);
+                typed_ptr* dlb_list_ptr = install_list(env, dummy_lambda_body);
+                s_expr* dummy_lambda = create_s_expr(lambda_ptr, dlb_list_ptr);
+                typed_ptr* fn = eval_lambda(dummy_lambda, env);
+                free(dummy_lambda_body);
+                free(lambda_ptr);
+                free(dlb_list_ptr);
+                free(dummy_lambda);
+                if (fn->type == TYPE_ERROR) {
+                    result = fn;
+                } else {
+                    char* name = strdup(symbol_entry->symbol);
+                    blind_install_symbol(env, name, fn->type, fn->ptr);
+                    result = create_typed_ptr(TYPE_VOID, 0);
+                }
+            }
+        }
     } else if (cdr_se->car->type != TYPE_SYM) {
         result = create_error(EVAL_ERROR_NOT_ID);
     } else {
