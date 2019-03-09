@@ -14,7 +14,8 @@ typedef enum {TYPE_UNDEF, \
               TYPE_NUM, \
               TYPE_BOOL, \
               TYPE_SEXPR, \
-              TYPE_SYM} type;
+              TYPE_SYM, \
+              TYPE_USER_FN} type;
 
 typedef struct TYPED_PTR {
     type type;
@@ -100,179 +101,6 @@ Symbol_Table* create_symbol_table(unsigned int offset) {
     return new_st;
 }
 
-// The returned sym_tab_node should (usually) not be freed.
-// If the given name does not match any symbol table entry, NULL is returned.
-sym_tab_node* symbol_lookup_string(Symbol_Table* st, const char* name) {
-    sym_tab_node* curr = st->head;
-    while (curr != NULL) {
-        if (!strcmp(curr->symbol, name)) {
-            return curr;
-        }
-        curr = curr->next;
-    }
-    return NULL;
-}
-
-// The returned sym_tab_node should (usually) not be freed.
-// If the given index does not match any symbol table entry, NULL is returned.
-sym_tab_node* symbol_lookup_index(Symbol_Table* st, unsigned int index) {
-    sym_tab_node* curr = st->head;
-    while (curr != NULL) {
-        if (curr->symbol_number == index) {
-            break;
-        }
-        curr = curr->next;
-    }
-    return curr;
-}
-
-// The string pointed to by name is now the symbol table's responsibility to
-//   free. It also must be safe to free (i.e., it must be heap-allocated), and
-//   nobody else should free it.
-// If a symbol already exists in the given symbol table with that name, the type
-//   and value associated with it will be updated, and the string pointed to by
-//   this function's parameter "name" will be freed. Otherwise, the symbol is
-//   installed into the symbol table.
-// The returned typed_ptr is the caller's responsibility to free; it can be
-//   safely (shallow) freed without harm to the symbol table or any other
-//   object.
-typed_ptr* install_symbol(Symbol_Table* st, \
-                          char* name, \
-                          type type, \
-                          unsigned int value) {
-    unsigned int sym_num = st->length + st->symbol_number_offset;
-    sym_tab_node* found = symbol_lookup_string(st, name);
-    if (found == NULL) {
-        sym_tab_node* new_node = create_st_node(sym_num, name, type, value);
-        new_node->next = st->head;
-        st->head = new_node;
-        st->length++;
-    } else {
-        free(name);
-        found->type = type;
-        found->value = value;
-        sym_num = found->symbol_number;
-    }
-    return create_typed_ptr(TYPE_SYM, sym_num);
-}
-
-// All considerations attendant upon the function "install_symbol()" above apply
-//   here.
-// This is a convenience function for use in initial symbol table setup.
-void blind_install_symbol(Symbol_Table* st, \
-                          char* symbol, \
-                          type type, \
-                          unsigned int value) {
-    typed_ptr* tp = install_symbol(st, symbol, type, value);
-    free(tp);
-    return;
-}
-
-// The string returned is a valid null-terminated C string.
-// The string returned is the caller's responsibility to free.
-char* substring(char* str, unsigned int start, unsigned int end) {
-    unsigned int len = strlen(str);
-    if (str == NULL || len < (end - start)) {
-        fprintf(stderr, \
-                "fatal error: bad substring from %u to %u, for str len %u\n", \
-                start, \
-                end, \
-                len);
-        exit(-1);
-    }
-    char* ss = malloc(sizeof(char) * (end - start + 1));
-    if (ss == NULL) {
-        fprintf(stderr, "fatal error: malloc failed in substring()\n");
-        exit(-1);
-    }
-    memcpy(ss, (str + start), (sizeof(char) * (end - start)));
-    ss[end - start] = '\0';
-    return ss;
-}
-
-void print_symbol_table(Symbol_Table* st) {
-    sym_tab_node* curr = st->head;
-    printf("current symbol table:\n");
-    while (curr != NULL) {
-        printf("  symbol #%d, \"%s\", has type \"%d\" and value %u\n", \
-               curr->symbol_number, \
-               curr->symbol, \
-               curr->type, \
-               curr->value);
-        curr = curr->next;
-    }
-    return;
-}
-
-typedef enum {BUILTIN_ADD, \
-              BUILTIN_MUL, \
-              BUILTIN_SUB, \
-              BUILTIN_DIV, \
-              BUILTIN_DEFINE, \
-              BUILTIN_SETVAR, \
-              BUILTIN_EXIT, \
-              BUILTIN_CONS, \
-              BUILTIN_CAR, \
-              BUILTIN_CDR, \
-              BUILTIN_LIST, \
-              BUILTIN_AND, \
-              BUILTIN_OR, \
-              BUILTIN_NOT, \
-              BUILTIN_COND, \
-              BUILTIN_PAIRPRED, \
-              BUILTIN_LISTPRED, \
-              BUILTIN_NUMBERPRED, \
-              BUILTIN_BOOLPRED, \
-              BUILTIN_VOIDPRED, \
-              BUILTIN_NUMBEREQ, \
-              BUILTIN_NUMBERGT, \
-              BUILTIN_NUMBERLT, \
-              BUILTIN_NUMBERGE, \
-              BUILTIN_NUMBERLE} builtin_code;
-
-void setup_symbol_table(Symbol_Table* st) {
-    blind_install_symbol(st, "NULL_SENTINEL", TYPE_UNDEF, 0);
-    blind_install_symbol(st, "+", TYPE_BUILTIN, BUILTIN_ADD);
-    blind_install_symbol(st, "*", TYPE_BUILTIN, BUILTIN_MUL);
-    blind_install_symbol(st, "-", TYPE_BUILTIN, BUILTIN_SUB);
-    blind_install_symbol(st, "/", TYPE_BUILTIN, BUILTIN_DIV);
-    blind_install_symbol(st, "define", TYPE_BUILTIN, BUILTIN_DEFINE);
-    blind_install_symbol(st, "set!", TYPE_BUILTIN, BUILTIN_SETVAR);
-    blind_install_symbol(st, "exit", TYPE_BUILTIN, BUILTIN_EXIT);
-    blind_install_symbol(st, "cons", TYPE_BUILTIN, BUILTIN_CONS);
-    blind_install_symbol(st, "car", TYPE_BUILTIN, BUILTIN_CAR);
-    blind_install_symbol(st, "cdr", TYPE_BUILTIN, BUILTIN_CDR);
-    blind_install_symbol(st, "and", TYPE_BUILTIN, BUILTIN_AND);
-    blind_install_symbol(st, "or", TYPE_BUILTIN, BUILTIN_OR);
-    blind_install_symbol(st, "not", TYPE_BUILTIN, BUILTIN_NOT);
-    blind_install_symbol(st, "cond", TYPE_BUILTIN, BUILTIN_COND);
-    blind_install_symbol(st, "list", TYPE_BUILTIN, BUILTIN_LIST);
-    blind_install_symbol(st, "pair?", TYPE_BUILTIN, BUILTIN_PAIRPRED);
-    blind_install_symbol(st, "list?", TYPE_BUILTIN, BUILTIN_LISTPRED);
-    blind_install_symbol(st, "number?", TYPE_BUILTIN, BUILTIN_NUMBERPRED);
-    blind_install_symbol(st, "boolean?", TYPE_BUILTIN, BUILTIN_BOOLPRED);
-    blind_install_symbol(st, "void?", TYPE_BUILTIN, BUILTIN_VOIDPRED);
-    blind_install_symbol(st, "=", TYPE_BUILTIN, BUILTIN_NUMBEREQ);
-    blind_install_symbol(st, ">", TYPE_BUILTIN, BUILTIN_NUMBERGT);
-    blind_install_symbol(st, "<", TYPE_BUILTIN, BUILTIN_NUMBERLT);
-    blind_install_symbol(st, ">=", TYPE_BUILTIN, BUILTIN_NUMBERGE);
-    blind_install_symbol(st, "<=", TYPE_BUILTIN, BUILTIN_NUMBERLE);
-    blind_install_symbol(st, "null", TYPE_SEXPR, EMPTY_LIST_IDX);
-    blind_install_symbol(st, "#t", TYPE_BOOL, 1);
-    blind_install_symbol(st, "#f", TYPE_BOOL, 0);
-    return;
-}
-
-void get_input(char* prompt, char buffer[], unsigned int buffer_size) {
-    printf("%s ", prompt);
-    fgets(buffer, buffer_size, stdin); // yes, this is unsafe
-    // drop newline at end of input
-    if ((strlen(buffer) > 0) && (buffer[strlen(buffer) - 1] == '\n')) {
-        buffer[strlen(buffer) - 1] = '\0';
-    }
-    return;
-}
-
 typedef struct S_EXPR_NODE {
     typed_ptr* car;
     typed_ptr* cdr;
@@ -342,34 +170,251 @@ List_Area* create_list_area(unsigned int offset) {
     return new_la;
 }
 
+// forward declaration
+struct ENVIRONMENT;
+
+typedef struct FUN_TAB_NODE {
+    unsigned int function_number;
+    sym_tab_node* arg_list;
+    struct ENVIRONMENT* closure_env;
+    typed_ptr* body;
+    struct FUN_TAB_NODE* next;
+} fun_tab_node;
+
+typedef struct FUNCTION_TABLE {
+    fun_tab_node* head;
+    unsigned int length;
+    unsigned int offset;
+} function_table;
+
+function_table* create_function_table(unsigned int offset) {
+    function_table* new_ft = malloc(sizeof(function_table));
+    if (new_ft == NULL) {
+        fprintf(stderr, "malloc failed in create_function_table()\n");
+        exit(-1);
+    }
+    new_ft->head = NULL;
+    new_ft->length = 0;
+    new_ft->offset = offset;
+    return new_ft;
+}
+
+typedef struct ENVIRONMENT {
+    Symbol_Table* symbol_table;
+    List_Area* list_area;
+    function_table* function_table;
+} environment;
+
+environment* create_environment(unsigned int st_offset, \
+                                unsigned int la_offset, \
+                                unsigned int ft_offset) {
+    environment* new_env = malloc(sizeof(environment));
+    if (new_env == NULL) {
+        fprintf(stderr, "malloc failed in create_environment()\n");
+        exit(-1);
+    }
+    new_env->symbol_table = create_symbol_table(st_offset);
+    new_env->list_area = create_list_area(la_offset);
+    new_env->function_table = create_function_table(ft_offset);
+    return new_env;
+}
+
+// The returned sym_tab_node should (usually) not be freed.
+// If the given name does not match any symbol table entry, NULL is returned.
+sym_tab_node* symbol_lookup_string(environment* env, const char* name) {
+    sym_tab_node* curr = env->symbol_table->head;
+    while (curr != NULL) {
+        if (!strcmp(curr->symbol, name)) {
+            return curr;
+        }
+        curr = curr->next;
+    }
+    return NULL;
+}
+
+// The returned sym_tab_node should (usually) not be freed.
+// If the given index does not match any symbol table entry, NULL is returned.
+sym_tab_node* symbol_lookup_index(environment* env, unsigned int index) {
+    sym_tab_node* curr = env->symbol_table->head;
+    while (curr != NULL) {
+        if (curr->symbol_number == index) {
+            break;
+        }
+        curr = curr->next;
+    }
+    return curr;
+}
+
+// The string pointed to by name is now the symbol table's responsibility to
+//   free. It also must be safe to free (i.e., it must be heap-allocated), and
+//   nobody else should free it.
+// If a symbol already exists in the given symbol table with that name, the type
+//   and value associated with it will be updated, and the string pointed to by
+//   this function's parameter "name" will be freed. Otherwise, the symbol is
+//   installed into the symbol table.
+// The returned typed_ptr is the caller's responsibility to free; it can be
+//   safely (shallow) freed without harm to the symbol table or any other
+//   object.
+typed_ptr* install_symbol(environment* env, \
+                          char* name, \
+                          type type, \
+                          unsigned int value) {
+    unsigned int sym_num = env->symbol_table->length + \
+                           env->symbol_table->symbol_number_offset;
+    sym_tab_node* found = symbol_lookup_string(env, name);
+    if (found == NULL) {
+        sym_tab_node* new_node = create_st_node(sym_num, name, type, value);
+        new_node->next = env->symbol_table->head;
+        env->symbol_table->head = new_node;
+        env->symbol_table->length++;
+    } else {
+        free(name);
+        found->type = type;
+        found->value = value;
+        sym_num = found->symbol_number;
+    }
+    return create_typed_ptr(TYPE_SYM, sym_num);
+}
+
+// All considerations attendant upon the function "install_symbol()" above apply
+//   here.
+// This is a convenience function for use in initial symbol table setup.
+void blind_install_symbol(environment* env, \
+                          char* symbol, \
+                          type type, \
+                          unsigned int value) {
+    typed_ptr* tp = install_symbol(env, symbol, type, value);
+    free(tp);
+    return;
+}
+
+// The string returned is a valid null-terminated C string.
+// The string returned is the caller's responsibility to free.
+char* substring(char* str, unsigned int start, unsigned int end) {
+    unsigned int len = strlen(str);
+    if (str == NULL || len < (end - start)) {
+        fprintf(stderr, \
+                "fatal error: bad substring from %u to %u, for str len %u\n", \
+                start, \
+                end, \
+                len);
+        exit(-1);
+    }
+    char* ss = malloc(sizeof(char) * (end - start + 1));
+    if (ss == NULL) {
+        fprintf(stderr, "fatal error: malloc failed in substring()\n");
+        exit(-1);
+    }
+    memcpy(ss, (str + start), (sizeof(char) * (end - start)));
+    ss[end - start] = '\0';
+    return ss;
+}
+
+typedef enum {BUILTIN_ADD, \
+              BUILTIN_MUL, \
+              BUILTIN_SUB, \
+              BUILTIN_DIV, \
+              BUILTIN_DEFINE, \
+              BUILTIN_SETVAR, \
+              BUILTIN_EXIT, \
+              BUILTIN_CONS, \
+              BUILTIN_CAR, \
+              BUILTIN_CDR, \
+              BUILTIN_LIST, \
+              BUILTIN_AND, \
+              BUILTIN_OR, \
+              BUILTIN_NOT, \
+              BUILTIN_COND, \
+              BUILTIN_PAIRPRED, \
+              BUILTIN_LISTPRED, \
+              BUILTIN_NUMBERPRED, \
+              BUILTIN_BOOLPRED, \
+              BUILTIN_VOIDPRED, \
+              BUILTIN_NUMBEREQ, \
+              BUILTIN_NUMBERGT, \
+              BUILTIN_NUMBERLT, \
+              BUILTIN_NUMBERGE, \
+              BUILTIN_NUMBERLE, \
+              BUILTIN_LAMBDA} builtin_code;
+
+void setup_symbol_table(environment* env) {
+    blind_install_symbol(env, "NULL_SENTINEL", TYPE_UNDEF, 0);
+    blind_install_symbol(env, "+", TYPE_BUILTIN, BUILTIN_ADD);
+    blind_install_symbol(env, "*", TYPE_BUILTIN, BUILTIN_MUL);
+    blind_install_symbol(env, "-", TYPE_BUILTIN, BUILTIN_SUB);
+    blind_install_symbol(env, "/", TYPE_BUILTIN, BUILTIN_DIV);
+    blind_install_symbol(env, "define", TYPE_BUILTIN, BUILTIN_DEFINE);
+    blind_install_symbol(env, "set!", TYPE_BUILTIN, BUILTIN_SETVAR);
+    blind_install_symbol(env, "exit", TYPE_BUILTIN, BUILTIN_EXIT);
+    blind_install_symbol(env, "cons", TYPE_BUILTIN, BUILTIN_CONS);
+    blind_install_symbol(env, "car", TYPE_BUILTIN, BUILTIN_CAR);
+    blind_install_symbol(env, "cdr", TYPE_BUILTIN, BUILTIN_CDR);
+    blind_install_symbol(env, "and", TYPE_BUILTIN, BUILTIN_AND);
+    blind_install_symbol(env, "or", TYPE_BUILTIN, BUILTIN_OR);
+    blind_install_symbol(env, "not", TYPE_BUILTIN, BUILTIN_NOT);
+    blind_install_symbol(env, "cond", TYPE_BUILTIN, BUILTIN_COND);
+    blind_install_symbol(env, "list", TYPE_BUILTIN, BUILTIN_LIST);
+    blind_install_symbol(env, "pair?", TYPE_BUILTIN, BUILTIN_PAIRPRED);
+    blind_install_symbol(env, "list?", TYPE_BUILTIN, BUILTIN_LISTPRED);
+    blind_install_symbol(env, "number?", TYPE_BUILTIN, BUILTIN_NUMBERPRED);
+    blind_install_symbol(env, "boolean?", TYPE_BUILTIN, BUILTIN_BOOLPRED);
+    blind_install_symbol(env, "void?", TYPE_BUILTIN, BUILTIN_VOIDPRED);
+    blind_install_symbol(env, "=", TYPE_BUILTIN, BUILTIN_NUMBEREQ);
+    blind_install_symbol(env, ">", TYPE_BUILTIN, BUILTIN_NUMBERGT);
+    blind_install_symbol(env, "<", TYPE_BUILTIN, BUILTIN_NUMBERLT);
+    blind_install_symbol(env, ">=", TYPE_BUILTIN, BUILTIN_NUMBERGE);
+    blind_install_symbol(env, "<=", TYPE_BUILTIN, BUILTIN_NUMBERLE);
+    blind_install_symbol(env, "lambda", TYPE_BUILTIN, BUILTIN_LAMBDA);
+    blind_install_symbol(env, "null", TYPE_SEXPR, EMPTY_LIST_IDX);
+    blind_install_symbol(env, "#t", TYPE_BOOL, 1);
+    blind_install_symbol(env, "#f", TYPE_BOOL, 0);
+    return;
+}
+
+void get_input(char* prompt, char buffer[], unsigned int buffer_size) {
+    printf("%s ", prompt);
+    fgets(buffer, buffer_size, stdin); // yes, this is unsafe
+    // drop newline at end of input
+    if ((strlen(buffer) > 0) && (buffer[strlen(buffer) - 1] == '\n')) {
+        buffer[strlen(buffer) - 1] = '\0';
+    }
+    return;
+}
+
 // The s-expression to be installed is now the list area's responsibility to
 //   free. It must be safe to free.
 // No attempt is made to check for duplicate s-expressions already present in
 //   the list area.
 // The typed_ptr returned is the caller's responsibility to free; it can be
 //   safely (shallow) freed without harm to the list area or any other objects.
-typed_ptr* install_list(List_Area* la, s_expr* new_se) {
-    unsigned int num = la->length + la->offset;
+typed_ptr* install_list(environment* env, s_expr* new_se) {
+    unsigned int num = env->list_area->length + env->list_area->offset;
     s_expr_storage* new_ses = create_s_expr_storage(num, new_se);
-    new_ses->next = la->head;
-    la->head = new_ses;
-    la->length++;
+    new_ses->next = env->list_area->head;
+    env->list_area->head = new_ses;
+    env->list_area->length++;
     return create_typed_ptr(TYPE_SEXPR, num);
 }
 
 // This is a bit of kludge to allow the installation of the empty list into the
 //   list area during setup.
 // No guarantee is made that the index "idx" will be unique in the list area.
-void set_list_area_member(List_Area* la, unsigned int idx, s_expr* new_se) {
+void set_list_area_member(environment* env, unsigned int idx, s_expr* new_se) {
     s_expr_storage* new_ses = create_s_expr_storage(idx, new_se);
-    new_ses->next = la->head;
-    la->head = new_ses;
-    la->length++;
+    new_ses->next = env->list_area->head;
+    env->list_area->head = new_ses;
+    env->list_area->length++;
     return;
 }
 
-void setup_list_area(List_Area* la) {
-    set_list_area_member(la, EMPTY_LIST_IDX, create_s_expr(NULL, NULL));
+void setup_list_area(environment* env) {
+    set_list_area_member(env, EMPTY_LIST_IDX, create_s_expr(NULL, NULL));
+    return;
+}
+
+void setup_environment(environment* env) {
+    setup_symbol_table(env);
+    setup_list_area(env);
     return;
 }
 
@@ -429,8 +474,8 @@ bool string_is_number(const char str[]) {
 // In all cases, the returned typed_ptr is the caller's responsibility to free;
 //   it is always safe to free without harm to either symbol table or any other
 //   object.
-typed_ptr* install_symbol_substring(Symbol_Table* st, \
-                                    Symbol_Table* temp_st, \
+typed_ptr* install_symbol_substring(environment* env, \
+                                    environment* temp_env, \
                                     char str[], \
                                     unsigned int start, \
                                     unsigned int end) {
@@ -440,11 +485,11 @@ typed_ptr* install_symbol_substring(Symbol_Table* st, \
         free(name);
         return create_typed_ptr(TYPE_NUM, value);
     } else {
-        sym_tab_node* found = symbol_lookup_string(st, name);
+        sym_tab_node* found = symbol_lookup_string(env, name);
         if (found == NULL) {
-            found = symbol_lookup_string(temp_st, name);
+            found = symbol_lookup_string(temp_env, name);
             if (found == NULL) {
-                return install_symbol(temp_st, name, TYPE_UNDEF, 0);
+                return install_symbol(temp_env, name, TYPE_UNDEF, 0);
             }
         }
         free(name);
@@ -453,8 +498,8 @@ typed_ptr* install_symbol_substring(Symbol_Table* st, \
 }
 
 // The returned s-expression (usually) shouldn't be freed.
-s_expr* list_from_index(List_Area* la, unsigned int index) {
-    s_expr_storage* curr = la->head;
+s_expr* list_from_index(environment* env, unsigned int index) {
+    s_expr_storage* curr = env->list_area->head;
     while (curr != NULL) {
         if (curr->list_number == index) {
             break;
@@ -464,8 +509,8 @@ s_expr* list_from_index(List_Area* la, unsigned int index) {
     return curr->se;
 }
 
-sym_tab_node* lookup_builtin(Symbol_Table* st, builtin_code bc) {
-    sym_tab_node* curr = st->head;
+sym_tab_node* lookup_builtin(environment* env, builtin_code bc) {
+    sym_tab_node* curr = env->symbol_table->head;
     while (curr != NULL) {
         if (curr->type == TYPE_BUILTIN && curr->value == bc) {
             return curr;
@@ -495,17 +540,19 @@ typedef enum {PARSE_ERROR_NONE, \
               EVAL_ERROR_DIV_ZERO, \
               EVAL_ERROR_NONTERMINAL_ELSE, \
               EVAL_ERROR_CAR_NOT_CALLABLE, \
-              EVAL_ERROR_NOT_ID} interpreter_error;
+              EVAL_ERROR_NOT_ID, \
+              EVAL_ERROR_MISSING_PROCEDURE, \
+              EVAL_ERROR_BAD_SYNTAX} interpreter_error;
 
 // Primary method to walk nested s-expressions.
 // The s-expression returned (usually) shouldn't be freed.
 // If the given typed_ptr does not point to a valid list area entry, or if it is
 //   NULL, NULL is returned.
-s_expr* sexpr_lookup(List_Area* la, const typed_ptr* tp) {
+s_expr* sexpr_lookup(environment* env, const typed_ptr* tp) {
     if (tp == NULL) {
         return NULL;
     }
-    s_expr_storage* curr = la->head;
+    s_expr_storage* curr = env->list_area->head;
     while (curr != NULL) {
         if (curr->list_number == tp->ptr) {
             return curr->se;
@@ -520,11 +567,11 @@ s_expr* sexpr_lookup(List_Area* la, const typed_ptr* tp) {
 //   (shallow) freed without harm to the symbol table or any other object.
 // If the given typed_ptr does not point to a valid symbol table entry, or if
 //   it is NULL, NULL is returned.
-typed_ptr* value_lookup(Symbol_Table* st, typed_ptr* tp) {
+typed_ptr* value_lookup(environment* env, typed_ptr* tp) {
     if (tp == NULL) {
         return NULL;
     }
-    sym_tab_node* curr = st->head;
+    sym_tab_node* curr = env->symbol_table->head;
     while (curr != NULL) {
         if (curr->symbol_number == tp->ptr) {
             if (curr->type == TYPE_UNDEF) {
@@ -599,6 +646,12 @@ void print_error(const typed_ptr* tp) {
         case EVAL_ERROR_NOT_ID:
             printf("evaluation: first argument to 'set!' must be an identifier");
             break;
+        case EVAL_ERROR_MISSING_PROCEDURE:
+            printf("evaluation: missing procedure expression; probably originally bare ()");
+            break;
+        case EVAL_ERROR_BAD_SYNTAX:
+            printf("evaluation: bad syntax for a function or special form");
+            break;
         default:
             printf("unknown error: error code %u", tp->ptr);
             break;
@@ -607,23 +660,23 @@ void print_error(const typed_ptr* tp) {
 }
 
 // forward declaration
-void print_result(const typed_ptr* tp, Symbol_Table* st, List_Area* la);
+void print_result(const typed_ptr* tp, environment* env);
 
-void print_s_expression(const s_expr* se, Symbol_Table* st, List_Area* la) {
+void print_s_expression(const s_expr* se, environment* env) {
     printf("'(");
     while (se->car != NULL) { // which would indicate the empty list
-        print_result(se->car, st, la);
+        print_result(se->car, env);
         if (se->cdr != NULL && se->cdr->type == TYPE_SEXPR) { // list
-            se = sexpr_lookup(la, se->cdr);
+            se = sexpr_lookup(env, se->cdr);
             if (se->car != NULL) {
                 printf(" ");
             }
         } else if (se->cdr != NULL) { // pair
             printf(" . ");
-            print_result(se->cdr, st, la);
+            print_result(se->cdr, env);
             break;
         } else {
-            printf("error: NULL cdr in s-expression");
+            //printf("error: NULL cdr in s-expression");
             break;
         }
     }
@@ -631,7 +684,7 @@ void print_s_expression(const s_expr* se, Symbol_Table* st, List_Area* la) {
     return;
 }
 
-void print_result(const typed_ptr* tp, Symbol_Table* st, List_Area* la) {
+void print_result(const typed_ptr* tp, environment* env) {
     switch (tp->type) {
         case TYPE_UNDEF:
             printf("undefined symbol");
@@ -643,19 +696,22 @@ void print_result(const typed_ptr* tp, Symbol_Table* st, List_Area* la) {
             printf("%u", tp->ptr);
             break;
         case TYPE_SEXPR:
-            print_s_expression(sexpr_lookup(la, tp), st, la);
+            print_s_expression(sexpr_lookup(env, tp), env);
             break;
         case TYPE_SYM:
-            printf("'%s", symbol_lookup_index(st, tp->ptr)->symbol);
+            printf("'%s", symbol_lookup_index(env, tp->ptr)->symbol);
             break;
         case TYPE_BUILTIN:
-            printf("#<procedure:%s>", lookup_builtin(st, tp->ptr)->symbol);
+            printf("#<procedure:%s>", lookup_builtin(env, tp->ptr)->symbol);
             break;
         case TYPE_BOOL:
             printf("%s", (tp->ptr == 0) ? "#f" : "#t");
             break;
         case TYPE_VOID:
             break; // print nothing
+        case TYPE_USER_FN:
+            printf("#<procedure>");
+            break;
         default:
             printf("unrecognized type: %d", tp->type);
             break;
@@ -707,7 +763,7 @@ void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second) {
 // In either case, the s-expression returned is the caller's responsibility to
 //   free; it may be (shallow) freed without harm to the list area, symbol
 //   table, or any other object.
-s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
+s_expr* parse(char str[], environment* env) {
     enum Parse_State {PARSE_START, \
                       PARSE_NEW_SEXPR, \
                       PARSE_READY, \
@@ -720,8 +776,9 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
     s_expr* new_s_expr = NULL;
     unsigned int curr = 0;
     unsigned int symbol_start = 0;
-    Symbol_Table* temp_symbol_table = create_symbol_table(st->length);
-    List_Area* temp_list_area = create_list_area(la->length);
+    environment* temp_env = create_environment(env->symbol_table->length, \
+                                               env->list_area->length, \
+                                               env->function_table->length);
     s_expr* head = NULL;
     typed_ptr* new_tp = NULL;
     while (str[curr] && state != PARSE_ERROR) {
@@ -751,13 +808,24 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
                         break;
                     case '(':
                         new_s_expr = create_s_expr(NULL, NULL);
-                        stack->se->car = install_list(temp_list_area, \
-                                                      new_s_expr);
+                        stack->se->car = install_list(temp_env, new_s_expr);
                         se_stack_push(&stack, new_s_expr);
                         break;
                     case ')':
-                        state = PARSE_ERROR;
+                        /*state = PARSE_ERROR;
                         error_code = PARSE_ERROR_EMPTY_PAREN;
+                        break;*/
+                        if (stack == NULL) {
+                            state = PARSE_ERROR;
+                            error_code = PARSE_ERROR_UNBAL_PAREN;
+                        } else {
+                            se_stack_pop(&stack);
+                            while (stack != NULL && stack->se->cdr != NULL) {
+                                se_stack_pop(&stack);
+                            }
+                            state = (stack == NULL) ? PARSE_FINISH : \
+                                                      PARSE_READY;
+                        }
                         break;
                     default:
                         symbol_start = curr;
@@ -772,13 +840,11 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
                     case '(':
                         // create the next backbone node
                         new_s_expr = create_s_expr(NULL, NULL);
-                        stack->se->cdr = install_list(temp_list_area, \
-                                                      new_s_expr);
+                        stack->se->cdr = install_list(temp_env, new_s_expr);
                         se_stack_push(&stack, new_s_expr);
                         // create the new s-expression's initial node
                         new_s_expr = create_s_expr(NULL, NULL);
-                        stack->se->car = install_list(temp_list_area, \
-                                                      new_s_expr);
+                        stack->se->car = install_list(temp_env, new_s_expr);
                         se_stack_push(&stack, new_s_expr);
                         state = PARSE_NEW_SEXPR;
                         break;
@@ -798,7 +864,7 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
                     default:
                         symbol_start = curr;
                         se_stack_push(&stack, create_s_expr(NULL, NULL));
-                        stack->next->se->cdr = install_list(temp_list_area, \
+                        stack->next->se->cdr = install_list(temp_env, \
                                                             stack->se);
                         state = PARSE_READ_SYMBOL;
                         break;
@@ -808,8 +874,8 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
                 switch (str[curr]) {
                     case ' ':
                         // update the current backbone node
-                        new_tp = install_symbol_substring(st, \
-                                                          temp_symbol_table, \
+                        new_tp = install_symbol_substring(env, \
+                                                          temp_env, \
                                                           str, \
                                                           symbol_start, \
                                                           curr);
@@ -818,28 +884,26 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
                         break;
                     case '(':
                         // update the current backbone node
-                        new_tp = install_symbol_substring(st, \
-                                                          temp_symbol_table, \
+                        new_tp = install_symbol_substring(env, \
+                                                          temp_env, \
                                                           str, \
                                                           symbol_start, \
                                                           curr);
                         stack->se->car = new_tp;
                         // create the next backbone node
                         new_s_expr = create_s_expr(NULL, NULL);
-                        stack->se->cdr = install_list(temp_list_area, \
-                                                      new_s_expr);
+                        stack->se->cdr = install_list(temp_env, new_s_expr);
                         se_stack_push(&stack, new_s_expr);
                         // create the new s-expression's initial node
                         new_s_expr = create_s_expr(NULL, NULL);
-                        stack->se->car = install_list(temp_list_area, \
-                                                      new_s_expr);
+                        stack->se->car = install_list(temp_env, new_s_expr);
                         se_stack_push(&stack, new_s_expr);
                         state = PARSE_NEW_SEXPR;
                         break;
                     case ')':
                         // update the current backbone node
-                        new_tp = install_symbol_substring(st, \
-                                                          temp_symbol_table, \
+                        new_tp = install_symbol_substring(env, \
+                                                          temp_env, \
                                                           str, \
                                                           symbol_start, \
                                                           curr);
@@ -884,15 +948,16 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
         }
         curr++;
     }
-    if (stack != NULL) {
+    if (state != PARSE_ERROR && stack != NULL) {
         state = PARSE_ERROR;
         error_code = PARSE_ERROR_UNBAL_PAREN;
     }
     if (error_code == PARSE_ERROR_NONE) {
-        merge_list_areas(la, temp_list_area);
-        free(temp_list_area);
-        merge_symbol_tables(st, temp_symbol_table);
-        free(temp_symbol_table);
+        merge_list_areas(env->list_area, temp_env->list_area);
+        free(temp_env->list_area);
+        merge_symbol_tables(env->symbol_table, temp_env->symbol_table);
+        free(temp_env->symbol_table);
+        free(temp_env);
     } else {
         while (stack != NULL) {
             s_expr_storage* stack_temp = stack;
@@ -900,21 +965,22 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
             // s-expressions pointed to on the stack are accessible from head
             free(stack_temp);
         }
-        sym_tab_node* symbol_curr = temp_symbol_table->head;
+        sym_tab_node* symbol_curr = temp_env->symbol_table->head;
         while (symbol_curr != NULL) {
             sym_tab_node* symbol_temp = symbol_curr;
             symbol_curr = symbol_curr->next;
             free(symbol_temp);
         }
-        free(temp_symbol_table);
-        s_expr_storage* list_curr = temp_list_area->head;
+        free(temp_env->symbol_table);
+        s_expr_storage* list_curr = temp_env->list_area->head;
         while (list_curr != NULL) {
             s_expr_storage* list_temp = list_curr;
             list_curr = list_curr->next;
             delete_s_expr(list_temp->se);
             free(list_temp);
         }
-        free(temp_list_area);
+        free(temp_env->list_area);
+        free(temp_env);
         delete_s_expr(head);
         head = create_s_expr(create_error(error_code), NULL);
     }
@@ -922,7 +988,7 @@ s_expr* parse(char str[], Symbol_Table* st, List_Area* la) {
 }
 
 // forward declaration
-typed_ptr* evaluate(const s_expr* se, Symbol_Table* st, List_Area* la);
+typed_ptr* evaluate(const s_expr* se, environment* env);
 
 // Evaluates an s-expression whose car is a built-in function in the set
 //   {BUILTIN_xxx | xxx in {ADD, MUL, SUB, DIV}}.
@@ -935,7 +1001,7 @@ typed_ptr* evaluate(const s_expr* se, Symbol_Table* st, List_Area* la);
 // In either case, the returned typed_ptr is the caller's responsibility to
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
-typed_ptr* eval_arithmetic(const s_expr* se, Symbol_Table* st, List_Area* la) {
+typed_ptr* eval_arithmetic(const s_expr* se, environment* env) {
     builtin_code operation = se->car->ptr;
     typed_ptr* result = create_typed_ptr(TYPE_NUM, \
                                          (operation == BUILTIN_ADD || \
@@ -951,8 +1017,8 @@ typed_ptr* eval_arithmetic(const s_expr* se, Symbol_Table* st, List_Area* la) {
             free(result);
             result = create_error(EVAL_ERROR_NULL_SEXPR);
         } else {
-            s_expr* cdr_se = sexpr_lookup(la, se->cdr);
-            typed_ptr* curr_arg = evaluate(cdr_se, st, la);
+            s_expr* cdr_se = sexpr_lookup(env, se->cdr);
+            typed_ptr* curr_arg = evaluate(cdr_se, env);
             if (curr_arg->type == TYPE_ERROR) { // pass errors through
                 free(result);
                 result = curr_arg;
@@ -1003,18 +1069,18 @@ typed_ptr* eval_arithmetic(const s_expr* se, Symbol_Table* st, List_Area* la) {
                 }
             }
             if (result->type != TYPE_ERROR) {
-                se = sexpr_lookup(la, se->cdr);
+                se = sexpr_lookup(env, se->cdr);
                 if (se == NULL) {
                     free(result);
                     result = create_error(EVAL_ERROR_NULL_SEXPR);
                 }
                 while (se->cdr != NULL) {
-                    s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                    s_expr* cdr_se = sexpr_lookup(env, se->cdr);
                     if (cdr_se == NULL) {
                         free(result);
                         result = create_error(EVAL_ERROR_NULL_SEXPR);
                     } else {
-                        typed_ptr* curr_arg = evaluate(cdr_se, st, la);
+                        typed_ptr* curr_arg = evaluate(cdr_se, env);
                         if (curr_arg->type == TYPE_ERROR) { // pass errors on
                             free(result);
                             result = curr_arg;
@@ -1072,14 +1138,14 @@ typed_ptr* eval_arithmetic(const s_expr* se, Symbol_Table* st, List_Area* la) {
 // In either case, the returned typed_ptr is the caller's responsibility to
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
-typed_ptr* eval_comparison(const s_expr* se, Symbol_Table* st, List_Area* la) {
+typed_ptr* eval_comparison(const s_expr* se, environment* env) {
     builtin_code comparison = se->car->ptr;
-    s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+    s_expr* cdr_se = sexpr_lookup(env, se->cdr);
     typed_ptr* result = NULL;
     if (cdr_se == NULL || cdr_se->cdr == NULL) {
         result = create_error(EVAL_ERROR_FEW_ARGS);
     } else {
-        typed_ptr* eval_arg = evaluate(cdr_se, st, la);
+        typed_ptr* eval_arg = evaluate(cdr_se, env);
         if (eval_arg->type == TYPE_ERROR) {
             result = eval_arg;
         } else if (eval_arg->type != TYPE_NUM) {
@@ -1087,11 +1153,11 @@ typed_ptr* eval_comparison(const s_expr* se, Symbol_Table* st, List_Area* la) {
             result = create_error(EVAL_ERROR_BAD_ARG_TYPE);
         } else {
             unsigned int last_num = eval_arg->ptr;
-            cdr_se = sexpr_lookup(la, cdr_se->cdr);
+            cdr_se = sexpr_lookup(env, cdr_se->cdr);
             result = create_typed_ptr(TYPE_BOOL, 1);
             while (cdr_se != NULL) {
                 free(eval_arg);
-                eval_arg = evaluate(cdr_se, st, la);
+                eval_arg = evaluate(cdr_se, env);
                 if (eval_arg->type == TYPE_ERROR) {
                     free(result);
                     result = eval_arg;
@@ -1125,12 +1191,15 @@ typed_ptr* eval_comparison(const s_expr* se, Symbol_Table* st, List_Area* la) {
                     }
                     result->ptr = result->ptr && intermediate_truth;
                 }
-                cdr_se = sexpr_lookup(la, cdr_se->cdr);
+                cdr_se = sexpr_lookup(env, cdr_se->cdr);
             }
         }
     }
     return result;
 }
+
+// forward declaration
+typed_ptr* eval_lambda(const s_expr* se, environment* env);
 
 // Evaluates an s-expression whose car is the built-in special form
 //   BUILTIN_DEFINE.
@@ -1144,24 +1213,61 @@ typed_ptr* eval_comparison(const s_expr* se, Symbol_Table* st, List_Area* la) {
 // In either case, the returned typed_ptr is the caller's responsibility to
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
-typed_ptr* eval_define(const s_expr* se, Symbol_Table* st, List_Area* la) {
+typed_ptr* eval_define(const s_expr* se, environment* env) {
     typed_ptr* result = NULL;
-    s_expr* cdr_se = sexpr_lookup(la, se->cdr);
-    s_expr* cddr_se = sexpr_lookup(la, cdr_se->cdr);
+    s_expr* cdr_se = sexpr_lookup(env, se->cdr);
+    s_expr* cddr_se = sexpr_lookup(env, cdr_se->cdr);
     if (cdr_se == NULL || cddr_se == NULL) {
         result = create_error(EVAL_ERROR_FEW_ARGS);
     } else if (cddr_se->cdr != NULL) {
         result = create_error(EVAL_ERROR_MANY_ARGS);
+    } else if (cdr_se->car->type == TYPE_SEXPR) {
+        s_expr* cdar_se = sexpr_lookup(env, cdr_se->car);
+        if (cdar_se->car == NULL || cdar_se->car->type != TYPE_SYM) {
+            result = create_error(EVAL_ERROR_BAD_SYNTAX);
+        } else {
+            typed_ptr* fn_sym = cdar_se->car;
+            sym_tab_node* symbol_entry = symbol_lookup_index(env, fn_sym->ptr);
+            if (symbol_entry == NULL) {
+                result = create_error(EVAL_ERROR_UNDEF_SYM);
+            } else {
+                typed_ptr* arg_list = cdar_se->cdr;
+                if (arg_list == NULL) {
+                    arg_list = create_typed_ptr(TYPE_SEXPR, EMPTY_LIST_IDX);
+                }
+                typed_ptr* fn_body = cdr_se->cdr;
+                // create a fake lambda expression and execute that to produce
+                // the function
+                sym_tab_node* lambda = symbol_lookup_string(env, "lambda");
+                typed_ptr* lambda_ptr = create_typed_ptr(TYPE_SYM, \
+                                                         lambda->symbol_number);
+                s_expr* dummy_lambda_body = create_s_expr(arg_list, fn_body);
+                typed_ptr* dlb_list_ptr = install_list(env, dummy_lambda_body);
+                s_expr* dummy_lambda = create_s_expr(lambda_ptr, dlb_list_ptr);
+                typed_ptr* fn = eval_lambda(dummy_lambda, env);
+                free(dummy_lambda_body);
+                free(lambda_ptr);
+                free(dlb_list_ptr);
+                free(dummy_lambda);
+                if (fn->type == TYPE_ERROR) {
+                    result = fn;
+                } else {
+                    char* name = strdup(symbol_entry->symbol);
+                    blind_install_symbol(env, name, fn->type, fn->ptr);
+                    result = create_typed_ptr(TYPE_VOID, 0);
+                }
+            }
+        }
     } else if (cdr_se->car->type != TYPE_SYM) {
         result = create_error(EVAL_ERROR_NOT_ID);
     } else {
-        sym_tab_node* symbol_entry = symbol_lookup_index(st, cdr_se->car->ptr);
-        typed_ptr* eval_arg2 = evaluate(cddr_se, st, la);
+        sym_tab_node* symbol_entry = symbol_lookup_index(env, cdr_se->car->ptr);
+        typed_ptr* eval_arg2 = evaluate(cddr_se, env);
         if (eval_arg2->type == TYPE_ERROR) {
             result = eval_arg2;
         } else {
             char* name = strdup(symbol_entry->symbol);
-            result = install_symbol(st, name, eval_arg2->type, eval_arg2->ptr);
+            result = install_symbol(env, name, eval_arg2->type, eval_arg2->ptr);
             free(result);
             result = create_typed_ptr(TYPE_VOID, 0);
             free(eval_arg2);
@@ -1183,12 +1289,10 @@ typed_ptr* eval_define(const s_expr* se, Symbol_Table* st, List_Area* la) {
 // In either case, the returned typed_ptr is the caller's responsibility to
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
-typed_ptr* eval_set_variable(const s_expr* se, \
-                             Symbol_Table* st, \
-                             List_Area* la) {
+typed_ptr* eval_set_variable(const s_expr* se, environment* env) {
     typed_ptr* result = NULL;
-    s_expr* cdr_se = sexpr_lookup(la, se->cdr);
-    s_expr* cddr_se = sexpr_lookup(la, cdr_se->cdr);
+    s_expr* cdr_se = sexpr_lookup(env, se->cdr);
+    s_expr* cddr_se = sexpr_lookup(env, cdr_se->cdr);
     if (cdr_se == NULL || cddr_se == NULL) {
         result = create_error(EVAL_ERROR_FEW_ARGS);
     } else if (cddr_se->cdr != NULL) {
@@ -1196,16 +1300,16 @@ typed_ptr* eval_set_variable(const s_expr* se, \
     } else if (cdr_se->car->type != TYPE_SYM) {
         result = create_error(EVAL_ERROR_NOT_ID);
     } else {
-        sym_tab_node* symbol_entry = symbol_lookup_index(st, cdr_se->car->ptr);
+        sym_tab_node* symbol_entry = symbol_lookup_index(env, cdr_se->car->ptr);
         if (symbol_entry->type == TYPE_UNDEF) {
             result = create_error(EVAL_ERROR_UNDEF_SYM);
         } else {
-            typed_ptr* eval_arg2 = evaluate(cddr_se, st, la);
+            typed_ptr* eval_arg2 = evaluate(cddr_se, env);
             if (eval_arg2->type == TYPE_ERROR) {
                 result = eval_arg2;
             } else {
                 char* name = strdup(symbol_entry->symbol);
-                result = install_symbol(st, name, eval_arg2->type, eval_arg2->ptr);
+                result = install_symbol(env, name, eval_arg2->type, eval_arg2->ptr);
                 free(result);
                 result = create_typed_ptr(TYPE_VOID, 0);
                 free(eval_arg2);
@@ -1224,21 +1328,21 @@ typed_ptr* eval_set_variable(const s_expr* se, \
 // In either case, the returned typed_ptr is the caller's responsibility to
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
-typed_ptr* eval_car_cdr(const s_expr* se, Symbol_Table* st, List_Area* la) {
+typed_ptr* eval_car_cdr(const s_expr* se, environment* env) {
     typed_ptr* result = NULL;
-    s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+    s_expr* cdr_se = sexpr_lookup(env, se->cdr);
     if (cdr_se == NULL) {
         result = create_error(EVAL_ERROR_FEW_ARGS);
     } else if (cdr_se->cdr != NULL) {
         result = create_error(EVAL_ERROR_MANY_ARGS);
     } else {
-        typed_ptr* eval_arg1 = evaluate(cdr_se, st, la);
+        typed_ptr* eval_arg1 = evaluate(cdr_se, env);
         if (eval_arg1->type != TYPE_SEXPR || \
             eval_arg1->ptr == EMPTY_LIST_IDX) {
             result = create_error(EVAL_ERROR_BAD_ARG_TYPE);
         } else {
-            s_expr* arg1_se = sexpr_lookup(la, eval_arg1);
-            if (symbol_lookup_index(st, se->car->ptr)->value == BUILTIN_CAR) {
+            s_expr* arg1_se = sexpr_lookup(env, eval_arg1);
+            if (symbol_lookup_index(env, se->car->ptr)->value == BUILTIN_CAR) {
                 result = copy_typed_ptr(arg1_se->car);
             } else {
                 result = copy_typed_ptr(arg1_se->cdr);
@@ -1258,15 +1362,15 @@ typed_ptr* eval_car_cdr(const s_expr* se, Symbol_Table* st, List_Area* la) {
 // In either case, the returned typed_ptr is the caller's responsibility to
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
-typed_ptr* eval_list_pred(const s_expr* se, Symbol_Table* st, List_Area* la) {
+typed_ptr* eval_list_pred(const s_expr* se, environment* env) {
     typed_ptr* result = NULL;
-    s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+    s_expr* cdr_se = sexpr_lookup(env, se->cdr);
     if (cdr_se == NULL) {
         result = create_error(EVAL_ERROR_FEW_ARGS);
     } else if (cdr_se->cdr != NULL) {
         result = create_error(EVAL_ERROR_MANY_ARGS);
     } else {
-        typed_ptr* eval_arg1 = evaluate(cdr_se, st, la);
+        typed_ptr* eval_arg1 = evaluate(cdr_se, env);
         if (eval_arg1->type == TYPE_ERROR) {
             result = eval_arg1;
         } else {
@@ -1275,7 +1379,7 @@ typed_ptr* eval_list_pred(const s_expr* se, Symbol_Table* st, List_Area* la) {
                 if (eval_arg1->ptr == EMPTY_LIST_IDX) {
                     result->ptr = 1;
                 } else {
-                    s_expr* curr = sexpr_lookup(la, eval_arg1);
+                    s_expr* curr = sexpr_lookup(env, eval_arg1);
                     while (curr != NULL) {
                         if (curr->cdr->type != TYPE_SEXPR) {
                             break;
@@ -1284,7 +1388,7 @@ typed_ptr* eval_list_pred(const s_expr* se, Symbol_Table* st, List_Area* la) {
                             result->ptr = 1;
                             break;
                         }
-                        curr = sexpr_lookup(la, curr->cdr);
+                        curr = sexpr_lookup(env, curr->cdr);
                     }
                 }
             }
@@ -1305,18 +1409,15 @@ typed_ptr* eval_list_pred(const s_expr* se, Symbol_Table* st, List_Area* la) {
 // In either case, the returned typed_ptr is the caller's responsibility to
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
-typed_ptr* eval_atom_pred(const s_expr* se, \
-                          Symbol_Table* st, \
-                          List_Area* la, \
-                          type t) {
+typed_ptr* eval_atom_pred(const s_expr* se, environment* env, type t) {
     typed_ptr* result = NULL;
-    s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+    s_expr* cdr_se = sexpr_lookup(env, se->cdr);
     if (cdr_se == NULL) {
         result = create_error(EVAL_ERROR_FEW_ARGS);
     } else if (cdr_se->cdr != NULL) {
         result = create_error(EVAL_ERROR_MANY_ARGS);
     } else {
-        typed_ptr* eval_arg1 = evaluate(cdr_se, st, la);
+        typed_ptr* eval_arg1 = evaluate(cdr_se, env);
         if (eval_arg1->type == TYPE_ERROR) {
             result = eval_arg1;
         } else {
@@ -1337,25 +1438,23 @@ typed_ptr* eval_atom_pred(const s_expr* se, \
 // In either case, the returned typed_ptr is the caller's responsibility to
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
-typed_ptr* eval_list_construction(const s_expr* se, \
-                                  Symbol_Table* st, \
-                                  List_Area* la) {
+typed_ptr* eval_list_construction(const s_expr* se, environment* env) {
     typed_ptr* result = NULL;
     if (se->cdr == NULL) {
         result = create_typed_ptr(TYPE_SEXPR, EMPTY_LIST_IDX);
     } else {
-        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
-        typed_ptr* new_car = evaluate(cdr_se, st, la);
+        s_expr* cdr_se = sexpr_lookup(env, se->cdr);
+        typed_ptr* new_car = evaluate(cdr_se, env);
         s_expr* last_node = NULL;
         typed_ptr* new_cdr = create_typed_ptr(TYPE_SEXPR, EMPTY_LIST_IDX);
         s_expr* curr_node = create_s_expr(new_car, new_cdr);
-        result = install_list(la, curr_node);
+        result = install_list(env, curr_node);
         while (cdr_se->cdr != NULL) {
-            cdr_se = sexpr_lookup(la, cdr_se->cdr);
-            new_car = evaluate(cdr_se, st, la);
+            cdr_se = sexpr_lookup(env, cdr_se->cdr);
+            new_car = evaluate(cdr_se, env);
             last_node = curr_node;
             curr_node = create_s_expr(new_car, last_node->cdr);
-            last_node->cdr = install_list(la, curr_node);
+            last_node->cdr = install_list(env, curr_node);
         }
     }
     return result;
@@ -1383,46 +1482,350 @@ bool is_false_literal(typed_ptr* tp) {
 // In either case, the returned typed_ptr is the caller's responsibility to
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
-typed_ptr* eval_cond(const s_expr* se, Symbol_Table* st, List_Area* la) {
+typed_ptr* eval_cond(const s_expr* se, environment* env) {
     typed_ptr* eval_interm = create_typed_ptr(TYPE_VOID, 0);
-    s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+    s_expr* cdr_se = sexpr_lookup(env, se->cdr);
     bool pred_true = false;
     s_expr* then_bodies = NULL;
     while (cdr_se != NULL && pred_true == false) {
-        s_expr* cond_clause = sexpr_lookup(la, cdr_se->car);
+        s_expr* cond_clause = sexpr_lookup(env, cdr_se->car);
         typed_ptr* pred = cond_clause->car;
         if (pred->type == TYPE_SYM && \
-            !strcmp(symbol_lookup_index(st, pred->ptr)->symbol, "else")) {
+            !strcmp(symbol_lookup_index(env, pred->ptr)->symbol, "else")) {
             if (cdr_se->cdr != NULL) {
                 free(eval_interm);
                 eval_interm = create_error(EVAL_ERROR_NONTERMINAL_ELSE);
                 then_bodies = NULL;
             } else {
-                then_bodies = sexpr_lookup(la, cond_clause->cdr);
+                then_bodies = sexpr_lookup(env, cond_clause->cdr);
             }
             pred_true = true;
         } else {
             free(eval_interm);
-            s_expr* pred_se = sexpr_lookup(la, pred);
-            eval_interm = evaluate(pred_se, st, la);
+            s_expr* pred_se = sexpr_lookup(env, pred);
+            eval_interm = evaluate(pred_se, env);
             if (eval_interm->type == TYPE_ERROR) {
                 then_bodies = NULL;
                 pred_true = true;
             } else if (!is_false_literal(eval_interm)) {
-                then_bodies = sexpr_lookup(la, cond_clause->cdr);
+                then_bodies = sexpr_lookup(env, cond_clause->cdr);
                 pred_true = true;
             }
         }
-        cdr_se = sexpr_lookup(la, cdr_se->cdr);
+        cdr_se = sexpr_lookup(env, cdr_se->cdr);
     }
     // then evaluate the then-bodies and return the last one
     // (or eval_pred if there are none)
     while (then_bodies != NULL) {
         free(eval_interm);
-        eval_interm = evaluate(then_bodies, st, la);
-        then_bodies = sexpr_lookup(la, then_bodies->cdr);
+        eval_interm = evaluate(then_bodies, env);
+        then_bodies = sexpr_lookup(env, then_bodies->cdr);
     }
     return eval_interm;
+}
+
+void delete_st_node_list(sym_tab_node* stn) {
+    while (stn != NULL) {
+        sym_tab_node* next = stn->next;
+        free(stn->symbol);
+        free(stn);
+        stn = next;
+    }
+    return;
+}
+
+bool is_empty_list(s_expr* se) {
+    if (se == NULL) {
+        printf("cannot determine if NULL se is empty list\n");
+        exit(-1);
+    } else {
+        return (se->car == NULL && se->cdr == NULL);
+    }
+}
+
+// At first, we will restrict user-defined functions to have a finite number of
+//   parameters.
+// tp is expected to be a pointer to an s-expression. If it's empty, NULL is
+//   returned.
+// If any element of the s-expression pointed to by tp is not a symbol, a
+//   single sym_tab_node containing an error code is returned.
+// Otherwise, a list of sym_tab_nodes is returned, one for each parameter
+//   symbol discovered.
+// In either case, these sym_tab_nodes are safe to free (and they are the
+//   caller's responsibility to free).
+sym_tab_node* collect_parameters(typed_ptr* tp, environment* env) {
+    sym_tab_node* arg_list = NULL;
+    s_expr* se = sexpr_lookup(env, tp);
+    if (is_empty_list(se)) {
+        return arg_list;
+    }
+    if (se->car->type != TYPE_SYM) {
+        arg_list = create_st_node(0, NULL, TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE);
+    } else {
+        char* name = symbol_lookup_index(env, se->car->ptr)->symbol;
+        arg_list = create_st_node(0, strdup(name), TYPE_UNDEF, 0);
+        sym_tab_node* curr = arg_list;
+        while (se->cdr != NULL) {
+            if (se->cdr->type != TYPE_SEXPR) {
+                delete_st_node_list(arg_list);
+                arg_list = create_st_node(0, NULL, TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE);
+                break;
+            }
+            se = sexpr_lookup(env, se->cdr);
+            if (se->car->type != TYPE_SYM) {
+                delete_st_node_list(arg_list);
+                arg_list = create_st_node(0, NULL, TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE);
+                break;
+            }
+            name = symbol_lookup_index(env, se->car->ptr)->symbol;
+            curr->next = create_st_node(0, strdup(name), TYPE_UNDEF, 0);
+            curr = curr->next;
+        }
+    }
+    return arg_list;
+}
+
+// The new environment contains a deep copy of the old environment's symbol
+//   table. Symbol table numbers are preserved (so pointers into it are still
+//   valid).
+// However, because the list area and function table are currently only added to
+//   (not modified or deleted from), their pointers are simply copied over).
+// To destroy this new environment, delete_environment() below should be used,
+//   to ensure it's done safely.
+environment* copy_environment(environment* env) {
+    environment* new_env = create_environment(0, 0, 0);
+    sym_tab_node* curr_stn = env->symbol_table->head;
+    while (curr_stn != NULL) {
+        sym_tab_node* new_stn = create_st_node(curr_stn->symbol_number, \
+                                               strdup(curr_stn->symbol), \
+                                               curr_stn->type, \
+                                               curr_stn->value);
+        new_stn->next = new_env->symbol_table->head;
+        new_env->symbol_table->head = new_stn;
+        curr_stn = curr_stn->next;
+    }
+    // risky, but currently ok, because the list area and function tables are
+    // only added to, not modified or deleted from
+    free(new_env->list_area);
+    new_env->list_area = env->list_area;
+    free(new_env->function_table);
+    new_env->function_table = env->function_table;
+    return new_env;
+}
+
+// The arg list and closure environment are presumed to be unique to this
+//   function table node, but the body points to an s-expression that is
+//   represented elsewhere (and so cannot be safely freed using this pointer).
+fun_tab_node* create_ft_node(unsigned int function_number, \
+                             sym_tab_node* arg_list, \
+                             environment* closure_env, \
+                             typed_ptr* body) {
+    fun_tab_node* new_ftn = malloc(sizeof(fun_tab_node));
+    if (new_ftn == NULL) {
+        fprintf(stderr, "malloc failed in create_fn_node()\n");
+        exit(-1);
+    }
+    new_ftn->function_number = function_number;
+    new_ftn->arg_list = arg_list;
+    new_ftn->closure_env = closure_env;
+    new_ftn->body = body;
+    new_ftn->next = NULL;
+    return new_ftn;
+}
+
+// The arg list and closure environment are now the (general) environment's
+//   concern. The body pointed to by the typed pointer remains someone else's
+//   problem, and won't be freed by the environment.
+// The typed pointer returned is the caller's responsibility to free.
+typed_ptr* install_function(environment* env, \
+                            sym_tab_node* arg_list, \
+                            environment* closure_env, \
+                            typed_ptr* body) {
+    unsigned int num = env->function_table->length;
+    fun_tab_node* new_ftn = create_ft_node(num, arg_list, closure_env, body);
+    new_ftn->next = env->function_table->head;
+    env->function_table->head = new_ftn;
+    env->function_table->length++;
+    // and it's now also in closure_env, because the two environments share
+    // list areas and function pointers
+    return create_typed_ptr(TYPE_USER_FN, num);
+}
+
+// Evaluates an s-expression whose car is the built-in special form
+//   BUILTIN_LAMBDA.
+// This special form takes two arguments.
+// The first argument must be a list (nested s-expression) of symbols, which
+//   become the parameters of the lambda. Anything else returns an error. This
+//   argument is not evaluated.
+// The second argument may be anything, and is not evaluated, but stored as the
+//   body of the lambda.
+// The function installed in the environment, and its associated data, is now
+//   the environment's responsibility.
+// The typed pointer returned is the caller's responsibility to free, and can
+//   safely be (shallow) freed.
+typed_ptr* eval_lambda(const s_expr* se, environment* env) {
+    typed_ptr* result = NULL;
+    s_expr* cdr_se = sexpr_lookup(env, se->cdr);
+    s_expr* cddr_se = sexpr_lookup(env, cdr_se->cdr);
+    if (cdr_se == NULL || cddr_se == NULL) {
+        result = create_error(EVAL_ERROR_FEW_ARGS);
+    } else if (cddr_se->cdr != NULL) {
+        result = create_error(EVAL_ERROR_MANY_ARGS);
+    } else if (cdr_se->car->type != TYPE_SEXPR) {
+        result = create_error(EVAL_ERROR_BAD_ARG_TYPE);
+    } else {
+        sym_tab_node* arg_list = collect_parameters(cdr_se->car, env);
+        if (arg_list != NULL && arg_list->type == TYPE_ERROR) {
+            result = create_error(arg_list->value);
+            delete_st_node_list(arg_list);
+        } else {
+            environment* closure_env = copy_environment(env);
+            typed_ptr* body = copy_typed_ptr(cddr_se->car);
+            result = install_function(env, arg_list, closure_env, body);
+        }
+    }
+    return result;
+}
+
+// The fun_tab_node returned shouldn't (usually) be freed.
+fun_tab_node* function_lookup(environment* env, typed_ptr* tp) {
+    fun_tab_node* curr = env->function_table->head;
+    while (curr != NULL) {
+        if (curr->function_number == tp->ptr) {
+            return curr;
+        }
+        curr = curr->next;
+    }
+    return curr;
+}
+
+// If the fun_tab_node's arg list is of different length than the s-expression
+//   pointed to by the args typed pointer, an error is returned in the first
+//   sym_tab_node.
+// Otherwise, the parameters in the arg list are bound to the values produced
+//   when evaluating the members of the args s-expression; any error during
+//   evaluation aborts this process and is passed back out in the first
+//   sym_tab_node.
+// If no errors are encountered, the sym_tab_node list contains the bound
+//   arguments.
+// In all cases, the sym_tab_node list returned is the caller's responsibility
+//   to free, and may be safely (shallow) freed.
+sym_tab_node* bind_args(environment* env, fun_tab_node* ftn, typed_ptr* args) {
+    if (ftn->arg_list == NULL && args == NULL) {
+        return NULL;
+    } else if (args == NULL) {
+        return create_st_node(0, NULL, TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+    } else if (ftn->arg_list == NULL) {
+        return create_st_node(0, NULL, TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+    } else {
+        sym_tab_node* curr_param = ftn->arg_list;
+        s_expr* arg_se = sexpr_lookup(env, args);
+        typed_ptr* eval_arg = evaluate(arg_se, env);
+        sym_tab_node* bound_args = NULL;
+        if (eval_arg->type == TYPE_ERROR) {
+            bound_args = create_st_node(0, \
+                                        NULL, \
+                                        TYPE_ERROR, \
+                                        eval_arg->ptr);
+        } else {
+            bound_args = create_st_node(0, \
+                                        strdup(curr_param->symbol), \
+                                        eval_arg->type, \
+                                        eval_arg->ptr);
+            curr_param = curr_param->next;
+            arg_se = sexpr_lookup(env, arg_se->cdr);
+            while (arg_se != NULL) { // which would be the empty list
+                if (curr_param == NULL) {
+                    delete_st_node_list(bound_args);
+                    bound_args = create_st_node(0, NULL, TYPE_ERROR, EVAL_ERROR_MANY_ARGS);
+                    break;
+                }
+                free(eval_arg);
+                eval_arg = evaluate(arg_se, env);
+                if (eval_arg->type == TYPE_ERROR) {
+                    delete_st_node_list(bound_args);
+                    bound_args = create_st_node(0, NULL, TYPE_ERROR, eval_arg->ptr);
+                    break;
+                }
+                sym_tab_node* new_bound_arg = create_st_node(0, \
+                                                             strdup(curr_param->symbol), \
+                                                             eval_arg->type, \
+                                                             eval_arg->ptr);
+                new_bound_arg->next = bound_args;
+                bound_args = new_bound_arg;
+                curr_param = curr_param->next;
+                arg_se = sexpr_lookup(env, arg_se->cdr);
+            }
+            if (curr_param != NULL) {
+                delete_st_node_list(bound_args);
+                bound_args = create_st_node(0, NULL, TYPE_ERROR, EVAL_ERROR_FEW_ARGS);
+            }
+        }
+        free(eval_arg);
+        return bound_args;
+    }
+}
+
+// Reads a list of bound arguments into an environment, returning the result.
+// The input environment is not modified.
+// The returned environment is the caller's responsibility to delete, using
+//   delete_environment() below.
+environment* make_eval_env(environment* env, sym_tab_node* bound_args) {
+    environment* eval_env = copy_environment(env);
+    sym_tab_node* curr_arg = bound_args;
+    while (curr_arg != NULL) {
+        sym_tab_node* found = symbol_lookup_string(eval_env, curr_arg->symbol);
+        if (found == NULL) {
+            fprintf(stderr, "parameter name not found - something is wrong\n");
+            exit(-1);
+        } else {
+            found->type = curr_arg->type;
+            found->value = curr_arg->value;
+        }
+        curr_arg = curr_arg->next;
+    }
+    return eval_env;
+}
+
+// Safely deletes an environment that shares a list area and function table with
+//   other environments.
+void delete_env(environment* env) {
+    sym_tab_node* curr = env->symbol_table->head;
+    while (curr != NULL) {
+        sym_tab_node* next = curr->next;
+        free(curr->symbol);
+        free(curr);
+        curr = next;
+    }
+    free(env->symbol_table);
+    free(env);
+    return;
+}
+// Evaluates an s-expression whose car has type TYPE_USER_FN.
+// The s-expression's cdr must contain the proper number of arguments for the
+//   user function being invoked. Any mismatch, or error arising during
+//   evaluation of any of the members of the cdr, returns an error.
+// Returns a typed_ptr containing an error code (if any argument evaluation
+//   failed, or if an error arising during evaluation of the function body) or
+//   the result of evaluating the function body using the provided arguments.
+// In either case, the returned typed_ptr is the caller's responsibility to
+//   free, and is safe to (shallow) free without harm to the symbol table, list
+//   area, or any other object.
+typed_ptr* eval_user_function(const s_expr* se, environment* env) {
+    typed_ptr* result = NULL;
+    fun_tab_node* ftn = function_lookup(env, se->car);
+    sym_tab_node* bound_args = bind_args(env, ftn, se->cdr);
+    if (bound_args != NULL && bound_args->type == TYPE_ERROR) {
+        result = create_error(bound_args->value);
+    } else {
+        environment* bound_env = make_eval_env(ftn->closure_env, bound_args);
+        s_expr* super_se = create_s_expr(ftn->body, NULL);
+        result = evaluate(super_se, bound_env);
+        free(super_se);
+        delete_env(bound_env);
+    }
+    delete_st_node_list(bound_args);
+    return result;
 }
 
 // Evaluates an s-expression of any kind within the context of the provided
@@ -1432,7 +1835,7 @@ typed_ptr* eval_cond(const s_expr* se, Symbol_Table* st, List_Area* la) {
 // In either case, the returned typed_ptr is the caller's responsibility to
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
-typed_ptr* evaluate(const s_expr* se, Symbol_Table* st, List_Area* la) {
+typed_ptr* evaluate(const s_expr* se, environment* env) {
     typed_ptr* result = NULL;
     if (se == NULL) {
         result = create_error(EVAL_ERROR_NULL_SEXPR);
@@ -1452,75 +1855,75 @@ typed_ptr* evaluate(const s_expr* se, Symbol_Table* st, List_Area* la) {
                     case BUILTIN_MUL: //    -|
                     case BUILTIN_SUB: //    -|
                     case BUILTIN_DIV: //     v
-                        result = eval_arithmetic(se, st, la);
+                        result = eval_arithmetic(se, env);
                         break;
                     case BUILTIN_DEFINE:
-                        result = eval_define(se, st, la);
+                        result = eval_define(se, env);
                         break;
                     case BUILTIN_SETVAR:
-                        result = eval_set_variable(se, st, la);
+                        result = eval_set_variable(se, env);
                         break;
                     case BUILTIN_EXIT:
                         result = create_error(EVAL_ERROR_EXIT);
                         break;
                     case BUILTIN_CONS: {
-                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
-                        s_expr* cddr_se = sexpr_lookup(la, cdr_se->cdr);
+                        s_expr* cdr_se = sexpr_lookup(env, se->cdr);
+                        s_expr* cddr_se = sexpr_lookup(env, cdr_se->cdr);
                         if (cdr_se == NULL || cddr_se == NULL) {
                             result = create_error(EVAL_ERROR_FEW_ARGS);
                         } else if (cddr_se->cdr != NULL) {
                             result = create_error(EVAL_ERROR_MANY_ARGS);
                         } else {
-                            typed_ptr* new_car = evaluate(cdr_se, st, la);
-                            typed_ptr* new_cdr = evaluate(cddr_se, st, la);
-                            result = install_list(la, create_s_expr(new_car, \
-                                                                    new_cdr));
+                            typed_ptr* new_car = evaluate(cdr_se, env);
+                            typed_ptr* new_cdr = evaluate(cddr_se, env);
+                            result = install_list(env, create_s_expr(new_car, \
+                                                                     new_cdr));
                         }
                         break;
                     }
                     case BUILTIN_CAR: //    -|
                     case BUILTIN_CDR: //    -V
-                        result = eval_car_cdr(se, st, la);
+                        result = eval_car_cdr(se, env);
                         break;
                     case BUILTIN_LIST:
-                        result = eval_list_construction(se, st, la);
+                        result = eval_list_construction(se, env);
                         break;
                     case BUILTIN_AND: {
                         typed_ptr* eval_prev = create_typed_ptr(TYPE_BOOL, 1);
-                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        s_expr* cdr_se = sexpr_lookup(env, se->cdr);
                         while (cdr_se != NULL) {
                             free(eval_prev);
-                            eval_prev = evaluate(cdr_se, st, la);
+                            eval_prev = evaluate(cdr_se, env);
                             if (is_false_literal(eval_prev)) {
                                 break;
                             }
-                            cdr_se = sexpr_lookup(la, cdr_se->cdr);
+                            cdr_se = sexpr_lookup(env, cdr_se->cdr);
                         }
                         result = eval_prev;
                         break;
                     }
                     case BUILTIN_OR: {
                         typed_ptr* eval_prev = create_typed_ptr(TYPE_BOOL, 0);
-                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        s_expr* cdr_se = sexpr_lookup(env, se->cdr);
                         while (cdr_se != NULL) {
                             free(eval_prev);
-                            eval_prev = evaluate(cdr_se, st, la);
+                            eval_prev = evaluate(cdr_se, env);
                             if (!is_false_literal(eval_prev)) {
                                 break;
                             }
-                            cdr_se = sexpr_lookup(la, cdr_se->cdr);
+                            cdr_se = sexpr_lookup(env, cdr_se->cdr);
                         }
                         result = eval_prev;
                         break;
                     }
                     case BUILTIN_NOT: {
-                        s_expr* cdr_se = sexpr_lookup(la, se->cdr);
+                        s_expr* cdr_se = sexpr_lookup(env, se->cdr);
                         if (cdr_se == NULL) {
                             result = create_error(EVAL_ERROR_FEW_ARGS);
                         } else if (cdr_se->cdr != NULL) {
                             result = create_error(EVAL_ERROR_MANY_ARGS);
                         } else {
-                            result = evaluate(cdr_se, st, la);
+                            result = evaluate(cdr_se, env);
                             if (result->type != TYPE_ERROR) {
                                 if (is_false_literal(result)) {
                                     result->ptr = 1;
@@ -1533,29 +1936,32 @@ typed_ptr* evaluate(const s_expr* se, Symbol_Table* st, List_Area* la) {
                         break;
                     }
                     case BUILTIN_COND:
-                        result = eval_cond(se, st, la);
+                        result = eval_cond(se, env);
                         break;
                     case BUILTIN_LISTPRED:
-                        result = eval_list_pred(se, st, la);
+                        result = eval_list_pred(se, env);
                         break;
                     case BUILTIN_PAIRPRED:
-                        result = eval_atom_pred(se, st, la, TYPE_SEXPR);
+                        result = eval_atom_pred(se, env, TYPE_SEXPR);
                         break;
                     case BUILTIN_NUMBERPRED:
-                        result = eval_atom_pred(se, st, la, TYPE_NUM);
+                        result = eval_atom_pred(se, env, TYPE_NUM);
                         break;
                     case BUILTIN_BOOLPRED:
-                        result = eval_atom_pred(se, st, la, TYPE_BOOL);
+                        result = eval_atom_pred(se, env, TYPE_BOOL);
                         break;
                     case BUILTIN_VOIDPRED:
-                        result = eval_atom_pred(se, st, la, TYPE_VOID);
+                        result = eval_atom_pred(se, env, TYPE_VOID);
                         break;
                     case BUILTIN_NUMBEREQ: //    -|
                     case BUILTIN_NUMBERGT: //    -|
                     case BUILTIN_NUMBERLT: //    -|
                     case BUILTIN_NUMBERGE: //    -|
                     case BUILTIN_NUMBERLE: //    -V
-                        result = eval_comparison(se, st, la);
+                        result = eval_comparison(se, env);
+                        break;
+                    case BUILTIN_LAMBDA:
+                        result = eval_lambda(se, env);
                         break;
                     default:
                         result = create_error(EVAL_ERROR_UNDEF_BUILTIN);
@@ -1567,32 +1973,39 @@ typed_ptr* evaluate(const s_expr* se, Symbol_Table* st, List_Area* la) {
                 result = create_typed_ptr(se->car->type, se->car->ptr);
                 break;
             case TYPE_SEXPR: {
-                s_expr* se_to_eval = sexpr_lookup(la, se->car);
-                s_expr* caar_se = create_s_expr(se_to_eval->car, NULL);
-                typed_ptr* fn = evaluate(caar_se, st, la);
-                free(caar_se);
-                if (fn->type == TYPE_ERROR) {
-                    result = fn;
+                s_expr* se_to_eval = sexpr_lookup(env, se->car);
+                if (se_to_eval->car == NULL) { // se_to_eval is the empty s-expression
+                    result = create_error(EVAL_ERROR_MISSING_PROCEDURE);
                 } else {
-                    if (fn->type == TYPE_BUILTIN) { // will need to change later
-                        s_expr* temp_se = create_s_expr(fn, se_to_eval->cdr);
-                        result = evaluate(temp_se, st, la);
-                        free(temp_se);
+                    s_expr* caar_se = create_s_expr(se_to_eval->car, NULL);
+                    typed_ptr* fn = evaluate(caar_se, env);
+                    free(caar_se);
+                    if (fn->type == TYPE_ERROR) {
+                        result = fn;
                     } else {
-                        result = create_error(EVAL_ERROR_CAR_NOT_CALLABLE);
+                        if (fn->type == TYPE_BUILTIN || fn->type == TYPE_USER_FN) {
+                            s_expr* temp_se = create_s_expr(fn, se_to_eval->cdr);
+                            result = evaluate(temp_se, env);
+                            free(temp_se);
+                        } else {
+                            result = create_error(EVAL_ERROR_CAR_NOT_CALLABLE);
+                        }
+                        free(fn);
                     }
-                    free(fn);
                 }
                 break;
             }
             case TYPE_SYM:
-                result = value_lookup(st, se->car);
+                result = value_lookup(env, se->car);
                 break;
             case TYPE_BOOL:
                 result = create_typed_ptr(se->car->type, se->car->ptr);
                 break;
             case TYPE_VOID:
                 result = create_typed_ptr(TYPE_VOID, 0);
+                break;
+            case TYPE_USER_FN:
+                result = eval_user_function(se, env);
                 break;
             default:
                 result = create_error(EVAL_ERROR_UNDEF_TYPE);
@@ -1606,22 +2019,21 @@ typed_ptr* evaluate(const s_expr* se, Symbol_Table* st, List_Area* la) {
 int main() {
     bool exit = 0;
     char input[BUF_SIZE];
-    Symbol_Table* symbol_table = create_symbol_table(0);
-    setup_symbol_table(symbol_table);
-    List_Area* list_area = create_list_area(0);
-    setup_list_area(list_area);
+    environment* env = create_environment(0, 0, 0);
+    setup_environment(env);
     while (!exit) {
         get_input(PROMPT, input, BUF_SIZE);
-        s_expr* input_s_expr = parse(input, symbol_table, list_area);
-        if (input_s_expr->car->type == TYPE_ERROR) {
+        s_expr* input_s_expr = parse(input, env);
+        if (input_s_expr->car != NULL && \
+            input_s_expr->car->type == TYPE_ERROR) {
             print_error(input_s_expr->car);
             printf("\n");
             delete_s_expr(input_s_expr);
         } else {
-            typed_ptr* input_tp = install_list(list_area, input_s_expr);
+            typed_ptr* input_tp = install_list(env, input_s_expr);
             s_expr* super_se = create_s_expr(input_tp, NULL);
-            typed_ptr* result = evaluate(super_se, symbol_table, list_area);
-            print_result(result, symbol_table, list_area);
+            typed_ptr* result = evaluate(super_se, env);
+            print_result(result, env);
             printf("\n");
             if (result->type == TYPE_ERROR && result->ptr == EVAL_ERROR_EXIT) {
                 exit = true;
