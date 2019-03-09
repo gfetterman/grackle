@@ -1,7 +1,7 @@
 CC = gcc
 CC_OPTS = -Wall -std=gnu99
 
-grackle : grackle.o
+grackle : grackle.o interp.h
 	$(CC) $(CC_OPTS) $^ -o $@
 
 grackle.o : interp.c
