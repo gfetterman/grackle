@@ -3,24 +3,11 @@
 #include<string.h>
 #include<stdlib.h>
 
+#include "interp.h"
+
 #define PROMPT ">>>"
 #define BUF_SIZE 80
 #define EMPTY_LIST_IDX 0
-
-typedef enum {TYPE_UNDEF, \
-              TYPE_ERROR, \
-              TYPE_VOID, \
-              TYPE_BUILTIN, \
-              TYPE_NUM, \
-              TYPE_BOOL, \
-              TYPE_SEXPR, \
-              TYPE_SYM, \
-              TYPE_USER_FN} type;
-
-typedef struct TYPED_PTR {
-    type type;
-    unsigned int ptr;
-} typed_ptr;
 
 // The returned typed_ptr is the caller's responsibility to free; it can be
 //   safely (shallow) freed without harm to any other object.
@@ -47,14 +34,6 @@ typed_ptr* copy_typed_ptr(const typed_ptr* tp) {
     return create_typed_ptr(tp->type, tp->ptr);
 }
 
-typedef struct SYMBOL_TABLE_NODE {
-    unsigned int symbol_number;
-    char* symbol;
-    type type;
-    unsigned int value;
-    struct SYMBOL_TABLE_NODE* next;
-} sym_tab_node;
-
 // The caller should ensure that the node's symbol number in the symbol table
 //   will be unique.
 // The string pointed to by name is now the symbol table's responsibility
@@ -79,12 +58,6 @@ sym_tab_node* create_st_node(unsigned int symbol_number, \
     return new_node;
 }
 
-typedef struct SYMBOL_TABLE {
-    sym_tab_node* head;
-    unsigned int length;
-    unsigned int symbol_number_offset;
-} Symbol_Table;
-
 // The offset allows a temporary symbol table (used while parsing for easy
 //   walkback if the parsing fails) to avoid symbol number collisions with the
 //   real symbol table. This makes merging the two after a successful parse much
@@ -100,11 +73,6 @@ Symbol_Table* create_symbol_table(unsigned int offset) {
     new_st->symbol_number_offset = offset;
     return new_st;
 }
-
-typedef struct S_EXPR_NODE {
-    typed_ptr* car;
-    typed_ptr* cdr;
-} s_expr;
 
 // The s-expression returned is the caller's responsibility to free.
 s_expr* create_s_expr(typed_ptr* car, typed_ptr* cdr) {
@@ -130,12 +98,6 @@ void delete_s_expr(s_expr* se) {
     return;
 }
 
-typedef struct S_EXPR_STORAGE_NODE {
-    unsigned int list_number;
-    s_expr* se;
-    struct S_EXPR_STORAGE_NODE* next;
-} s_expr_storage;
-
 // The s-expression storage node is the caller's responsibility to free.
 s_expr_storage* create_s_expr_storage(unsigned int list_number, s_expr* se) {
     s_expr_storage* new_ses = malloc(sizeof(s_expr_storage));
@@ -149,11 +111,15 @@ s_expr_storage* create_s_expr_storage(unsigned int list_number, s_expr* se) {
     return new_ses;
 }
 
-typedef struct LIST_AREA {
-    s_expr_storage* head;
-    unsigned int length;
-    unsigned int offset;
-} List_Area;
+void delete_st_node_list(sym_tab_node* stn) {
+    while (stn != NULL) {
+        sym_tab_node* next = stn->next;
+        free(stn->symbol);
+        free(stn);
+        stn = next;
+    }
+    return;
+}
 
 // As for the symbol table, the offset allows the creation of a temporary list
 //   area (as in parse(), below) which can be easily merged into the real list
@@ -170,22 +136,25 @@ List_Area* create_list_area(unsigned int offset) {
     return new_la;
 }
 
-// forward declaration
-struct ENVIRONMENT;
-
-typedef struct FUN_TAB_NODE {
-    unsigned int function_number;
-    sym_tab_node* arg_list;
-    struct ENVIRONMENT* closure_env;
-    typed_ptr* body;
-    struct FUN_TAB_NODE* next;
-} fun_tab_node;
-
-typedef struct FUNCTION_TABLE {
-    fun_tab_node* head;
-    unsigned int length;
-    unsigned int offset;
-} function_table;
+// The arg list and closure environment are presumed to be unique to this
+//   function table node, but the body points to an s-expression that is
+//   represented elsewhere (and so cannot be safely freed using this pointer).
+fun_tab_node* create_ft_node(unsigned int function_number, \
+                             sym_tab_node* arg_list, \
+                             environment* closure_env, \
+                             typed_ptr* body) {
+    fun_tab_node* new_ftn = malloc(sizeof(fun_tab_node));
+    if (new_ftn == NULL) {
+        fprintf(stderr, "malloc failed in create_ft_node()\n");
+        exit(-1);
+    }
+    new_ftn->function_number = function_number;
+    new_ftn->arg_list = arg_list;
+    new_ftn->closure_env = closure_env;
+    new_ftn->body = body;
+    new_ftn->next = NULL;
+    return new_ftn;
+}
 
 function_table* create_function_table(unsigned int offset) {
     function_table* new_ft = malloc(sizeof(function_table));
@@ -199,11 +168,17 @@ function_table* create_function_table(unsigned int offset) {
     return new_ft;
 }
 
-typedef struct ENVIRONMENT {
-    Symbol_Table* symbol_table;
-    List_Area* list_area;
-    function_table* function_table;
-} environment;
+// The fun_tab_node returned shouldn't (usually) be freed.
+fun_tab_node* function_lookup(environment* env, typed_ptr* tp) {
+    fun_tab_node* curr = env->function_table->head;
+    while (curr != NULL) {
+        if (curr->function_number == tp->ptr) {
+            return curr;
+        }
+        curr = curr->next;
+    }
+    return curr;
+}
 
 environment* create_environment(unsigned int st_offset, \
                                 unsigned int la_offset, \
@@ -219,6 +194,48 @@ environment* create_environment(unsigned int st_offset, \
     return new_env;
 }
 
+// The new environment contains a deep copy of the old environment's symbol
+//   table. Symbol table numbers are preserved (so pointers into it are still
+//   valid).
+// However, because the list area and function table are currently only added to
+//   (not modified or deleted from), their pointers are simply copied over).
+// To destroy this new environment, delete_environment() below should be used,
+//   to ensure it's done safely.
+environment* copy_environment(environment* env) {
+    environment* new_env = create_environment(0, 0, 0);
+    sym_tab_node* curr_stn = env->symbol_table->head;
+    while (curr_stn != NULL) {
+        sym_tab_node* new_stn = create_st_node(curr_stn->symbol_number, \
+                                               strdup(curr_stn->symbol), \
+                                               curr_stn->type, \
+                                               curr_stn->value);
+        new_stn->next = new_env->symbol_table->head;
+        new_env->symbol_table->head = new_stn;
+        curr_stn = curr_stn->next;
+    }
+    // risky, but currently ok, because the list area and function tables are
+    // only added to, not modified or deleted from
+    free(new_env->list_area);
+    new_env->list_area = env->list_area;
+    free(new_env->function_table);
+    new_env->function_table = env->function_table;
+    return new_env;
+}
+
+// Safely deletes an environment that shares a list area and function table with
+//   other environments.
+void delete_env(environment* env) {
+    sym_tab_node* curr = env->symbol_table->head;
+    while (curr != NULL) {
+        sym_tab_node* next = curr->next;
+        free(curr->symbol);
+        free(curr);
+        curr = next;
+    }
+    free(env->symbol_table);
+    free(env);
+    return;
+}
 // The returned sym_tab_node should (usually) not be freed.
 // If the given name does not match any symbol table entry, NULL is returned.
 sym_tab_node* symbol_lookup_string(environment* env, const char* name) {
@@ -310,33 +327,6 @@ char* substring(char* str, unsigned int start, unsigned int end) {
     return ss;
 }
 
-typedef enum {BUILTIN_ADD, \
-              BUILTIN_MUL, \
-              BUILTIN_SUB, \
-              BUILTIN_DIV, \
-              BUILTIN_DEFINE, \
-              BUILTIN_SETVAR, \
-              BUILTIN_EXIT, \
-              BUILTIN_CONS, \
-              BUILTIN_CAR, \
-              BUILTIN_CDR, \
-              BUILTIN_LIST, \
-              BUILTIN_AND, \
-              BUILTIN_OR, \
-              BUILTIN_NOT, \
-              BUILTIN_COND, \
-              BUILTIN_PAIRPRED, \
-              BUILTIN_LISTPRED, \
-              BUILTIN_NUMBERPRED, \
-              BUILTIN_BOOLPRED, \
-              BUILTIN_VOIDPRED, \
-              BUILTIN_NUMBEREQ, \
-              BUILTIN_NUMBERGT, \
-              BUILTIN_NUMBERLT, \
-              BUILTIN_NUMBERGE, \
-              BUILTIN_NUMBERLE, \
-              BUILTIN_LAMBDA} builtin_code;
-
 void setup_symbol_table(environment* env) {
     blind_install_symbol(env, "NULL_SENTINEL", TYPE_UNDEF, 0);
     blind_install_symbol(env, "+", TYPE_BUILTIN, BUILTIN_ADD);
@@ -418,7 +408,7 @@ void setup_environment(environment* env) {
     return;
 }
 
-// This stack is used in to keep track of open s-expressions during parsing.
+// This stack is used to keep track of open s-expressions during parsing.
 // It doesn't use the list_number member of s_expr_storage, so this function
 //   should not be used to install s-expressions into the list area.
 void se_stack_push(s_expr_storage** stack, s_expr* new_se) {
@@ -432,7 +422,7 @@ void se_stack_push(s_expr_storage** stack, s_expr* new_se) {
     return;
 }
 
-// This stack is used in to keep track of open s-expressions during parsing.
+// This stack is used to keep track of open s-expressions during parsing.
 // This function should not be used to remove s-expressions from the list area.
 // While it pops the top item off of the stack and frees the s_expr_storage, it
 //   does not free the s-expressions stored therein.
@@ -519,30 +509,6 @@ sym_tab_node* lookup_builtin(environment* env, builtin_code bc) {
     }
     return curr;
 }
-
-typedef enum {PARSE_ERROR_NONE, \
-              PARSE_ERROR_UNBAL_PAREN, \
-              PARSE_ERROR_BARE_SYM, \
-              PARSE_ERROR_EMPTY_PAREN, \
-              PARSE_ERROR_TOO_MANY, \
-              // ^  parsing errors above     ^
-              // v  evaluation errors below  v
-              EVAL_ERROR_EXIT, \
-              EVAL_ERROR_NULL_SEXPR, \
-              EVAL_ERROR_NULL_CAR, \
-              EVAL_ERROR_UNDEF_SYM, \
-              EVAL_ERROR_UNDEF_TYPE, \
-              EVAL_ERROR_UNDEF_BUILTIN, \
-              EVAL_ERROR_FEW_ARGS, \
-              EVAL_ERROR_MANY_ARGS, \
-              EVAL_ERROR_BAD_ARG_TYPE, \
-              EVAL_ERROR_NEED_NUM, \
-              EVAL_ERROR_DIV_ZERO, \
-              EVAL_ERROR_NONTERMINAL_ELSE, \
-              EVAL_ERROR_CAR_NOT_CALLABLE, \
-              EVAL_ERROR_NOT_ID, \
-              EVAL_ERROR_MISSING_PROCEDURE, \
-              EVAL_ERROR_BAD_SYNTAX} interpreter_error;
 
 // Primary method to walk nested s-expressions.
 // The s-expression returned (usually) shouldn't be freed.
@@ -658,9 +624,6 @@ void print_error(const typed_ptr* tp) {
     }
     return;
 }
-
-// forward declaration
-void print_result(const typed_ptr* tp, environment* env);
 
 void print_s_expression(const s_expr* se, environment* env) {
     printf("'(");
@@ -987,9 +950,6 @@ s_expr* parse(char str[], environment* env) {
     return head;
 }
 
-// forward declaration
-typed_ptr* evaluate(const s_expr* se, environment* env);
-
 // Evaluates an s-expression whose car is a built-in function in the set
 //   {BUILTIN_xxx | xxx in {ADD, MUL, SUB, DIV}}.
 // BUILTIN_ADD and BUILTIN_MUL take any number of arguments.
@@ -1197,9 +1157,6 @@ typed_ptr* eval_comparison(const s_expr* se, environment* env) {
     }
     return result;
 }
-
-// forward declaration
-typed_ptr* eval_lambda(const s_expr* se, environment* env);
 
 // Evaluates an s-expression whose car is the built-in special form
 //   BUILTIN_DEFINE.
@@ -1524,16 +1481,6 @@ typed_ptr* eval_cond(const s_expr* se, environment* env) {
     return eval_interm;
 }
 
-void delete_st_node_list(sym_tab_node* stn) {
-    while (stn != NULL) {
-        sym_tab_node* next = stn->next;
-        free(stn->symbol);
-        free(stn);
-        stn = next;
-    }
-    return;
-}
-
 bool is_empty_list(s_expr* se) {
     if (se == NULL) {
         printf("cannot determine if NULL se is empty list\n");
@@ -1583,54 +1530,6 @@ sym_tab_node* collect_parameters(typed_ptr* tp, environment* env) {
         }
     }
     return arg_list;
-}
-
-// The new environment contains a deep copy of the old environment's symbol
-//   table. Symbol table numbers are preserved (so pointers into it are still
-//   valid).
-// However, because the list area and function table are currently only added to
-//   (not modified or deleted from), their pointers are simply copied over).
-// To destroy this new environment, delete_environment() below should be used,
-//   to ensure it's done safely.
-environment* copy_environment(environment* env) {
-    environment* new_env = create_environment(0, 0, 0);
-    sym_tab_node* curr_stn = env->symbol_table->head;
-    while (curr_stn != NULL) {
-        sym_tab_node* new_stn = create_st_node(curr_stn->symbol_number, \
-                                               strdup(curr_stn->symbol), \
-                                               curr_stn->type, \
-                                               curr_stn->value);
-        new_stn->next = new_env->symbol_table->head;
-        new_env->symbol_table->head = new_stn;
-        curr_stn = curr_stn->next;
-    }
-    // risky, but currently ok, because the list area and function tables are
-    // only added to, not modified or deleted from
-    free(new_env->list_area);
-    new_env->list_area = env->list_area;
-    free(new_env->function_table);
-    new_env->function_table = env->function_table;
-    return new_env;
-}
-
-// The arg list and closure environment are presumed to be unique to this
-//   function table node, but the body points to an s-expression that is
-//   represented elsewhere (and so cannot be safely freed using this pointer).
-fun_tab_node* create_ft_node(unsigned int function_number, \
-                             sym_tab_node* arg_list, \
-                             environment* closure_env, \
-                             typed_ptr* body) {
-    fun_tab_node* new_ftn = malloc(sizeof(fun_tab_node));
-    if (new_ftn == NULL) {
-        fprintf(stderr, "malloc failed in create_fn_node()\n");
-        exit(-1);
-    }
-    new_ftn->function_number = function_number;
-    new_ftn->arg_list = arg_list;
-    new_ftn->closure_env = closure_env;
-    new_ftn->body = body;
-    new_ftn->next = NULL;
-    return new_ftn;
 }
 
 // The arg list and closure environment are now the (general) environment's
@@ -1685,18 +1584,6 @@ typed_ptr* eval_lambda(const s_expr* se, environment* env) {
         }
     }
     return result;
-}
-
-// The fun_tab_node returned shouldn't (usually) be freed.
-fun_tab_node* function_lookup(environment* env, typed_ptr* tp) {
-    fun_tab_node* curr = env->function_table->head;
-    while (curr != NULL) {
-        if (curr->function_number == tp->ptr) {
-            return curr;
-        }
-        curr = curr->next;
-    }
-    return curr;
 }
 
 // If the fun_tab_node's arg list is of different length than the s-expression
@@ -1787,20 +1674,6 @@ environment* make_eval_env(environment* env, sym_tab_node* bound_args) {
     return eval_env;
 }
 
-// Safely deletes an environment that shares a list area and function table with
-//   other environments.
-void delete_env(environment* env) {
-    sym_tab_node* curr = env->symbol_table->head;
-    while (curr != NULL) {
-        sym_tab_node* next = curr->next;
-        free(curr->symbol);
-        free(curr);
-        curr = next;
-    }
-    free(env->symbol_table);
-    free(env);
-    return;
-}
 // Evaluates an s-expression whose car has type TYPE_USER_FN.
 // The s-expression's cdr must contain the proper number of arguments for the
 //   user function being invoked. Any mismatch, or error arising during
@@ -2013,36 +1886,4 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
         }
     }
     return result;
-}
-
-// Sets up the environment for execution, and runs the REPL.
-int main() {
-    bool exit = 0;
-    char input[BUF_SIZE];
-    environment* env = create_environment(0, 0, 0);
-    setup_environment(env);
-    while (!exit) {
-        get_input(PROMPT, input, BUF_SIZE);
-        s_expr* input_s_expr = parse(input, env);
-        if (input_s_expr->car != NULL && \
-            input_s_expr->car->type == TYPE_ERROR) {
-            print_error(input_s_expr->car);
-            printf("\n");
-            delete_s_expr(input_s_expr);
-        } else {
-            typed_ptr* input_tp = install_list(env, input_s_expr);
-            s_expr* super_se = create_s_expr(input_tp, NULL);
-            typed_ptr* result = evaluate(super_se, env);
-            print_result(result, env);
-            printf("\n");
-            if (result->type == TYPE_ERROR && result->ptr == EVAL_ERROR_EXIT) {
-                exit = true;
-            }
-            free(result);
-            free(input_tp);
-            free(super_se);
-        }
-    }
-    printf("exiting...\n");
-    return 0;
 }
