@@ -1,3 +1,6 @@
+#ifndef INTERP_H
+#define INTERP_H
+
 #include<stdbool.h>
 
 // types
@@ -241,3 +244,5 @@ typed_ptr* eval_lambda(const s_expr* se, environment* env);
 sym_tab_node* bind_args(environment* env, fun_tab_node* ftn, typed_ptr* args);
 environment* make_eval_env(environment* env, sym_tab_node* bound_args);
 typed_ptr* eval_user_function(const s_expr* se, environment* env);
+
+#endif
