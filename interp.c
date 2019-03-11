@@ -1816,7 +1816,8 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
                         while (cdr_se != NULL) {
                             free(eval_prev);
                             eval_prev = evaluate(cdr_se, env);
-                            if (is_false_literal(eval_prev)) {
+                            if (eval_prev->type == TYPE_ERROR || \
+                                is_false_literal(eval_prev)) {
                                 break;
                             }
                             cdr_se = sexpr_lookup(env, cdr_se->cdr);
@@ -1830,7 +1831,8 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
                         while (cdr_se != NULL) {
                             free(eval_prev);
                             eval_prev = evaluate(cdr_se, env);
-                            if (!is_false_literal(eval_prev)) {
+                            if (eval_prev->type == TYPE_ERROR || \
+                                !is_false_literal(eval_prev)) {
                                 break;
                             }
                             cdr_se = sexpr_lookup(env, cdr_se->cdr);

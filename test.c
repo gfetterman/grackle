@@ -198,10 +198,8 @@ void end_to_end_tests() {
     e2e_atom_test("(or #t #f #t)", TYPE_BOOL, 1, t_env);
     e2e_atom_test("(or #f #t #t)", TYPE_BOOL, 1, t_env);
     e2e_atom_test("(or #f #f #f)", TYPE_BOOL, 0, t_env);
-    //e2e_atom_test("(or (-) #t #t)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env); // doesn't actually check for errors
-    e2e_autofail_test("(or (-) #t #t)", t_env);
-    //e2e_atom_test("(or #f (-) #t)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env); // doesn't actually check for errors
-    e2e_autofail_test("(or #f (-) #t)", t_env);
+    e2e_atom_test("(or (-) #t #t)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
+    e2e_atom_test("(or #f (-) #t)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     //     not
     printf("## not ##\n");
     e2e_atom_test("(not 1)", TYPE_BOOL, 0, t_env);
