@@ -1151,6 +1151,7 @@ typed_ptr* eval_comparison(const s_expr* se, environment* env) {
                     }
                     result->ptr = result->ptr && intermediate_truth;
                 }
+                last_num = eval_arg->ptr;
                 cdr_se = sexpr_lookup(env, cdr_se->cdr);
             }
         }
