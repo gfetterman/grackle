@@ -288,8 +288,7 @@ void end_to_end_tests() {
     e2e_atom_test("((lambda (x y) (* x y)) 3 4 5)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     // set!
     printf("# set! #\n");
-    //e2e_atom_test("(set!)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env); // segfault
-    e2e_autofail_test("(set!)", t_env);
+    e2e_atom_test("(set!)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(set! x)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(set! x 1)", TYPE_ERROR, EVAL_ERROR_UNDEF_SYM, t_env);
     e2e_atom_test("(set! 1 2)", TYPE_ERROR, EVAL_ERROR_NOT_ID, t_env);
@@ -302,8 +301,7 @@ void end_to_end_tests() {
     e2e_multiline_atom_test(set_lines, 3, TYPE_NUM, 3, t_env);
     // define
     printf("# define #\n");
-    //e2e_atom_test("(define)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env); // segfault
-    e2e_autofail_test("(define)", t_env);
+    e2e_atom_test("(define)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(define x)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(define 1 2)", TYPE_ERROR, EVAL_ERROR_NOT_ID, t_env);
     e2e_atom_test("(define x (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
