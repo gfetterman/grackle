@@ -198,10 +198,8 @@ void end_to_end_tests() {
     e2e_atom_test("(or #t #f #t)", TYPE_BOOL, 1, t_env);
     e2e_atom_test("(or #f #t #t)", TYPE_BOOL, 1, t_env);
     e2e_atom_test("(or #f #f #f)", TYPE_BOOL, 0, t_env);
-    //e2e_atom_test("(or (-) #t #t)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env); // doesn't actually check for errors
-    e2e_autofail_test("(or (-) #t #t)", t_env);
-    //e2e_atom_test("(or #f (-) #t)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env); // doesn't actually check for errors
-    e2e_autofail_test("(or #f (-) #t)", t_env);
+    e2e_atom_test("(or (-) #t #t)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
+    e2e_atom_test("(or #f (-) #t)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     //     not
     printf("## not ##\n");
     e2e_atom_test("(not 1)", TYPE_BOOL, 0, t_env);
@@ -234,30 +232,20 @@ void end_to_end_tests() {
     // cond
     printf("# cond #\n");
     e2e_atom_test("(cond)", TYPE_VOID, 0, t_env);
-    //e2e_atom_test("(cond #t)", TYPE_ERROR, EVAL_ERROR_BAD_SYNTAX, t_env); // segfault
-    e2e_autofail_test("(cond #t)", t_env);
-    //e2e_atom_test("(cond (#t))", TYPE_BOOL, 1, t_env); // segfault
-    e2e_autofail_test("(cond (#t))", t_env);
-    //e2e_atom_test("(cond (#t 1))", TYPE_NUM, 1, t_env); // segfault
-    e2e_autofail_test("(cond (#t 1))", t_env);
-    //e2e_atom_test("(cond (#f 1))", TYPE_VOID, 0, t_env); // segfault
-    e2e_autofail_test("(cond (#f 1))", t_env);
-    //e2e_atom_test("(cond (#t 1) (else 2))", TYPE_NUM, 1, t_env); // segfault
-    e2e_autofail_test("(cond (#t 1) (else 2))", t_env);
-    //e2e_atom_test("(cond (#f 1) (else 2))", TYPE_NUM, 2, t_env); // segfault
-    e2e_autofail_test("(cond (#f 1) (else 2))", t_env);
-    //e2e_atom_test("(cond (#f 1) (else 2) (#t 3))", TYPE_ERROR, EVAL_ERROR_NONTERMINAL_ELSE, t_env); // segfault
-    e2e_autofail_test("(cond (#f 1) (else 2) (#t 3))", t_env);
-    //e2e_atom_test("(cond (#t (+ 1 1) (+ 2 2)))", TYPE_NUM, 4, t_env); // segfault
-    e2e_autofail_test("(cond (#t (+ 1 1) (+ 2 2)))", t_env);
-    //e2e_atom_test("(cond ((-) 1))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env); // segfault
-    e2e_autofail_test("(cond ((-) 1))", t_env);
-    //e2e_atom_test("(cond (#t (-)))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env); // segfault
-    e2e_autofail_test("(cond (#t (-)))", t_env);
+    e2e_atom_test("(cond #t)", TYPE_ERROR, EVAL_ERROR_BAD_SYNTAX, t_env);
+    e2e_atom_test("(cond (#t))", TYPE_BOOL, 1, t_env);
+    e2e_atom_test("(cond (#t 1))", TYPE_NUM, 1, t_env);
+    e2e_atom_test("(cond (#f 1))", TYPE_VOID, 0, t_env);
+    e2e_atom_test("(cond (#t 1) (else 2))", TYPE_NUM, 1, t_env);
+    e2e_atom_test("(cond (#f 1) (else 2))", TYPE_NUM, 2, t_env);
+    e2e_atom_test("(cond (#f 1) (else))", TYPE_ERROR, EVAL_ERROR_EMPTY_ELSE, t_env);
+    e2e_atom_test("(cond (#f 1) (else 2) (#t 3))", TYPE_ERROR, EVAL_ERROR_NONTERMINAL_ELSE, t_env);
+    e2e_atom_test("(cond (#t (+ 1 1) (+ 2 2)))", TYPE_NUM, 4, t_env);
+    e2e_atom_test("(cond ((-) 1))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
+    e2e_atom_test("(cond (#t (-)))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     // cons
     printf("# cons #\n");
-    //e2e_atom_test("(cons)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env); // segfault
-    e2e_autofail_test("(cons)", t_env);
+    e2e_atom_test("(cons)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(cons 1)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     typed_ptr* num_1 = create_typed_ptr(TYPE_NUM, 1);
     typed_ptr* num_2 = create_typed_ptr(TYPE_NUM, 2);
@@ -277,11 +265,10 @@ void end_to_end_tests() {
     e2e_atom_test("(list 1 (-) 3)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     // lambda
     printf("# lambda #\n");
-    //e2e_atom_test("(lambda)", TYPE_ERROR, EVAL_ERROR_BAD_SYNTAX, t_env); // segfaults
-    e2e_autofail_test("(lambda)", t_env);
-    e2e_atom_test("(lambda 1)", TYPE_ERROR, EVAL_ERROR_BAD_SYNTAX, t_env);
+    e2e_atom_test("(lambda)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
+    e2e_atom_test("(lambda 1)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(lambda 1 2)", TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE, t_env);
-    e2e_atom_test("(lambda ())", TYPE_ERROR, EVAL_ERROR_BAD_SYNTAX, t_env);
+    e2e_atom_test("(lambda ())", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("((lambda () 1))", TYPE_NUM, 1, t_env);
     e2e_atom_test("((lambda () 1) 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("((lambda () (+ 1 1)))", TYPE_NUM, 2, t_env);
@@ -291,28 +278,28 @@ void end_to_end_tests() {
     e2e_atom_test("((lambda (x) (* x 10)) #t)", TYPE_ERROR, EVAL_ERROR_NEED_NUM, t_env);
     e2e_atom_test("((lambda (x) (* x 10)) (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("((lambda (x) (* x 10)) 3 4)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
-    e2e_atom_test("((lambda (x 2) (* x 10)) 3)", TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE, t_env);
+    e2e_atom_test("((lambda (x 2) (* x 10)) 3)", TYPE_ERROR, EVAL_ERROR_NOT_ID, t_env);
     e2e_atom_test("((lambda (x y) (* x y)) 3 4)", TYPE_NUM, 12, t_env);
     e2e_atom_test("((lambda (x y) (* x y)) 3)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("((lambda (x y) (* x y)) 3 4 5)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     // set!
     printf("# set! #\n");
-    //e2e_atom_test("(set!)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env); // segfault
-    e2e_autofail_test("(set!)", t_env);
+    e2e_atom_test("(set!)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(set! x)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(set! x 1)", TYPE_ERROR, EVAL_ERROR_UNDEF_SYM, t_env);
     e2e_atom_test("(set! 1 2)", TYPE_ERROR, EVAL_ERROR_NOT_ID, t_env);
-    e2e_atom_test("(set! x (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     char* set_line1 = "(define x 1)";
     char* set_line2 = "(set! x (+ 1 1))";
     char* set_line3 = "(+ x 1)";
+    char* set_line4 = "(set! x (-))";
     char* set_lines[] = {set_line1, set_line2, set_line3};
+    char* set_lines2[] = {set_line1, set_line4};
+    e2e_multiline_atom_test(set_lines2, 2, TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_multiline_atom_test(set_lines, 2, TYPE_VOID, 0, t_env);
     e2e_multiline_atom_test(set_lines, 3, TYPE_NUM, 3, t_env);
     // define
     printf("# define #\n");
-    //e2e_atom_test("(define)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env); // segfault
-    e2e_autofail_test("(define)", t_env);
+    e2e_atom_test("(define)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(define x)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(define 1 2)", TYPE_ERROR, EVAL_ERROR_NOT_ID, t_env);
     e2e_atom_test("(define x (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);

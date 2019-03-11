@@ -1,7 +1,10 @@
 #ifndef INTERP_H
 #define INTERP_H
 
+#include<stdio.h>
 #include<stdbool.h>
+#include<string.h>
+#include<stdlib.h>
 
 // types
 
@@ -68,7 +71,8 @@ typedef enum {PARSE_ERROR_NONE, \
               EVAL_ERROR_CAR_NOT_CALLABLE, \
               EVAL_ERROR_NOT_ID, \
               EVAL_ERROR_MISSING_PROCEDURE, \
-              EVAL_ERROR_BAD_SYNTAX} interpreter_error;
+              EVAL_ERROR_BAD_SYNTAX, \
+              EVAL_ERROR_EMPTY_ELSE} interpreter_error;
 
 // typed pointers
 

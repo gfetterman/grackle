@@ -1,12 +1,5 @@
-#include<stdio.h>
-#include<stdbool.h>
-#include<string.h>
-#include<stdlib.h>
-
 #include "interp.h"
 
-#define PROMPT ">>>"
-#define BUF_SIZE 80
 #define EMPTY_LIST_IDX 0
 
 // The returned typed_ptr is the caller's responsibility to free; it can be
@@ -358,6 +351,7 @@ void setup_symbol_table(environment* env) {
     blind_install_symbol(env, "null", TYPE_SEXPR, EMPTY_LIST_IDX);
     blind_install_symbol(env, "#t", TYPE_BOOL, 1);
     blind_install_symbol(env, "#f", TYPE_BOOL, 0);
+    blind_install_symbol(env, "else", TYPE_UNDEF, 0);
     return;
 }
 
@@ -626,6 +620,12 @@ void print_error(const typed_ptr* tp) {
 }
 
 void print_s_expression(const s_expr* se, environment* env) {
+    if (se == NULL) {
+        typed_ptr* err = create_error(EVAL_ERROR_NULL_SEXPR);
+        print_error(err);
+        free(err);
+        return;
+    }
     printf("'(");
     while (se->car != NULL) { // which would indicate the empty list
         print_result(se->car, env);
@@ -1110,7 +1110,7 @@ typed_ptr* eval_comparison(const s_expr* se, environment* env) {
             result = eval_arg;
         } else if (eval_arg->type != TYPE_NUM) {
             free(eval_arg);
-            result = create_error(EVAL_ERROR_BAD_ARG_TYPE);
+            result = create_error(EVAL_ERROR_NEED_NUM);
         } else {
             unsigned int last_num = eval_arg->ptr;
             cdr_se = sexpr_lookup(env, cdr_se->cdr);
@@ -1125,7 +1125,7 @@ typed_ptr* eval_comparison(const s_expr* se, environment* env) {
                 } else if (eval_arg->type != TYPE_NUM) {
                     free(eval_arg);
                     free(result);
-                    result = create_error(EVAL_ERROR_BAD_ARG_TYPE);
+                    result = create_error(EVAL_ERROR_NEED_NUM);
                     break;
                 } else {
                     bool intermediate_truth;
@@ -1151,6 +1151,7 @@ typed_ptr* eval_comparison(const s_expr* se, environment* env) {
                     }
                     result->ptr = result->ptr && intermediate_truth;
                 }
+                last_num = eval_arg->ptr;
                 cdr_se = sexpr_lookup(env, cdr_se->cdr);
             }
         }
@@ -1173,7 +1174,7 @@ typed_ptr* eval_comparison(const s_expr* se, environment* env) {
 typed_ptr* eval_define(const s_expr* se, environment* env) {
     typed_ptr* result = NULL;
     s_expr* cdr_se = sexpr_lookup(env, se->cdr);
-    s_expr* cddr_se = sexpr_lookup(env, cdr_se->cdr);
+    s_expr* cddr_se = (cdr_se == NULL) ? NULL : sexpr_lookup(env, cdr_se->cdr);
     if (cdr_se == NULL || cddr_se == NULL) {
         result = create_error(EVAL_ERROR_FEW_ARGS);
     } else if (cddr_se->cdr != NULL) {
@@ -1249,7 +1250,7 @@ typed_ptr* eval_define(const s_expr* se, environment* env) {
 typed_ptr* eval_set_variable(const s_expr* se, environment* env) {
     typed_ptr* result = NULL;
     s_expr* cdr_se = sexpr_lookup(env, se->cdr);
-    s_expr* cddr_se = sexpr_lookup(env, cdr_se->cdr);
+    s_expr* cddr_se = (cdr_se == NULL) ? NULL : sexpr_lookup(env, cdr_se->cdr);
     if (cdr_se == NULL || cddr_se == NULL) {
         result = create_error(EVAL_ERROR_FEW_ARGS);
     } else if (cddr_se->cdr != NULL) {
@@ -1294,18 +1295,21 @@ typed_ptr* eval_car_cdr(const s_expr* se, environment* env) {
         result = create_error(EVAL_ERROR_MANY_ARGS);
     } else {
         typed_ptr* eval_arg1 = evaluate(cdr_se, env);
-        if (eval_arg1->type != TYPE_SEXPR || \
-            eval_arg1->ptr == EMPTY_LIST_IDX) {
+        if (eval_arg1->type == TYPE_ERROR) {
+            result = eval_arg1;
+        } else if (eval_arg1->type != TYPE_SEXPR || \
+                   eval_arg1->ptr == EMPTY_LIST_IDX) {
+            free(eval_arg1);
             result = create_error(EVAL_ERROR_BAD_ARG_TYPE);
         } else {
             s_expr* arg1_se = sexpr_lookup(env, eval_arg1);
-            if (symbol_lookup_index(env, se->car->ptr)->value == BUILTIN_CAR) {
+            free(eval_arg1);
+            if (se->car->ptr == BUILTIN_CAR) {
                 result = copy_typed_ptr(arg1_se->car);
             } else {
                 result = copy_typed_ptr(arg1_se->cdr);
             }
         }
-        free(eval_arg1);
     }
     return result;
 }
@@ -1402,16 +1406,26 @@ typed_ptr* eval_list_construction(const s_expr* se, environment* env) {
     } else {
         s_expr* cdr_se = sexpr_lookup(env, se->cdr);
         typed_ptr* new_car = evaluate(cdr_se, env);
-        s_expr* last_node = NULL;
-        typed_ptr* new_cdr = create_typed_ptr(TYPE_SEXPR, EMPTY_LIST_IDX);
-        s_expr* curr_node = create_s_expr(new_car, new_cdr);
-        result = install_list(env, curr_node);
-        while (cdr_se->cdr != NULL) {
-            cdr_se = sexpr_lookup(env, cdr_se->cdr);
-            new_car = evaluate(cdr_se, env);
-            last_node = curr_node;
-            curr_node = create_s_expr(new_car, last_node->cdr);
-            last_node->cdr = install_list(env, curr_node);
+        if (new_car->type == TYPE_ERROR) {
+            free(result);
+            result = new_car;
+        } else {
+            s_expr* last_node = NULL;
+            typed_ptr* new_cdr = create_typed_ptr(TYPE_SEXPR, EMPTY_LIST_IDX);
+            s_expr* curr_node = create_s_expr(new_car, new_cdr);
+            result = install_list(env, curr_node);
+            while (cdr_se->cdr != NULL) {
+                cdr_se = sexpr_lookup(env, cdr_se->cdr);
+                new_car = evaluate(cdr_se, env);
+                if (new_car->type == TYPE_ERROR) {
+                    free(result);
+                    result = new_car;
+                    break;
+                }
+                last_node = curr_node;
+                curr_node = create_s_expr(new_car, last_node->cdr);
+                last_node->cdr = install_list(env, curr_node);
+            }
         }
     }
     return result;
@@ -1419,6 +1433,15 @@ typed_ptr* eval_list_construction(const s_expr* se, environment* env) {
 
 bool is_false_literal(typed_ptr* tp) {
     return (tp->type == TYPE_BOOL && tp->ptr == 0);
+}
+
+bool is_empty_list(s_expr* se) {
+    if (se == NULL) {
+        printf("cannot determine if NULL se is empty list\n");
+        exit(-1);
+    } else {
+        return (se->car == NULL && se->cdr == NULL);
+    }
 }
 
 // Evaluates an s-expression whose car is the built-in special form
@@ -1431,7 +1454,8 @@ bool is_false_literal(typed_ptr* tp) {
 //   evaluated in order. If there are no then-bodies, the return value is the
 //   result of the evaluation of the predicate.
 // One special predicate, named "else", is allowed, which is a fall-through
-//   case. It may only appear as the predicate of the last argument.
+//   case. It may only appear as the predicate of the last argument. If "else"
+//   appears, it must have at least one then-body.
 // Returns a typed_ptr containing an error code (if any evaluation failed) or
 //   the result of the last then-body evaluation.
 // If no arguments are provided, or if no argument's predicate evaluates to
@@ -1442,51 +1466,68 @@ bool is_false_literal(typed_ptr* tp) {
 typed_ptr* eval_cond(const s_expr* se, environment* env) {
     typed_ptr* eval_interm = create_typed_ptr(TYPE_VOID, 0);
     s_expr* cdr_se = sexpr_lookup(env, se->cdr);
+    if (cdr_se == NULL || (cdr_se->car == NULL && cdr_se->cdr == NULL)) {
+        return create_typed_ptr(TYPE_VOID, 0);
+    }
     bool pred_true = false;
     s_expr* then_bodies = NULL;
-    while (cdr_se != NULL && pred_true == false) {
-        s_expr* cond_clause = sexpr_lookup(env, cdr_se->car);
-        typed_ptr* pred = cond_clause->car;
-        if (pred->type == TYPE_SYM && \
-            !strcmp(symbol_lookup_index(env, pred->ptr)->symbol, "else")) {
-            if (cdr_se->cdr != NULL) {
+    while (cdr_se != NULL) {
+        if (cdr_se->car != NULL) {
+            if (cdr_se->car->type != TYPE_SEXPR) {
                 free(eval_interm);
-                eval_interm = create_error(EVAL_ERROR_NONTERMINAL_ELSE);
-                then_bodies = NULL;
-            } else {
-                then_bodies = sexpr_lookup(env, cond_clause->cdr);
+                eval_interm = create_error(EVAL_ERROR_BAD_SYNTAX);
+                break;
             }
-            pred_true = true;
-        } else {
-            free(eval_interm);
-            s_expr* pred_se = sexpr_lookup(env, pred);
-            eval_interm = evaluate(pred_se, env);
-            if (eval_interm->type == TYPE_ERROR) {
-                then_bodies = NULL;
-                pred_true = true;
-            } else if (!is_false_literal(eval_interm)) {
+            s_expr* cond_clause = sexpr_lookup(env, cdr_se->car);
+            if (is_empty_list(cond_clause)) {
+                free(eval_interm);
+                eval_interm = create_error(EVAL_ERROR_BAD_SYNTAX);
+                break;
+            }
+            if (cond_clause->car->type == TYPE_SYM && \
+                cond_clause->car->ptr == symbol_lookup_string(env, "else")->symbol_number) {
+                s_expr* next_clause = sexpr_lookup(env, cdr_se->cdr);
+                if (next_clause != NULL && !is_empty_list(next_clause)) {
+                    free(eval_interm);
+                    eval_interm = create_error(EVAL_ERROR_NONTERMINAL_ELSE);
+                    break;
+                }
                 then_bodies = sexpr_lookup(env, cond_clause->cdr);
+                if (then_bodies == NULL || is_empty_list(then_bodies)) {
+                    free(eval_interm);
+                    eval_interm = create_error(EVAL_ERROR_EMPTY_ELSE);
+                    break;
+                }
                 pred_true = true;
+            }
+            s_expr* dummy = create_s_expr(cond_clause->car, NULL);
+            free(eval_interm);
+            eval_interm = evaluate(dummy, env);
+            free(dummy);
+            if (eval_interm->type == TYPE_ERROR) {
+                break;
+            } else if (!is_false_literal(eval_interm)) {
+                pred_true = true;
+                then_bodies = sexpr_lookup(env, cond_clause->cdr);
+                break;
             }
         }
         cdr_se = sexpr_lookup(env, cdr_se->cdr);
     }
-    // then evaluate the then-bodies and return the last one
-    // (or eval_pred if there are none)
-    while (then_bodies != NULL) {
-        free(eval_interm);
-        eval_interm = evaluate(then_bodies, env);
-        then_bodies = sexpr_lookup(env, then_bodies->cdr);
-    }
-    return eval_interm;
-}
-
-bool is_empty_list(s_expr* se) {
-    if (se == NULL) {
-        printf("cannot determine if NULL se is empty list\n");
-        exit(-1);
+    if (!pred_true) { // no cond-clauses were true or we encountered an error
+        if (eval_interm->type == TYPE_ERROR) {
+            return eval_interm;
+        } else {
+            free(eval_interm);
+            return create_typed_ptr(TYPE_VOID, 0);
+        }
     } else {
-        return (se->car == NULL && se->cdr == NULL);
+        while (then_bodies != NULL && !is_empty_list(then_bodies)) {
+            free(eval_interm);
+            eval_interm = evaluate(then_bodies, env);
+            then_bodies = sexpr_lookup(env, then_bodies->cdr);
+        }
+        return eval_interm;
     }
 }
 
@@ -1507,7 +1548,7 @@ sym_tab_node* collect_parameters(typed_ptr* tp, environment* env) {
         return arg_list;
     }
     if (se->car->type != TYPE_SYM) {
-        arg_list = create_st_node(0, NULL, TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE);
+        arg_list = create_st_node(0, NULL, TYPE_ERROR, EVAL_ERROR_NOT_ID);
     } else {
         char* name = symbol_lookup_index(env, se->car->ptr)->symbol;
         arg_list = create_st_node(0, strdup(name), TYPE_UNDEF, 0);
@@ -1521,7 +1562,7 @@ sym_tab_node* collect_parameters(typed_ptr* tp, environment* env) {
             se = sexpr_lookup(env, se->cdr);
             if (se->car->type != TYPE_SYM) {
                 delete_st_node_list(arg_list);
-                arg_list = create_st_node(0, NULL, TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE);
+                arg_list = create_st_node(0, NULL, TYPE_ERROR, EVAL_ERROR_NOT_ID);
                 break;
             }
             name = symbol_lookup_index(env, se->car->ptr)->symbol;
@@ -1565,7 +1606,7 @@ typed_ptr* install_function(environment* env, \
 typed_ptr* eval_lambda(const s_expr* se, environment* env) {
     typed_ptr* result = NULL;
     s_expr* cdr_se = sexpr_lookup(env, se->cdr);
-    s_expr* cddr_se = sexpr_lookup(env, cdr_se->cdr);
+    s_expr* cddr_se = (cdr_se == NULL) ? NULL : sexpr_lookup(env, cdr_se->cdr);
     if (cdr_se == NULL || cddr_se == NULL) {
         result = create_error(EVAL_ERROR_FEW_ARGS);
     } else if (cddr_se->cdr != NULL) {
@@ -1737,18 +1778,32 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
                         result = eval_set_variable(se, env);
                         break;
                     case BUILTIN_EXIT:
+                        if (se->cdr == NULL || (se->cdr->type == TYPE_SEXPR && \
+                                                is_empty_list(sexpr_lookup(env, se->cdr)))) {
                         result = create_error(EVAL_ERROR_EXIT);
+                        } else {
+                            result = create_error(EVAL_ERROR_MANY_ARGS);
+                        }
                         break;
                     case BUILTIN_CONS: {
                         s_expr* cdr_se = sexpr_lookup(env, se->cdr);
-                        s_expr* cddr_se = sexpr_lookup(env, cdr_se->cdr);
+                        s_expr* cddr_se = (cdr_se == NULL) ? \
+                                          NULL : sexpr_lookup(env, cdr_se->cdr);
                         if (cdr_se == NULL || cddr_se == NULL) {
                             result = create_error(EVAL_ERROR_FEW_ARGS);
                         } else if (cddr_se->cdr != NULL) {
                             result = create_error(EVAL_ERROR_MANY_ARGS);
                         } else {
                             typed_ptr* new_car = evaluate(cdr_se, env);
+                            if (new_car->type == TYPE_ERROR) {
+                                result = new_car;
+                                break;
+                            }
                             typed_ptr* new_cdr = evaluate(cddr_se, env);
+                            if (new_cdr->type == TYPE_ERROR) {
+                                result = new_cdr;
+                                break;
+                            }
                             result = install_list(env, create_s_expr(new_car, \
                                                                      new_cdr));
                         }
@@ -1767,7 +1822,8 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
                         while (cdr_se != NULL) {
                             free(eval_prev);
                             eval_prev = evaluate(cdr_se, env);
-                            if (is_false_literal(eval_prev)) {
+                            if (eval_prev->type == TYPE_ERROR || \
+                                is_false_literal(eval_prev)) {
                                 break;
                             }
                             cdr_se = sexpr_lookup(env, cdr_se->cdr);
@@ -1781,7 +1837,8 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
                         while (cdr_se != NULL) {
                             free(eval_prev);
                             eval_prev = evaluate(cdr_se, env);
-                            if (!is_false_literal(eval_prev)) {
+                            if (eval_prev->type == TYPE_ERROR || \
+                                !is_false_literal(eval_prev)) {
                                 break;
                             }
                             cdr_se = sexpr_lookup(env, cdr_se->cdr);
