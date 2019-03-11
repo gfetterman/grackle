@@ -1294,18 +1294,21 @@ typed_ptr* eval_car_cdr(const s_expr* se, environment* env) {
         result = create_error(EVAL_ERROR_MANY_ARGS);
     } else {
         typed_ptr* eval_arg1 = evaluate(cdr_se, env);
-        if (eval_arg1->type != TYPE_SEXPR || \
-            eval_arg1->ptr == EMPTY_LIST_IDX) {
+        if (eval_arg1->type == TYPE_ERROR) {
+            result = eval_arg1;
+        } else if (eval_arg1->type != TYPE_SEXPR || \
+                   eval_arg1->ptr == EMPTY_LIST_IDX) {
+            free(eval_arg1);
             result = create_error(EVAL_ERROR_BAD_ARG_TYPE);
         } else {
             s_expr* arg1_se = sexpr_lookup(env, eval_arg1);
+            free(eval_arg1);
             if (symbol_lookup_index(env, se->car->ptr)->value == BUILTIN_CAR) {
                 result = copy_typed_ptr(arg1_se->car);
             } else {
                 result = copy_typed_ptr(arg1_se->cdr);
             }
         }
-        free(eval_arg1);
     }
     return result;
 }
