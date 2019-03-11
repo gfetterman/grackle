@@ -1402,16 +1402,26 @@ typed_ptr* eval_list_construction(const s_expr* se, environment* env) {
     } else {
         s_expr* cdr_se = sexpr_lookup(env, se->cdr);
         typed_ptr* new_car = evaluate(cdr_se, env);
-        s_expr* last_node = NULL;
-        typed_ptr* new_cdr = create_typed_ptr(TYPE_SEXPR, EMPTY_LIST_IDX);
-        s_expr* curr_node = create_s_expr(new_car, new_cdr);
-        result = install_list(env, curr_node);
-        while (cdr_se->cdr != NULL) {
-            cdr_se = sexpr_lookup(env, cdr_se->cdr);
-            new_car = evaluate(cdr_se, env);
-            last_node = curr_node;
-            curr_node = create_s_expr(new_car, last_node->cdr);
-            last_node->cdr = install_list(env, curr_node);
+        if (new_car->type == TYPE_ERROR) {
+            free(result);
+            result = new_car;
+        } else {
+            s_expr* last_node = NULL;
+            typed_ptr* new_cdr = create_typed_ptr(TYPE_SEXPR, EMPTY_LIST_IDX);
+            s_expr* curr_node = create_s_expr(new_car, new_cdr);
+            result = install_list(env, curr_node);
+            while (cdr_se->cdr != NULL) {
+                cdr_se = sexpr_lookup(env, cdr_se->cdr);
+                new_car = evaluate(cdr_se, env);
+                if (new_car->type == TYPE_ERROR) {
+                    free(result);
+                    result = new_car;
+                    break;
+                }
+                last_node = curr_node;
+                curr_node = create_s_expr(new_car, last_node->cdr);
+                last_node->cdr = install_list(env, curr_node);
+            }
         }
     }
     return result;
@@ -1775,7 +1785,15 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
                             result = create_error(EVAL_ERROR_MANY_ARGS);
                         } else {
                             typed_ptr* new_car = evaluate(cdr_se, env);
+                            if (new_car->type == TYPE_ERROR) {
+                                result = new_car;
+                                break;
+                            }
                             typed_ptr* new_cdr = evaluate(cddr_se, env);
+                            if (new_cdr->type == TYPE_ERROR) {
+                                result = new_cdr;
+                                break;
+                            }
                             result = install_list(env, create_s_expr(new_car, \
                                                                      new_cdr));
                         }
