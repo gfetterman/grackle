@@ -1777,7 +1777,12 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
                         result = eval_set_variable(se, env);
                         break;
                     case BUILTIN_EXIT:
+                        if (se->cdr == NULL || (se->cdr->type == TYPE_SEXPR && \
+                                                is_empty_list(sexpr_lookup(env, se->cdr)))) {
                         result = create_error(EVAL_ERROR_EXIT);
+                        } else {
+                            result = create_error(EVAL_ERROR_MANY_ARGS);
+                        }
                         break;
                     case BUILTIN_CONS: {
                         s_expr* cdr_se = sexpr_lookup(env, se->cdr);
