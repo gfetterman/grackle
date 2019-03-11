@@ -1110,7 +1110,7 @@ typed_ptr* eval_comparison(const s_expr* se, environment* env) {
             result = eval_arg;
         } else if (eval_arg->type != TYPE_NUM) {
             free(eval_arg);
-            result = create_error(EVAL_ERROR_BAD_ARG_TYPE);
+            result = create_error(EVAL_ERROR_NEED_NUM);
         } else {
             unsigned int last_num = eval_arg->ptr;
             cdr_se = sexpr_lookup(env, cdr_se->cdr);
@@ -1125,7 +1125,7 @@ typed_ptr* eval_comparison(const s_expr* se, environment* env) {
                 } else if (eval_arg->type != TYPE_NUM) {
                     free(eval_arg);
                     free(result);
-                    result = create_error(EVAL_ERROR_BAD_ARG_TYPE);
+                    result = create_error(EVAL_ERROR_NEED_NUM);
                     break;
                 } else {
                     bool intermediate_truth;
