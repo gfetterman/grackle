@@ -1303,7 +1303,7 @@ typed_ptr* eval_car_cdr(const s_expr* se, environment* env) {
         } else {
             s_expr* arg1_se = sexpr_lookup(env, eval_arg1);
             free(eval_arg1);
-            if (symbol_lookup_index(env, se->car->ptr)->value == BUILTIN_CAR) {
+            if (se->car->ptr == BUILTIN_CAR) {
                 result = copy_typed_ptr(arg1_se->car);
             } else {
                 result = copy_typed_ptr(arg1_se->cdr);
