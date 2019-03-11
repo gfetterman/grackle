@@ -1592,7 +1592,7 @@ typed_ptr* install_function(environment* env, \
 typed_ptr* eval_lambda(const s_expr* se, environment* env) {
     typed_ptr* result = NULL;
     s_expr* cdr_se = sexpr_lookup(env, se->cdr);
-    s_expr* cddr_se = sexpr_lookup(env, cdr_se->cdr);
+    s_expr* cddr_se = (cdr_se == NULL) ? NULL : sexpr_lookup(env, cdr_se->cdr);
     if (cdr_se == NULL || cddr_se == NULL) {
         result = create_error(EVAL_ERROR_FEW_ARGS);
     } else if (cddr_se->cdr != NULL) {

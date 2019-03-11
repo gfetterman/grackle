@@ -268,11 +268,10 @@ void end_to_end_tests() {
     e2e_atom_test("(list 1 (-) 3)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     // lambda
     printf("# lambda #\n");
-    //e2e_atom_test("(lambda)", TYPE_ERROR, EVAL_ERROR_BAD_SYNTAX, t_env); // segfaults
-    e2e_autofail_test("(lambda)", t_env);
-    e2e_atom_test("(lambda 1)", TYPE_ERROR, EVAL_ERROR_BAD_SYNTAX, t_env);
+    e2e_atom_test("(lambda)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
+    e2e_atom_test("(lambda 1)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(lambda 1 2)", TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE, t_env);
-    e2e_atom_test("(lambda ())", TYPE_ERROR, EVAL_ERROR_BAD_SYNTAX, t_env);
+    e2e_atom_test("(lambda ())", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("((lambda () 1))", TYPE_NUM, 1, t_env);
     e2e_atom_test("((lambda () 1) 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("((lambda () (+ 1 1)))", TYPE_NUM, 2, t_env);
@@ -292,11 +291,13 @@ void end_to_end_tests() {
     e2e_atom_test("(set! x)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(set! x 1)", TYPE_ERROR, EVAL_ERROR_UNDEF_SYM, t_env);
     e2e_atom_test("(set! 1 2)", TYPE_ERROR, EVAL_ERROR_NOT_ID, t_env);
-    e2e_atom_test("(set! x (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     char* set_line1 = "(define x 1)";
     char* set_line2 = "(set! x (+ 1 1))";
     char* set_line3 = "(+ x 1)";
+    char* set_line4 = "(set! x (-))";
     char* set_lines[] = {set_line1, set_line2, set_line3};
+    char* set_lines2[] = {set_line1, set_line4};
+    e2e_multiline_atom_test(set_lines2, 2, TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_multiline_atom_test(set_lines, 2, TYPE_VOID, 0, t_env);
     e2e_multiline_atom_test(set_lines, 3, TYPE_NUM, 3, t_env);
     // define
