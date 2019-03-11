@@ -282,7 +282,7 @@ void end_to_end_tests() {
     e2e_atom_test("((lambda (x) (* x 10)) #t)", TYPE_ERROR, EVAL_ERROR_NEED_NUM, t_env);
     e2e_atom_test("((lambda (x) (* x 10)) (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("((lambda (x) (* x 10)) 3 4)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
-    e2e_atom_test("((lambda (x 2) (* x 10)) 3)", TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE, t_env);
+    e2e_atom_test("((lambda (x 2) (* x 10)) 3)", TYPE_ERROR, EVAL_ERROR_NOT_ID, t_env);
     e2e_atom_test("((lambda (x y) (* x y)) 3 4)", TYPE_NUM, 12, t_env);
     e2e_atom_test("((lambda (x y) (* x y)) 3)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("((lambda (x y) (* x y)) 3 4 5)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);

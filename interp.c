@@ -1534,7 +1534,7 @@ sym_tab_node* collect_parameters(typed_ptr* tp, environment* env) {
         return arg_list;
     }
     if (se->car->type != TYPE_SYM) {
-        arg_list = create_st_node(0, NULL, TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE);
+        arg_list = create_st_node(0, NULL, TYPE_ERROR, EVAL_ERROR_NOT_ID);
     } else {
         char* name = symbol_lookup_index(env, se->car->ptr)->symbol;
         arg_list = create_st_node(0, strdup(name), TYPE_UNDEF, 0);
@@ -1548,7 +1548,7 @@ sym_tab_node* collect_parameters(typed_ptr* tp, environment* env) {
             se = sexpr_lookup(env, se->cdr);
             if (se->car->type != TYPE_SYM) {
                 delete_st_node_list(arg_list);
-                arg_list = create_st_node(0, NULL, TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE);
+                arg_list = create_st_node(0, NULL, TYPE_ERROR, EVAL_ERROR_NOT_ID);
                 break;
             }
             name = symbol_lookup_index(env, se->car->ptr)->symbol;
