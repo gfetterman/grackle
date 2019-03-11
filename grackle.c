@@ -1,5 +1,8 @@
 #include "interp.h"
 
+#define PROMPT ">>>"
+#define BUF_SIZE 80
+
 // Sets up the environment for execution, and runs the REPL.
 int main() {
     bool exit = 0;

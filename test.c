@@ -234,26 +234,17 @@ void end_to_end_tests() {
     // cond
     printf("# cond #\n");
     e2e_atom_test("(cond)", TYPE_VOID, 0, t_env);
-    //e2e_atom_test("(cond #t)", TYPE_ERROR, EVAL_ERROR_BAD_SYNTAX, t_env); // segfault
-    e2e_autofail_test("(cond #t)", t_env);
-    //e2e_atom_test("(cond (#t))", TYPE_BOOL, 1, t_env); // segfault
-    e2e_autofail_test("(cond (#t))", t_env);
-    //e2e_atom_test("(cond (#t 1))", TYPE_NUM, 1, t_env); // segfault
-    e2e_autofail_test("(cond (#t 1))", t_env);
-    //e2e_atom_test("(cond (#f 1))", TYPE_VOID, 0, t_env); // segfault
-    e2e_autofail_test("(cond (#f 1))", t_env);
-    //e2e_atom_test("(cond (#t 1) (else 2))", TYPE_NUM, 1, t_env); // segfault
-    e2e_autofail_test("(cond (#t 1) (else 2))", t_env);
-    //e2e_atom_test("(cond (#f 1) (else 2))", TYPE_NUM, 2, t_env); // segfault
-    e2e_autofail_test("(cond (#f 1) (else 2))", t_env);
-    //e2e_atom_test("(cond (#f 1) (else 2) (#t 3))", TYPE_ERROR, EVAL_ERROR_NONTERMINAL_ELSE, t_env); // segfault
-    e2e_autofail_test("(cond (#f 1) (else 2) (#t 3))", t_env);
-    //e2e_atom_test("(cond (#t (+ 1 1) (+ 2 2)))", TYPE_NUM, 4, t_env); // segfault
-    e2e_autofail_test("(cond (#t (+ 1 1) (+ 2 2)))", t_env);
-    //e2e_atom_test("(cond ((-) 1))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env); // segfault
-    e2e_autofail_test("(cond ((-) 1))", t_env);
-    //e2e_atom_test("(cond (#t (-)))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env); // segfault
-    e2e_autofail_test("(cond (#t (-)))", t_env);
+    e2e_atom_test("(cond #t)", TYPE_ERROR, EVAL_ERROR_BAD_SYNTAX, t_env);
+    e2e_atom_test("(cond (#t))", TYPE_BOOL, 1, t_env);
+    e2e_atom_test("(cond (#t 1))", TYPE_NUM, 1, t_env);
+    e2e_atom_test("(cond (#f 1))", TYPE_VOID, 0, t_env);
+    e2e_atom_test("(cond (#t 1) (else 2))", TYPE_NUM, 1, t_env);
+    e2e_atom_test("(cond (#f 1) (else 2))", TYPE_NUM, 2, t_env);
+    e2e_atom_test("(cond (#f 1) (else))", TYPE_ERROR, EVAL_ERROR_EMPTY_ELSE, t_env);
+    e2e_atom_test("(cond (#f 1) (else 2) (#t 3))", TYPE_ERROR, EVAL_ERROR_NONTERMINAL_ELSE, t_env);
+    e2e_atom_test("(cond (#t (+ 1 1) (+ 2 2)))", TYPE_NUM, 4, t_env);
+    e2e_atom_test("(cond ((-) 1))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
+    e2e_atom_test("(cond (#t (-)))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     // cons
     printf("# cons #\n");
     //e2e_atom_test("(cons)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env); // segfault
