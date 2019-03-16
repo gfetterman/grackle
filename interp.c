@@ -224,6 +224,9 @@ void delete_env_shared_ft(environment* env) {
     while (curr != NULL) {
         sym_tab_node* next = curr->next;
         free(curr->symbol);
+        if (curr->type == TYPE_SEXPR) {
+            delete_se_recursive(curr->value.se_ptr);
+        }
         free(curr);
         curr = next;
     }
@@ -238,6 +241,9 @@ void delete_env_full(environment* env) {
     while (curr_stn != NULL) {
         sym_tab_node* next_stn = curr_stn->next;
         free(curr_stn->symbol);
+        if (curr_stn->type == TYPE_SEXPR) {
+            delete_se_recursive(curr_stn->value.se_ptr);
+        }
         free(curr_stn);
         curr_stn = next_stn;
     }
@@ -912,6 +918,7 @@ s_expr* parse(char str[], environment* env) {
     if (error_code == PARSE_ERROR_NONE) {
         merge_symbol_tables(env->symbol_table, temp_env->symbol_table);
         free(temp_env->symbol_table);
+        free(temp_env->function_table);
         free(temp_env);
     } else {
         while (stack != NULL) {
@@ -927,6 +934,7 @@ s_expr* parse(char str[], environment* env) {
             free(symbol_temp);
         }
         free(temp_env->symbol_table);
+        free(temp_env->function_table);
         free(temp_env);
         delete_s_expr(head);
         head = create_s_expr(create_error(error_code), \
