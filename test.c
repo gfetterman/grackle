@@ -351,6 +351,8 @@ void end_to_end_tests() {
     // reporting
     printf("-----\n");
     printf("tests passed/run: %u/%u\n", t_env->passed, t_env->run);
+    delete_env_full(t_env->env);
+    free(t_env);
     return;
 }
 
