@@ -1643,8 +1643,9 @@ typed_ptr* collect_args(const s_expr* se, \
         if (evaluate_all_args && \
             arg_tail->car->type != TYPE_BUILTIN && \
             arg_tail->car->type != TYPE_USER_FN) {
-            free(arg_tail->car);
+            typed_ptr* temp = arg_tail->car;
             arg_tail->car = evaluate(arg_tail, env);
+            free(temp);
         }
         if (arg_tail->car->type == TYPE_ERROR) {
             err = copy_typed_ptr(arg_tail->car);
