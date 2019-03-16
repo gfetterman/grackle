@@ -178,7 +178,8 @@ typedef struct ENVIRONMENT {
 environment* create_environment(unsigned int st_offset, \
                                 unsigned int ft_offset);
 environment* copy_environment(environment* env);
-void delete_env(environment* env);
+void delete_env_shared_ft(environment* env);
+void delete_env_full(environment* env);
 typed_ptr* install_symbol(environment* env, \
                           char* name, \
                           type type, \

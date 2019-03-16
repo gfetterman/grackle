@@ -196,7 +196,7 @@ environment* create_environment(unsigned int st_offset, \
 //   valid).
 // However, because the function table is currently only added to (not modified
 //   or deleted from), its pointer is simply copied over).
-// To destroy this new environment, delete_environment() below should be used,
+// To destroy this new environment, delete_env_shared_ft() below should be used,
 //   to ensure it's done safely.
 environment* copy_environment(environment* env) {
     environment* new_env = create_environment(0, 0);
@@ -219,7 +219,7 @@ environment* copy_environment(environment* env) {
 
 // Safely deletes an environment that shares a function table with other
 //   environments.
-void delete_env(environment* env) {
+void delete_env_shared_ft(environment* env) {
     sym_tab_node* curr = env->symbol_table->head;
     while (curr != NULL) {
         sym_tab_node* next = curr->next;
@@ -231,6 +231,40 @@ void delete_env(environment* env) {
     free(env);
     return;
 }
+
+// Fully deletes an environment.
+void delete_env_full(environment* env) {
+    sym_tab_node* curr_stn = env->symbol_table->head;
+    while (curr_stn != NULL) {
+        sym_tab_node* next_stn = curr_stn->next;
+        free(curr_stn->symbol);
+        free(curr_stn);
+        curr_stn = next_stn;
+    }
+    free(env->symbol_table);
+    fun_tab_node* curr_ftn = env->function_table->head;
+    while (curr_ftn != NULL) {
+        fun_tab_node* next_ftn = curr_ftn->next;
+        // free argument list
+        sym_tab_node* curr_arg_stn = curr_ftn->arg_list;
+        while (curr_arg_stn != NULL) {
+            sym_tab_node* next_arg_stn = curr_arg_stn->next;
+            free(curr_arg_stn->symbol);
+            free(curr_arg_stn);
+            curr_arg_stn = next_arg_stn;
+        }
+        // free closure environment
+        delete_env_shared_ft(curr_ftn->closure_env);
+        // free body s-expression
+        delete_se_recursive(curr_ftn->body->ptr.se_ptr);
+        free(curr_ftn);
+        curr_ftn = next_ftn;
+    }
+    free(env->function_table);
+    free(env);
+    return;
+}
+
 // The returned sym_tab_node should (usually) not be freed.
 // If the given name does not match any symbol table entry, NULL is returned.
 sym_tab_node* symbol_lookup_string(environment* env, const char* name) {
@@ -1524,7 +1558,7 @@ sym_tab_node* bind_args(environment* env, fun_tab_node* ftn, typed_ptr* args) {
 // Reads a list of bound arguments into an environment, returning the result.
 // The input environment is not modified.
 // The returned environment is the caller's responsibility to delete, using
-//   delete_environment() below.
+//   delete_env_shared_ft() below.
 environment* make_eval_env(environment* env, sym_tab_node* bound_args) {
     environment* eval_env = copy_environment(env);
     sym_tab_node* curr_arg = bound_args;
@@ -1571,7 +1605,7 @@ typed_ptr* eval_user_function(const s_expr* se, environment* env) {
                                              create_sexpr_tp(create_empty_s_expr()));
             result = evaluate(super_se, bound_env);
             delete_se_recursive(super_se);
-            delete_env(bound_env);
+            delete_env_shared_ft(bound_env);
         }
         delete_st_node_list(bound_args);
         delete_se_recursive(args_tp->ptr.se_ptr);
