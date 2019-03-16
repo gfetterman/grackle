@@ -344,37 +344,37 @@ char* substring(char* str, unsigned int start, unsigned int end) {
 }
 
 void setup_symbol_table(environment* env) {
-    blind_install_symbol_atom(env, "NULL_SENTINEL", TYPE_UNDEF, 0);
-    blind_install_symbol_atom(env, "+", TYPE_BUILTIN, BUILTIN_ADD);
-    blind_install_symbol_atom(env, "*", TYPE_BUILTIN, BUILTIN_MUL);
-    blind_install_symbol_atom(env, "-", TYPE_BUILTIN, BUILTIN_SUB);
-    blind_install_symbol_atom(env, "/", TYPE_BUILTIN, BUILTIN_DIV);
-    blind_install_symbol_atom(env, "define", TYPE_BUILTIN, BUILTIN_DEFINE);
-    blind_install_symbol_atom(env, "set!", TYPE_BUILTIN, BUILTIN_SETVAR);
-    blind_install_symbol_atom(env, "exit", TYPE_BUILTIN, BUILTIN_EXIT);
-    blind_install_symbol_atom(env, "cons", TYPE_BUILTIN, BUILTIN_CONS);
-    blind_install_symbol_atom(env, "car", TYPE_BUILTIN, BUILTIN_CAR);
-    blind_install_symbol_atom(env, "cdr", TYPE_BUILTIN, BUILTIN_CDR);
-    blind_install_symbol_atom(env, "and", TYPE_BUILTIN, BUILTIN_AND);
-    blind_install_symbol_atom(env, "or", TYPE_BUILTIN, BUILTIN_OR);
-    blind_install_symbol_atom(env, "not", TYPE_BUILTIN, BUILTIN_NOT);
-    blind_install_symbol_atom(env, "cond", TYPE_BUILTIN, BUILTIN_COND);
-    blind_install_symbol_atom(env, "list", TYPE_BUILTIN, BUILTIN_LIST);
-    blind_install_symbol_atom(env, "pair?", TYPE_BUILTIN, BUILTIN_PAIRPRED);
-    blind_install_symbol_atom(env, "list?", TYPE_BUILTIN, BUILTIN_LISTPRED);
-    blind_install_symbol_atom(env, "number?", TYPE_BUILTIN, BUILTIN_NUMBERPRED);
-    blind_install_symbol_atom(env, "boolean?", TYPE_BUILTIN, BUILTIN_BOOLPRED);
-    blind_install_symbol_atom(env, "void?", TYPE_BUILTIN, BUILTIN_VOIDPRED);
-    blind_install_symbol_atom(env, "=", TYPE_BUILTIN, BUILTIN_NUMBEREQ);
-    blind_install_symbol_atom(env, ">", TYPE_BUILTIN, BUILTIN_NUMBERGT);
-    blind_install_symbol_atom(env, "<", TYPE_BUILTIN, BUILTIN_NUMBERLT);
-    blind_install_symbol_atom(env, ">=", TYPE_BUILTIN, BUILTIN_NUMBERGE);
-    blind_install_symbol_atom(env, "<=", TYPE_BUILTIN, BUILTIN_NUMBERLE);
-    blind_install_symbol_atom(env, "lambda", TYPE_BUILTIN, BUILTIN_LAMBDA);
-    blind_install_symbol_sexpr(env, "null", TYPE_SEXPR, create_empty_s_expr());
-    blind_install_symbol_atom(env, "#t", TYPE_BOOL, 1);
-    blind_install_symbol_atom(env, "#f", TYPE_BOOL, 0);
-    blind_install_symbol_atom(env, "else", TYPE_UNDEF, 0);
+    blind_install_symbol_atom(env, strdup("NULL_SENTINEL"), TYPE_UNDEF, 0);
+    blind_install_symbol_atom(env, strdup("+"), TYPE_BUILTIN, BUILTIN_ADD);
+    blind_install_symbol_atom(env, strdup("*"), TYPE_BUILTIN, BUILTIN_MUL);
+    blind_install_symbol_atom(env, strdup("-"), TYPE_BUILTIN, BUILTIN_SUB);
+    blind_install_symbol_atom(env, strdup("/"), TYPE_BUILTIN, BUILTIN_DIV);
+    blind_install_symbol_atom(env, strdup("define"), TYPE_BUILTIN, BUILTIN_DEFINE);
+    blind_install_symbol_atom(env, strdup("set!"), TYPE_BUILTIN, BUILTIN_SETVAR);
+    blind_install_symbol_atom(env, strdup("exit"), TYPE_BUILTIN, BUILTIN_EXIT);
+    blind_install_symbol_atom(env, strdup("cons"), TYPE_BUILTIN, BUILTIN_CONS);
+    blind_install_symbol_atom(env, strdup("car"), TYPE_BUILTIN, BUILTIN_CAR);
+    blind_install_symbol_atom(env, strdup("cdr"), TYPE_BUILTIN, BUILTIN_CDR);
+    blind_install_symbol_atom(env, strdup("and"), TYPE_BUILTIN, BUILTIN_AND);
+    blind_install_symbol_atom(env, strdup("or"), TYPE_BUILTIN, BUILTIN_OR);
+    blind_install_symbol_atom(env, strdup("not"), TYPE_BUILTIN, BUILTIN_NOT);
+    blind_install_symbol_atom(env, strdup("cond"), TYPE_BUILTIN, BUILTIN_COND);
+    blind_install_symbol_atom(env, strdup("list"), TYPE_BUILTIN, BUILTIN_LIST);
+    blind_install_symbol_atom(env, strdup("pair?"), TYPE_BUILTIN, BUILTIN_PAIRPRED);
+    blind_install_symbol_atom(env, strdup("list?"), TYPE_BUILTIN, BUILTIN_LISTPRED);
+    blind_install_symbol_atom(env, strdup("number?"), TYPE_BUILTIN, BUILTIN_NUMBERPRED);
+    blind_install_symbol_atom(env, strdup("boolean?"), TYPE_BUILTIN, BUILTIN_BOOLPRED);
+    blind_install_symbol_atom(env, strdup("void?"), TYPE_BUILTIN, BUILTIN_VOIDPRED);
+    blind_install_symbol_atom(env, strdup("="), TYPE_BUILTIN, BUILTIN_NUMBEREQ);
+    blind_install_symbol_atom(env, strdup(">"), TYPE_BUILTIN, BUILTIN_NUMBERGT);
+    blind_install_symbol_atom(env, strdup("<"), TYPE_BUILTIN, BUILTIN_NUMBERLT);
+    blind_install_symbol_atom(env, strdup(">="), TYPE_BUILTIN, BUILTIN_NUMBERGE);
+    blind_install_symbol_atom(env, strdup("<="), TYPE_BUILTIN, BUILTIN_NUMBERLE);
+    blind_install_symbol_atom(env, strdup("lambda"), TYPE_BUILTIN, BUILTIN_LAMBDA);
+    blind_install_symbol_sexpr(env, strdup("null"), TYPE_SEXPR, create_empty_s_expr());
+    blind_install_symbol_atom(env, strdup("#t"), TYPE_BOOL, 1);
+    blind_install_symbol_atom(env, strdup("#f"), TYPE_BOOL, 0);
+    blind_install_symbol_atom(env, strdup("else"), TYPE_UNDEF, 0);
     return;
 }
 
