@@ -15,7 +15,7 @@ typedef struct TEST_ENV {
 
 typed_ptr* parse_and_eval(char command[], environment* env);
 
-bool check_tp(typed_ptr* tp, type t, unsigned int ptr);
+bool check_tp(typed_ptr* tp, type t, union_idx_se ptr);
 bool check_pair(typed_ptr* tp, typed_ptr** tplist, unsigned int len, environment* env);
 bool check_sexpr(typed_ptr* tp, typed_ptr** tplist, unsigned int len, environment* env);
 
