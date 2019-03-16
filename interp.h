@@ -58,7 +58,7 @@ typedef enum {PARSE_ERROR_NONE, \
               // v  evaluation errors below  v
               EVAL_ERROR_EXIT, \
               EVAL_ERROR_NULL_SEXPR, \
-              EVAL_ERROR_NULL_CAR, \
+              EVAL_ERROR_MALFORMED_SEXPR, \
               EVAL_ERROR_UNDEF_SYM, \
               EVAL_ERROR_UNDEF_TYPE, \
               EVAL_ERROR_UNDEF_BUILTIN, \
@@ -72,18 +72,40 @@ typedef enum {PARSE_ERROR_NONE, \
               EVAL_ERROR_NOT_ID, \
               EVAL_ERROR_MISSING_PROCEDURE, \
               EVAL_ERROR_BAD_SYNTAX, \
-              EVAL_ERROR_EMPTY_ELSE} interpreter_error;
+              EVAL_ERROR_EMPTY_ELSE, \
+              EVAL_ERROR_ILLEGAL_PAIR, \
+              EVAL_ERROR_UNDEF_FUNCTION} interpreter_error;
 
-// typed pointers
+// s-expressions & typed pointers
+
+// forward declaration
+struct S_EXPR_NODE;
+
+typedef union TP_PTR {
+    unsigned int idx;
+    struct S_EXPR_NODE* se_ptr;
+} union_idx_se;
 
 typedef struct TYPED_PTR {
     type type;
-    unsigned int ptr;
+    union_idx_se ptr;
 } typed_ptr;
 
-typed_ptr* create_typed_ptr(type type, unsigned int ptr);
+typedef struct S_EXPR_NODE {
+    typed_ptr* car;
+    typed_ptr* cdr;
+} s_expr;
+
+typed_ptr* create_typed_ptr(type type, union_idx_se ptr);
+typed_ptr* create_atom_tp(type type, unsigned int idx);
+typed_ptr* create_sexpr_tp(s_expr* se_ptr);
 typed_ptr* create_error(unsigned int err_code);
 typed_ptr* copy_typed_ptr(const typed_ptr* tp);
+
+s_expr* create_s_expr(typed_ptr* car, typed_ptr* cdr);
+s_expr* create_empty_s_expr();
+void delete_s_expr(s_expr* se);
+void delete_se_recursive(s_expr* se);
 
 // symbol table and symbol table nodes
 
@@ -91,14 +113,14 @@ typedef struct SYMBOL_TABLE_NODE {
     unsigned int symbol_number;
     char* symbol;
     type type;
-    unsigned int value;
+    union_idx_se value;
     struct SYMBOL_TABLE_NODE* next;
 } sym_tab_node;
 
 sym_tab_node* create_st_node(unsigned int symbol_number, \
                              char* name, \
                              type type, \
-                             unsigned int value);
+                             union_idx_se value);
 
 typedef struct SYMBOL_TABLE {
     sym_tab_node* head;
@@ -108,17 +130,7 @@ typedef struct SYMBOL_TABLE {
 
 Symbol_Table* create_symbol_table(unsigned int offset);
 
-// s-expressions
-
-typedef struct S_EXPR_NODE {
-    typed_ptr* car;
-    typed_ptr* cdr;
-} s_expr;
-
-s_expr* create_s_expr(typed_ptr* car, typed_ptr* cdr);
-void delete_s_expr(s_expr* se);
-
-// s-expression storage nodes (used in the list area and during parsing)
+// s-expression storage nodes (used during parsing)
 
 typedef struct S_EXPR_STORAGE_NODE {
     unsigned int list_number;
@@ -130,16 +142,6 @@ s_expr_storage* create_s_expr_storage(unsigned int list_number, s_expr* se);
 void se_stack_push(s_expr_storage** stack, s_expr* new_se);
 void se_stack_pop(s_expr_storage** stack);
 void delete_st_node_list(sym_tab_node* stn);
-
-// list area
-
-typedef struct LIST_AREA {
-    s_expr_storage* head;
-    unsigned int length;
-    unsigned int offset;
-} List_Area;
-
-List_Area* create_list_area(unsigned int offset);
 
 // function table and function table nodes
 
@@ -170,46 +172,42 @@ function_table* create_function_table(unsigned int offset);
 
 typedef struct ENVIRONMENT {
     Symbol_Table* symbol_table;
-    List_Area* list_area;
     function_table* function_table;
 } environment;
 
 environment* create_environment(unsigned int st_offset, \
-                                unsigned int la_offset, \
                                 unsigned int ft_offset);
 environment* copy_environment(environment* env);
 void delete_env(environment* env);
-sym_tab_node* symbol_lookup_string(environment* env, const char* name);
-sym_tab_node* symbol_lookup_index(environment* env, unsigned int index);
 typed_ptr* install_symbol(environment* env, \
                           char* name, \
                           type type, \
-                          unsigned int value);
-void blind_install_symbol(environment* env, \
-                          char* symbol, \
-                          type type, \
-                          unsigned int value);
-void setup_symbol_table(environment* env);
-typed_ptr* install_list(environment* env, s_expr* new_se);
-void set_list_area_member(environment* env, unsigned int idx, s_expr* new_se);
-void setup_list_area(environment* env);
-void setup_environment(environment* env);
+                          union_idx_se value);
+void blind_install_symbol_atom(environment* env, \
+                               char* symbol, \
+                               type type, \
+                               unsigned int value);
+void blind_install_symbol_sexpr(environment* env, \
+                                char* symbol, \
+                                type type, \
+                                s_expr* value);
 typed_ptr* install_symbol_substring(environment* env, \
                                     environment* temp_env, \
                                     char str[], \
                                     unsigned int start, \
                                     unsigned int end);
-s_expr* list_from_index(environment* env, unsigned int index);
-sym_tab_node* lookup_builtin(environment* env, builtin_code bc);
-s_expr* sexpr_lookup(environment* env, const typed_ptr* tp);
-typed_ptr* value_lookup(environment* env, typed_ptr* tp);
-void merge_list_areas(List_Area* first, List_Area* second);
-void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second);
 typed_ptr* install_function(environment* env, \
                             sym_tab_node* arg_list, \
                             environment* closure_env, \
                             typed_ptr* body);
-fun_tab_node* function_lookup(environment* env, typed_ptr* tp);
+void setup_symbol_table(environment* env);
+void setup_environment(environment* env);
+void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second);
+sym_tab_node* symbol_lookup_string(environment* env, const char* name);
+sym_tab_node* symbol_lookup_index(environment* env, const typed_ptr* tp);
+sym_tab_node* builtin_lookup_index(environment* env, const typed_ptr* tp);
+typed_ptr* value_lookup_index(environment* env, const typed_ptr* tp);
+fun_tab_node* function_lookup_index(environment* env, const typed_ptr* tp);
 
 // I/O
 
@@ -221,8 +219,9 @@ void print_result(const typed_ptr* tp, environment* env);
 // helper functions
 char* substring(char* str, unsigned int start, unsigned int end);
 bool string_is_number(const char str[]);
-bool is_false_literal(typed_ptr* tp);
-bool is_empty_list(s_expr* se);
+bool is_false_literal(const typed_ptr* tp);
+bool is_empty_list(const s_expr* se);
+s_expr* sexpr_next(const s_expr* se);
 
 // primary functions
 
@@ -230,6 +229,12 @@ s_expr* parse(char str[], environment* env);
 typed_ptr* evaluate(const s_expr* se, environment* env);
 
 // evaluation functions for built-in functions and special forms
+
+typed_ptr* collect_args(const s_expr* se, \
+                        environment* env, \
+                        int min_args, \
+                        int max_args, \
+                        bool evaluate_all_args);
 
 typed_ptr* eval_arithmetic(const s_expr* se, environment* env);
 typed_ptr* eval_comparison(const s_expr* se, environment* env);

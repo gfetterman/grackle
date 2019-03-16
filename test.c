@@ -5,7 +5,7 @@ void end_to_end_tests() {
     printf("end-to-end tests\n");
     printf("----------------\n");
     // setup
-    environment* env = create_environment(0, 0, 0);
+    environment* env = create_environment(0, 0);
     setup_environment(env);
     test_env* t_env = malloc(sizeof(test_env));
     if (t_env == NULL) {
@@ -116,7 +116,7 @@ void end_to_end_tests() {
     e2e_atom_test("(pair? #t)", TYPE_BOOL, 0, t_env);
     e2e_atom_test("(pair? (list 1 2 3))", TYPE_BOOL, 1, t_env);
     e2e_atom_test("(pair? (cons 1 2))", TYPE_BOOL, 1, t_env);
-    e2e_atom_test("(pair? null)", TYPE_BOOL, 1, t_env);
+    e2e_atom_test("(pair? null)", TYPE_BOOL, 0, t_env);
     e2e_atom_test("(pair? (cond))", TYPE_BOOL, 0, t_env);
     e2e_atom_test("(pair?)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(pair? 1 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
@@ -247,8 +247,8 @@ void end_to_end_tests() {
     printf("# cons #\n");
     e2e_atom_test("(cons)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(cons 1)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    typed_ptr* num_1 = create_typed_ptr(TYPE_NUM, 1);
-    typed_ptr* num_2 = create_typed_ptr(TYPE_NUM, 2);
+    typed_ptr* num_1 = create_atom_tp(TYPE_NUM, 1);
+    typed_ptr* num_2 = create_atom_tp(TYPE_NUM, 2);
     typed_ptr* cons_test_num_pair[] = {num_1, num_2};
     e2e_pair_test("(cons 1 2)", cons_test_num_pair, 2, t_env);
     e2e_sexpr_test("(cons 1 null)", cons_test_num_pair, 1, t_env);
