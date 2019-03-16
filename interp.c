@@ -165,7 +165,10 @@ function_table* create_function_table(unsigned int offset) {
 
 // The fun_tab_node returned shouldn't (usually) be freed.
 // tp is assumed to be an atomic typed_ptr.
-fun_tab_node* function_lookup(environment* env, typed_ptr* tp) {
+fun_tab_node* function_lookup_index(environment* env, const typed_ptr* tp) {
+    if (tp == NULL || tp->type != TYPE_USER_FN) {
+        return NULL;
+    }
     fun_tab_node* curr = env->function_table->head;
     while (curr != NULL) {
         if (curr->function_number == tp->ptr.idx) {
@@ -243,10 +246,13 @@ sym_tab_node* symbol_lookup_string(environment* env, const char* name) {
 
 // The returned sym_tab_node should (usually) not be freed.
 // If the given index does not match any symbol table entry, NULL is returned.
-sym_tab_node* symbol_lookup_index(environment* env, unsigned int index) {
+sym_tab_node* symbol_lookup_index(environment* env, const typed_ptr* tp) {
+    if (tp == NULL || tp->type != TYPE_SYM) {
+        return NULL;
+    }
     sym_tab_node* curr = env->symbol_table->head;
     while (curr != NULL) {
-        if (curr->symbol_number == index) {
+        if (curr->symbol_number == tp->ptr.idx) {
             break;
         }
         curr = curr->next;
@@ -469,10 +475,13 @@ typed_ptr* install_symbol_substring(environment* env, \
     }
 }
 
-sym_tab_node* lookup_builtin(environment* env, builtin_code bc) {
+sym_tab_node* builtin_lookup_index(environment* env, const typed_ptr* tp) {
+    if (tp == NULL || tp->type != TYPE_BUILTIN) {
+        return NULL;
+    }
     sym_tab_node* curr = env->symbol_table->head;
     while (curr != NULL) {
-        if (curr->type == TYPE_BUILTIN && curr->value.idx == bc) {
+        if (curr->type == TYPE_BUILTIN && curr->value.idx == tp->ptr.idx) {
             return curr;
         }
         curr = curr->next;
@@ -485,7 +494,7 @@ sym_tab_node* lookup_builtin(environment* env, builtin_code bc) {
 //   (shallow) freed without harm to the symbol table or any other object.
 // If the given typed_ptr does not point to a valid symbol table entry, or if
 //   it is NULL, NULL is returned.
-typed_ptr* value_lookup(environment* env, typed_ptr* tp) {
+typed_ptr* value_lookup_index(environment* env, const typed_ptr* tp) {
     if (tp == NULL || tp->type != TYPE_SYM) {
         return NULL;
     }
@@ -576,6 +585,9 @@ void print_error(const typed_ptr* tp) {
         case EVAL_ERROR_EMPTY_ELSE:
             printf("evaluation: else-clause in cond must have then-body");
             break;
+        case EVAL_ERROR_UNDEF_FUNCTION:
+            printf("evaluation: undefined user function");
+            break;
         default:
             printf("unknown error: error code %u", tp->ptr.idx);
             break;
@@ -623,10 +635,10 @@ void print_result(const typed_ptr* tp, environment* env) {
             print_s_expression(tp->ptr.se_ptr, env);
             break;
         case TYPE_SYM:
-            printf("'%s", symbol_lookup_index(env, tp->ptr.idx)->symbol);
+            printf("'%s", symbol_lookup_index(env, tp)->symbol);
             break;
         case TYPE_BUILTIN:
-            printf("#<procedure:%s>", lookup_builtin(env, tp->ptr.idx)->symbol);
+            printf("#<procedure:%s>", builtin_lookup_index(env, tp)->symbol);
             break;
         case TYPE_BOOL:
             printf("%s", (tp->ptr.idx == 0) ? "#f" : "#t");
@@ -1041,7 +1053,7 @@ typed_ptr* eval_define(const s_expr* se, environment* env) {
     } else {
         typed_ptr* arg = args_tp->ptr.se_ptr->car;
         if (arg->type == TYPE_SYM) {
-            sym_tab_node* sym_entry = symbol_lookup_index(env, arg->ptr.idx);
+            sym_tab_node* sym_entry = symbol_lookup_index(env, arg);
             if (sym_entry == NULL) {
                 result = create_error(EVAL_ERROR_UNDEF_SYM);
             } else {
@@ -1063,8 +1075,7 @@ typed_ptr* eval_define(const s_expr* se, environment* env) {
                 result = create_error(EVAL_ERROR_NOT_ID);
             } else {
                 typed_ptr* fn_sym = arg->ptr.se_ptr->car;
-                sym_tab_node* sym_entry = symbol_lookup_index(env, \
-                                                              fn_sym->ptr.idx);
+                sym_tab_node* sym_entry = symbol_lookup_index(env, fn_sym);
                 if (sym_entry == NULL) {
                     result = create_error(EVAL_ERROR_UNDEF_SYM);
                 } else {
@@ -1124,7 +1135,7 @@ typed_ptr* eval_set_variable(const s_expr* se, environment* env) {
         if (arg->type != TYPE_SYM) {
             result = create_error(EVAL_ERROR_NOT_ID);
         } else {
-            sym_tab_node* sym_entry = symbol_lookup_index(env, arg->ptr.idx);
+            sym_tab_node* sym_entry = symbol_lookup_index(env, arg);
             if (sym_entry == NULL || sym_entry->type == TYPE_UNDEF) {
                 result = create_error(EVAL_ERROR_UNDEF_SYM);
             } else {
@@ -1378,7 +1389,7 @@ sym_tab_node* collect_parameters(typed_ptr* tp, environment* env) {
     if (se->car->type != TYPE_SYM) {
         params = create_st_node(0, NULL, TYPE_ERROR, (union_idx_se){.idx=EVAL_ERROR_NOT_ID});
     } else {
-        char* name = symbol_lookup_index(env, se->car->ptr.idx)->symbol;
+        char* name = symbol_lookup_index(env, se->car)->symbol;
         params = create_st_node(0, strdup(name), TYPE_UNDEF, (union_idx_se){.idx=0});
         sym_tab_node* curr = params;
         se = sexpr_next(se);
@@ -1393,7 +1404,7 @@ sym_tab_node* collect_parameters(typed_ptr* tp, environment* env) {
                 params = create_st_node(0, NULL, TYPE_ERROR, (union_idx_se){.idx=EVAL_ERROR_NOT_ID});
                 break;
             }
-            name = symbol_lookup_index(env, se->car->ptr.idx)->symbol;
+            name = symbol_lookup_index(env, se->car)->symbol;
             curr->next = create_st_node(0, strdup(name), TYPE_UNDEF, (union_idx_se){.idx=0});
             curr = curr->next;
             se = sexpr_next(se);
@@ -1543,7 +1554,10 @@ environment* make_eval_env(environment* env, sym_tab_node* bound_args) {
 //   area, or any other object.
 typed_ptr* eval_user_function(const s_expr* se, environment* env) {
     typed_ptr* result = NULL;
-    fun_tab_node* ftn = function_lookup(env, se->car);
+    fun_tab_node* ftn = function_lookup_index(env, se->car);
+    if (ftn == NULL) {
+        return create_error(EVAL_ERROR_UNDEF_FUNCTION);
+    }
     typed_ptr* args_tp = collect_args(se, env, 0, -1, true);
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
@@ -1840,7 +1854,7 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
                 result = eval_user_function(se, env);
                 break;
             case TYPE_SYM:
-                result = value_lookup(env, se->car);
+                result = value_lookup_index(env, se->car);
                 break;
             case TYPE_NUM:  //    -| 
             case TYPE_BOOL: //    -|

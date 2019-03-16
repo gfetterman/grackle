@@ -73,7 +73,8 @@ typedef enum {PARSE_ERROR_NONE, \
               EVAL_ERROR_MISSING_PROCEDURE, \
               EVAL_ERROR_BAD_SYNTAX, \
               EVAL_ERROR_EMPTY_ELSE, \
-              EVAL_ERROR_ILLEGAL_PAIR} interpreter_error;
+              EVAL_ERROR_ILLEGAL_PAIR, \
+              EVAL_ERROR_UNDEF_FUNCTION} interpreter_error;
 
 // s-expressions & typed pointers
 
@@ -178,8 +179,6 @@ environment* create_environment(unsigned int st_offset, \
                                 unsigned int ft_offset);
 environment* copy_environment(environment* env);
 void delete_env(environment* env);
-sym_tab_node* symbol_lookup_string(environment* env, const char* name);
-sym_tab_node* symbol_lookup_index(environment* env, unsigned int index);
 typed_ptr* install_symbol(environment* env, \
                           char* name, \
                           type type, \
@@ -192,21 +191,23 @@ void blind_install_symbol_sexpr(environment* env, \
                                 char* symbol, \
                                 type type, \
                                 s_expr* value);
-void setup_symbol_table(environment* env);
-void setup_environment(environment* env);
 typed_ptr* install_symbol_substring(environment* env, \
                                     environment* temp_env, \
                                     char str[], \
                                     unsigned int start, \
                                     unsigned int end);
-sym_tab_node* lookup_builtin(environment* env, builtin_code bc);
-typed_ptr* value_lookup(environment* env, typed_ptr* tp);
-void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second);
 typed_ptr* install_function(environment* env, \
                             sym_tab_node* arg_list, \
                             environment* closure_env, \
                             typed_ptr* body);
-fun_tab_node* function_lookup(environment* env, typed_ptr* tp);
+void setup_symbol_table(environment* env);
+void setup_environment(environment* env);
+void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second);
+sym_tab_node* symbol_lookup_string(environment* env, const char* name);
+sym_tab_node* symbol_lookup_index(environment* env, const typed_ptr* tp);
+sym_tab_node* builtin_lookup_index(environment* env, const typed_ptr* tp);
+typed_ptr* value_lookup_index(environment* env, const typed_ptr* tp);
+fun_tab_node* function_lookup_index(environment* env, const typed_ptr* tp);
 
 // I/O
 
