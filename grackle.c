@@ -16,7 +16,7 @@ int main() {
             input_s_expr->car->type == TYPE_ERROR) {
             print_error(input_s_expr->car);
             printf("\n");
-            delete_se_recursive(input_s_expr);
+            delete_se_recursive(input_s_expr, true);
         } else {
             s_expr* super_se = create_s_expr(create_sexpr_tp(input_s_expr), \
                                              create_sexpr_tp(create_empty_s_expr()));
@@ -27,9 +27,10 @@ int main() {
                 exit = true;
             }
             free(result);
-            delete_se_recursive(super_se);
+            delete_se_recursive(super_se, true);
         }
     }
+    delete_env_full(env);
     printf("exiting...\n");
     return 0;
 }

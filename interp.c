@@ -96,6 +96,29 @@ s_expr* create_empty_s_expr() {
     return create_s_expr(NULL, NULL);
 }
 
+s_expr* copy_s_expr(const s_expr* se) {
+    if (se == NULL) {
+        return NULL;
+    }
+    s_expr* new_se = create_empty_s_expr();
+    s_expr* curr_se = new_se;
+    while (!is_empty_list(se)) {
+        curr_se->car = copy_typed_ptr(se->car);
+        if (curr_se->car->type == TYPE_SEXPR) {
+            curr_se->car->ptr.se_ptr = copy_s_expr(curr_se->car->ptr.se_ptr);
+        } // otherwise it's atomic and a copy of the typed_ptr is enough
+        curr_se->cdr = copy_typed_ptr(se->cdr);
+        if (curr_se->cdr->type == TYPE_SEXPR) {
+            curr_se->cdr->ptr.se_ptr = create_empty_s_expr();
+            curr_se = sexpr_next(curr_se);
+            se = sexpr_next(se);
+        } else { // se is a pair, so we're done
+            break;
+        }
+    }
+    return new_se;
+}
+
 // The s-expression is only shallow-deleted - this function will not follow
 // the car or cdr pointers recursively.
 // Obviously the s-expression and its car and cdr pointers must be safe to free.
@@ -196,7 +219,7 @@ environment* create_environment(unsigned int st_offset, \
 //   valid).
 // However, because the function table is currently only added to (not modified
 //   or deleted from), its pointer is simply copied over).
-// To destroy this new environment, delete_environment() below should be used,
+// To destroy this new environment, delete_env_shared_ft() below should be used,
 //   to ensure it's done safely.
 environment* copy_environment(environment* env) {
     environment* new_env = create_environment(0, 0);
@@ -206,6 +229,9 @@ environment* copy_environment(environment* env) {
                                                strdup(curr_stn->symbol), \
                                                curr_stn->type, \
                                                curr_stn->value);
+        if (new_stn->type == TYPE_SEXPR) {
+            new_stn->value.se_ptr = copy_s_expr(new_stn->value.se_ptr);
+        }
         new_stn->next = new_env->symbol_table->head;
         new_env->symbol_table->head = new_stn;
         curr_stn = curr_stn->next;
@@ -219,11 +245,14 @@ environment* copy_environment(environment* env) {
 
 // Safely deletes an environment that shares a function table with other
 //   environments.
-void delete_env(environment* env) {
+void delete_env_shared_ft(environment* env) {
     sym_tab_node* curr = env->symbol_table->head;
     while (curr != NULL) {
         sym_tab_node* next = curr->next;
         free(curr->symbol);
+        if (curr->type == TYPE_SEXPR) {
+            delete_se_recursive(curr->value.se_ptr, true);
+        }
         free(curr);
         curr = next;
     }
@@ -231,6 +260,46 @@ void delete_env(environment* env) {
     free(env);
     return;
 }
+
+// Fully deletes an environment.
+void delete_env_full(environment* env) {
+    sym_tab_node* curr_stn = env->symbol_table->head;
+    while (curr_stn != NULL) {
+        sym_tab_node* next_stn = curr_stn->next;
+        free(curr_stn->symbol);
+        if (curr_stn->type == TYPE_SEXPR) {
+            delete_se_recursive(curr_stn->value.se_ptr, true);
+        }
+        free(curr_stn);
+        curr_stn = next_stn;
+    }
+    free(env->symbol_table);
+    fun_tab_node* curr_ftn = env->function_table->head;
+    while (curr_ftn != NULL) {
+        fun_tab_node* next_ftn = curr_ftn->next;
+        // free argument list
+        sym_tab_node* curr_arg_stn = curr_ftn->arg_list;
+        while (curr_arg_stn != NULL) {
+            sym_tab_node* next_arg_stn = curr_arg_stn->next;
+            free(curr_arg_stn->symbol);
+            free(curr_arg_stn);
+            curr_arg_stn = next_arg_stn;
+        }
+        // free closure environment
+        delete_env_shared_ft(curr_ftn->closure_env);
+        // free body s-expression
+        if (curr_ftn->body->type == TYPE_SEXPR) {
+            delete_se_recursive(curr_ftn->body->ptr.se_ptr, true);
+        }
+        free(curr_ftn->body);
+        free(curr_ftn);
+        curr_ftn = next_ftn;
+    }
+    free(env->function_table);
+    free(env);
+    return;
+}
+
 // The returned sym_tab_node should (usually) not be freed.
 // If the given name does not match any symbol table entry, NULL is returned.
 sym_tab_node* symbol_lookup_string(environment* env, const char* name) {
@@ -344,37 +413,37 @@ char* substring(char* str, unsigned int start, unsigned int end) {
 }
 
 void setup_symbol_table(environment* env) {
-    blind_install_symbol_atom(env, "NULL_SENTINEL", TYPE_UNDEF, 0);
-    blind_install_symbol_atom(env, "+", TYPE_BUILTIN, BUILTIN_ADD);
-    blind_install_symbol_atom(env, "*", TYPE_BUILTIN, BUILTIN_MUL);
-    blind_install_symbol_atom(env, "-", TYPE_BUILTIN, BUILTIN_SUB);
-    blind_install_symbol_atom(env, "/", TYPE_BUILTIN, BUILTIN_DIV);
-    blind_install_symbol_atom(env, "define", TYPE_BUILTIN, BUILTIN_DEFINE);
-    blind_install_symbol_atom(env, "set!", TYPE_BUILTIN, BUILTIN_SETVAR);
-    blind_install_symbol_atom(env, "exit", TYPE_BUILTIN, BUILTIN_EXIT);
-    blind_install_symbol_atom(env, "cons", TYPE_BUILTIN, BUILTIN_CONS);
-    blind_install_symbol_atom(env, "car", TYPE_BUILTIN, BUILTIN_CAR);
-    blind_install_symbol_atom(env, "cdr", TYPE_BUILTIN, BUILTIN_CDR);
-    blind_install_symbol_atom(env, "and", TYPE_BUILTIN, BUILTIN_AND);
-    blind_install_symbol_atom(env, "or", TYPE_BUILTIN, BUILTIN_OR);
-    blind_install_symbol_atom(env, "not", TYPE_BUILTIN, BUILTIN_NOT);
-    blind_install_symbol_atom(env, "cond", TYPE_BUILTIN, BUILTIN_COND);
-    blind_install_symbol_atom(env, "list", TYPE_BUILTIN, BUILTIN_LIST);
-    blind_install_symbol_atom(env, "pair?", TYPE_BUILTIN, BUILTIN_PAIRPRED);
-    blind_install_symbol_atom(env, "list?", TYPE_BUILTIN, BUILTIN_LISTPRED);
-    blind_install_symbol_atom(env, "number?", TYPE_BUILTIN, BUILTIN_NUMBERPRED);
-    blind_install_symbol_atom(env, "boolean?", TYPE_BUILTIN, BUILTIN_BOOLPRED);
-    blind_install_symbol_atom(env, "void?", TYPE_BUILTIN, BUILTIN_VOIDPRED);
-    blind_install_symbol_atom(env, "=", TYPE_BUILTIN, BUILTIN_NUMBEREQ);
-    blind_install_symbol_atom(env, ">", TYPE_BUILTIN, BUILTIN_NUMBERGT);
-    blind_install_symbol_atom(env, "<", TYPE_BUILTIN, BUILTIN_NUMBERLT);
-    blind_install_symbol_atom(env, ">=", TYPE_BUILTIN, BUILTIN_NUMBERGE);
-    blind_install_symbol_atom(env, "<=", TYPE_BUILTIN, BUILTIN_NUMBERLE);
-    blind_install_symbol_atom(env, "lambda", TYPE_BUILTIN, BUILTIN_LAMBDA);
-    blind_install_symbol_sexpr(env, "null", TYPE_SEXPR, create_empty_s_expr());
-    blind_install_symbol_atom(env, "#t", TYPE_BOOL, 1);
-    blind_install_symbol_atom(env, "#f", TYPE_BOOL, 0);
-    blind_install_symbol_atom(env, "else", TYPE_UNDEF, 0);
+    blind_install_symbol_atom(env, strdup("NULL_SENTINEL"), TYPE_UNDEF, 0);
+    blind_install_symbol_atom(env, strdup("+"), TYPE_BUILTIN, BUILTIN_ADD);
+    blind_install_symbol_atom(env, strdup("*"), TYPE_BUILTIN, BUILTIN_MUL);
+    blind_install_symbol_atom(env, strdup("-"), TYPE_BUILTIN, BUILTIN_SUB);
+    blind_install_symbol_atom(env, strdup("/"), TYPE_BUILTIN, BUILTIN_DIV);
+    blind_install_symbol_atom(env, strdup("define"), TYPE_BUILTIN, BUILTIN_DEFINE);
+    blind_install_symbol_atom(env, strdup("set!"), TYPE_BUILTIN, BUILTIN_SETVAR);
+    blind_install_symbol_atom(env, strdup("exit"), TYPE_BUILTIN, BUILTIN_EXIT);
+    blind_install_symbol_atom(env, strdup("cons"), TYPE_BUILTIN, BUILTIN_CONS);
+    blind_install_symbol_atom(env, strdup("car"), TYPE_BUILTIN, BUILTIN_CAR);
+    blind_install_symbol_atom(env, strdup("cdr"), TYPE_BUILTIN, BUILTIN_CDR);
+    blind_install_symbol_atom(env, strdup("and"), TYPE_BUILTIN, BUILTIN_AND);
+    blind_install_symbol_atom(env, strdup("or"), TYPE_BUILTIN, BUILTIN_OR);
+    blind_install_symbol_atom(env, strdup("not"), TYPE_BUILTIN, BUILTIN_NOT);
+    blind_install_symbol_atom(env, strdup("cond"), TYPE_BUILTIN, BUILTIN_COND);
+    blind_install_symbol_atom(env, strdup("list"), TYPE_BUILTIN, BUILTIN_LIST);
+    blind_install_symbol_atom(env, strdup("pair?"), TYPE_BUILTIN, BUILTIN_PAIRPRED);
+    blind_install_symbol_atom(env, strdup("list?"), TYPE_BUILTIN, BUILTIN_LISTPRED);
+    blind_install_symbol_atom(env, strdup("number?"), TYPE_BUILTIN, BUILTIN_NUMBERPRED);
+    blind_install_symbol_atom(env, strdup("boolean?"), TYPE_BUILTIN, BUILTIN_BOOLPRED);
+    blind_install_symbol_atom(env, strdup("void?"), TYPE_BUILTIN, BUILTIN_VOIDPRED);
+    blind_install_symbol_atom(env, strdup("="), TYPE_BUILTIN, BUILTIN_NUMBEREQ);
+    blind_install_symbol_atom(env, strdup(">"), TYPE_BUILTIN, BUILTIN_NUMBERGT);
+    blind_install_symbol_atom(env, strdup("<"), TYPE_BUILTIN, BUILTIN_NUMBERLT);
+    blind_install_symbol_atom(env, strdup(">="), TYPE_BUILTIN, BUILTIN_NUMBERGE);
+    blind_install_symbol_atom(env, strdup("<="), TYPE_BUILTIN, BUILTIN_NUMBERLE);
+    blind_install_symbol_atom(env, strdup("lambda"), TYPE_BUILTIN, BUILTIN_LAMBDA);
+    blind_install_symbol_sexpr(env, strdup("null"), TYPE_SEXPR, create_empty_s_expr());
+    blind_install_symbol_atom(env, strdup("#t"), TYPE_BOOL, 1);
+    blind_install_symbol_atom(env, strdup("#f"), TYPE_BOOL, 0);
+    blind_install_symbol_atom(env, strdup("else"), TYPE_UNDEF, 0);
     return;
 }
 
@@ -503,6 +572,8 @@ typed_ptr* value_lookup_index(environment* env, const typed_ptr* tp) {
         if (curr->symbol_number == tp->ptr.idx) {
             if (curr->type == TYPE_UNDEF) {
                 return create_error(EVAL_ERROR_UNDEF_SYM);
+            } else if (curr->type == TYPE_SEXPR) {
+                return create_sexpr_tp(copy_s_expr(curr->value.se_ptr));
             } else {
                 return create_typed_ptr(curr->type, curr->value);
             }
@@ -878,6 +949,7 @@ s_expr* parse(char str[], environment* env) {
     if (error_code == PARSE_ERROR_NONE) {
         merge_symbol_tables(env->symbol_table, temp_env->symbol_table);
         free(temp_env->symbol_table);
+        free(temp_env->function_table);
         free(temp_env);
     } else {
         while (stack != NULL) {
@@ -893,6 +965,7 @@ s_expr* parse(char str[], environment* env) {
             free(symbol_temp);
         }
         free(temp_env->symbol_table);
+        free(temp_env->function_table);
         free(temp_env);
         delete_s_expr(head);
         head = create_s_expr(create_error(error_code), \
@@ -962,7 +1035,7 @@ typed_ptr* eval_arithmetic(const s_expr* se, environment* env) {
             }
             arg = sexpr_next(arg);
         }
-        delete_se_recursive(args_tp->ptr.se_ptr);
+        delete_se_recursive(args_tp->ptr.se_ptr, true);
         free(args_tp);
     }
     return result;
@@ -1027,7 +1100,7 @@ typed_ptr* eval_comparison(const s_expr* se, environment* env) {
                 result = create_atom_tp(TYPE_BOOL, truth);
             } // otherwise it threw an error
         }
-        delete_se_recursive(args_tp->ptr.se_ptr);
+        delete_se_recursive(args_tp->ptr.se_ptr, true);
         free(args_tp);
     }
     return result;
@@ -1093,12 +1166,15 @@ typed_ptr* eval_define(const s_expr* se, environment* env) {
                     s_expr* dummy_lambda = create_s_expr(lambda, \
                                                          create_sexpr_tp(arg_list_se));
                     typed_ptr* fn = eval_lambda(dummy_lambda, env);
-                    delete_se_recursive(dummy_lambda);
                     if (fn->type == TYPE_ERROR) {
+                        delete_se_recursive(dummy_lambda, true);
                         result = fn;
                     } else {
+                        delete_se_recursive(arg_list->ptr.se_ptr, true);
+                        delete_se_recursive(dummy_lambda, false);
                         char* name = strdup(sym_entry->symbol);
                         blind_install_symbol_atom(env, name, fn->type, fn->ptr.idx);
+                        free(fn);
                         result = create_typed_ptr(TYPE_VOID, (union_idx_se){.idx=0});
                     }
                 }
@@ -1106,7 +1182,7 @@ typed_ptr* eval_define(const s_expr* se, environment* env) {
         } else {
             result = create_error(EVAL_ERROR_NOT_ID);
         }
-        delete_se_recursive(args_tp->ptr.se_ptr);
+        delete_se_recursive(args_tp->ptr.se_ptr, false);
         free(args_tp);
     }
     return result;
@@ -1151,7 +1227,7 @@ typed_ptr* eval_set_variable(const s_expr* se, environment* env) {
                 }
             }
         }
-        delete_se_recursive(args_tp->ptr.se_ptr);
+        delete_se_recursive(args_tp->ptr.se_ptr, false);
         free(args_tp);
     }
     return result;
@@ -1183,7 +1259,7 @@ typed_ptr* eval_car_cdr(const s_expr* se, environment* env) {
             result = arg->ptr.se_ptr->cdr;
             arg->ptr.se_ptr->cdr = NULL;
         }
-        delete_se_recursive(args_tp->ptr.se_ptr);
+        delete_se_recursive(args_tp->ptr.se_ptr, true);
         free(args_tp);
     }
     return result;
@@ -1218,7 +1294,7 @@ typed_ptr* eval_list_pred(const s_expr* se, environment* env) {
                 arg_se = sexpr_next(arg_se);
             }
         }
-        delete_se_recursive(args_tp->ptr.se_ptr);
+        delete_se_recursive(args_tp->ptr.se_ptr, true);
         free(args_tp);
     }
     return result;
@@ -1246,7 +1322,7 @@ typed_ptr* eval_atom_pred(const s_expr* se, environment* env, type t) {
         if (arg->type == TYPE_SEXPR && is_empty_list(arg->ptr.se_ptr)) {
             result->ptr.idx = 0;
         }
-        delete_se_recursive(args_tp->ptr.se_ptr);
+        delete_se_recursive(args_tp->ptr.se_ptr, true);
         free(args_tp);
     }
     return result;
@@ -1299,7 +1375,6 @@ bool is_empty_list(const s_expr* se) {
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
 typed_ptr* eval_cond(const s_expr* se, environment* env) {
-    // IN PROGRESS
     typed_ptr* args_tp = collect_args(se, env, 0, -1, false);
     if (args_tp->type == TYPE_ERROR) {
         return args_tp;
@@ -1307,9 +1382,9 @@ typed_ptr* eval_cond(const s_expr* se, environment* env) {
         typed_ptr* eval_interm = create_typed_ptr(TYPE_VOID, (union_idx_se){.idx=0});
         s_expr* arg_se = sexpr_next(se);
         if (is_empty_list(arg_se)) {
-            delete_se_recursive(args_tp->ptr.se_ptr);
+            delete_se_recursive(args_tp->ptr.se_ptr, false);
             free(args_tp);
-            return create_typed_ptr(TYPE_VOID, (union_idx_se){.idx=0});
+            return eval_interm;
         }
         bool pred_true = false;
         s_expr* then_bodies = NULL;
@@ -1352,12 +1427,13 @@ typed_ptr* eval_cond(const s_expr* se, environment* env) {
             }
             arg_se = sexpr_next(arg_se);
         }
+        typed_ptr* result = NULL;
         if (!pred_true) { // no cond-clauses were true or we encountered an error
             if (eval_interm->type == TYPE_ERROR) {
-                return eval_interm;
+                result = eval_interm;
             } else {
                 free(eval_interm);
-                return create_typed_ptr(TYPE_VOID, (union_idx_se){.idx=0});
+                result = create_typed_ptr(TYPE_VOID, (union_idx_se){.idx=0});
             }
         } else {
             while (!is_empty_list(then_bodies)) {
@@ -1365,8 +1441,11 @@ typed_ptr* eval_cond(const s_expr* se, environment* env) {
                 eval_interm = evaluate(then_bodies, env);
                 then_bodies = sexpr_next(then_bodies);
             }
-            return eval_interm;
+            result = eval_interm;
         }
+        delete_se_recursive(args_tp->ptr.se_ptr, false);
+        free(args_tp);
+        return result;
     }
 }
 
@@ -1461,10 +1540,13 @@ typed_ptr* eval_lambda(const s_expr* se, environment* env) {
             } else {
                 environment* closure_env = copy_environment(env);
                 typed_ptr* body = copy_typed_ptr(second);
+                if (body->type == TYPE_SEXPR) {
+                    body->ptr.se_ptr = copy_s_expr(body->ptr.se_ptr);
+                }
                 result = install_function(env, params, closure_env, body);
             }
         }
-        delete_se_recursive(args_tp->ptr.se_ptr);
+        delete_se_recursive(args_tp->ptr.se_ptr, false);
         free(args_tp);
     }
     return result;
@@ -1524,7 +1606,7 @@ sym_tab_node* bind_args(environment* env, fun_tab_node* ftn, typed_ptr* args) {
 // Reads a list of bound arguments into an environment, returning the result.
 // The input environment is not modified.
 // The returned environment is the caller's responsibility to delete, using
-//   delete_environment() below.
+//   delete_env_shared_ft() below.
 environment* make_eval_env(environment* env, sym_tab_node* bound_args) {
     environment* eval_env = copy_environment(env);
     sym_tab_node* curr_arg = bound_args;
@@ -1570,11 +1652,11 @@ typed_ptr* eval_user_function(const s_expr* se, environment* env) {
             s_expr* super_se = create_s_expr(copy_typed_ptr(ftn->body), \
                                              create_sexpr_tp(create_empty_s_expr()));
             result = evaluate(super_se, bound_env);
-            delete_se_recursive(super_se);
-            delete_env(bound_env);
+            delete_se_recursive(super_se, false);
+            delete_env_shared_ft(bound_env);
         }
         delete_st_node_list(bound_args);
-        delete_se_recursive(args_tp->ptr.se_ptr);
+        delete_se_recursive(args_tp->ptr.se_ptr, true);
         free(args_tp);
     }
     return result;
@@ -1596,11 +1678,14 @@ s_expr* sexpr_next(const s_expr* se) {
     return se->cdr->ptr.se_ptr;
 }
 
-void delete_se_recursive(s_expr* se) {
+void delete_se_recursive(s_expr* se, bool delete_sexpr_cars) {
     s_expr* curr = se;
     while (curr != NULL) {
-        // we don't recursively free the car
-        // so this is currently a memory leak if it's of TYPE_SEXPR and new
+        if (delete_sexpr_cars && \
+            curr->car != NULL && \
+            curr->car->type == TYPE_SEXPR) {
+            delete_se_recursive(curr->car->ptr.se_ptr, true);
+        }
         free(curr->car);
         if (curr->cdr != NULL && curr->cdr->type == TYPE_SEXPR) {
             se = sexpr_next(curr);
@@ -1643,8 +1728,9 @@ typed_ptr* collect_args(const s_expr* se, \
         if (evaluate_all_args && \
             arg_tail->car->type != TYPE_BUILTIN && \
             arg_tail->car->type != TYPE_USER_FN) {
-            free(arg_tail->car);
+            typed_ptr* temp = arg_tail->car;
             arg_tail->car = evaluate(arg_tail, env);
+            free(temp);
         }
         if (arg_tail->car->type == TYPE_ERROR) {
             err = copy_typed_ptr(arg_tail->car);
@@ -1653,11 +1739,11 @@ typed_ptr* collect_args(const s_expr* se, \
         arg_tail = sexpr_next(arg_tail);
         curr = sexpr_next(curr);
     }
-    if (seen < min_args) {
+    if (err == NULL && seen < min_args) {
         err = create_error(EVAL_ERROR_FEW_ARGS);
     }
     if (err != NULL) {
-        delete_se_recursive(arg_head);
+        delete_se_recursive(arg_head, evaluate_all_args);
         return err;
     } else {
         return create_sexpr_tp(arg_head);
@@ -1707,7 +1793,8 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
                             result = args_tp;
                         } else {
                             result = create_error(EVAL_ERROR_EXIT);
-                            delete_se_recursive(args_tp->ptr.se_ptr);
+                            delete_se_recursive(args_tp->ptr.se_ptr, false);
+                            free(args_tp);
                         }
                         break;
                     }
@@ -1721,7 +1808,7 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
                                                                    sexpr_next(arg_list)->car));
                             arg_list->car = NULL;
                             sexpr_next(arg_list)->car = NULL;
-                            delete_se_recursive(arg_list);
+                            delete_se_recursive(arg_list, true);
                             free(args_tp);
                         }
                         break;
@@ -1738,19 +1825,19 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
                         if (args_tp->type == TYPE_ERROR) {
                             result = args_tp;
                         } else {
-                            s_expr* arg = create_s_expr(create_atom_tp(TYPE_BOOL, 1), args_tp);
-                            typed_ptr* last = arg->car;
-                            while (!is_empty_list(arg)) {
-                                last = arg->car;
-                                if (is_false_literal(arg->car)) {
+                            s_expr* arg_se = create_s_expr(create_atom_tp(TYPE_BOOL, 1), args_tp);
+                            s_expr* curr_se = arg_se;
+                            s_expr* last = arg_se;
+                            while (!is_empty_list(curr_se)) {
+                                last = curr_se;
+                                if (is_false_literal(last->car)) {
                                     break;
                                 }
-                                arg = sexpr_next(arg);
+                                curr_se = sexpr_next(curr_se);
                             }
-                            result = copy_typed_ptr(last);
-                            arg->car = NULL;
-                            delete_se_recursive(args_tp->ptr.se_ptr);
-                            free(args_tp);
+                            result = last->car;
+                            last->car = NULL;
+                            delete_se_recursive(arg_se, true);
                         }
                         break;
                     }
@@ -1759,19 +1846,19 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
                         if (args_tp->type == TYPE_ERROR) {
                             result = args_tp;
                         } else {
-                            s_expr* arg = create_s_expr(create_atom_tp(TYPE_BOOL, 0), args_tp);
-                            typed_ptr* last = arg->car;
-                            while (!is_empty_list(arg)) {
-                                last = arg->car;
-                                if (!is_false_literal(arg->car)) {
+                            s_expr* arg_se = create_s_expr(create_atom_tp(TYPE_BOOL, 0), args_tp);
+                            s_expr* curr_se = arg_se;
+                            s_expr* last = arg_se;
+                            while (!is_empty_list(curr_se)) {
+                                last = curr_se;
+                                if (!is_false_literal(last->car)) {
                                     break;
                                 }
-                                arg = sexpr_next(arg);
+                                curr_se = sexpr_next(curr_se);
                             }
-                            result = copy_typed_ptr(last);
-                            arg->car = NULL;
-                            delete_se_recursive(args_tp->ptr.se_ptr);
-                            free(args_tp);
+                            result = last->car;
+                            last->car = NULL;
+                            delete_se_recursive(arg_se, true);
                         }
                         break;
                     }
@@ -1785,7 +1872,7 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
                             } else {
                                 result = create_atom_tp(TYPE_BOOL, 0);
                             }
-                            delete_se_recursive(args_tp->ptr.se_ptr);
+                            delete_se_recursive(args_tp->ptr.se_ptr, true);
                             free(args_tp);
                         }
                         break;
