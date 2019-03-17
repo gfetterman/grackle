@@ -1752,6 +1752,7 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
                         } else {
                             result = create_error(EVAL_ERROR_EXIT);
                             delete_se_recursive(args_tp->ptr.se_ptr);
+                            free(args_tp);
                         }
                         break;
                     }
