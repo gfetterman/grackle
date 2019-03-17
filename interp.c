@@ -1166,12 +1166,15 @@ typed_ptr* eval_define(const s_expr* se, environment* env) {
                     s_expr* dummy_lambda = create_s_expr(lambda, \
                                                          create_sexpr_tp(arg_list_se));
                     typed_ptr* fn = eval_lambda(dummy_lambda, env);
-                    delete_se_recursive(dummy_lambda, false);
                     if (fn->type == TYPE_ERROR) {
+                        delete_se_recursive(dummy_lambda, true);
                         result = fn;
                     } else {
+                        delete_se_recursive(arg_list->ptr.se_ptr, true);
+                        delete_se_recursive(dummy_lambda, false);
                         char* name = strdup(sym_entry->symbol);
                         blind_install_symbol_atom(env, name, fn->type, fn->ptr.idx);
+                        free(fn);
                         result = create_typed_ptr(TYPE_VOID, (union_idx_se){.idx=0});
                     }
                 }
