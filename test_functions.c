@@ -10,7 +10,6 @@ typed_ptr* parse_and_eval(char command[], environment* env) {
         s_expr* super_se = create_s_expr(create_sexpr_tp(parse_output), \
                                          create_sexpr_tp(create_empty_s_expr()));
         output = evaluate(super_se, env);
-        delete_se_recursive(parse_output);
         delete_se_recursive(super_se);
     }
     return output;

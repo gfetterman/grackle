@@ -1641,8 +1641,9 @@ s_expr* sexpr_next(const s_expr* se) {
 void delete_se_recursive(s_expr* se) {
     s_expr* curr = se;
     while (curr != NULL) {
-        // we don't recursively free the car
-        // so this is currently a memory leak if it's of TYPE_SEXPR and new
+        if (curr->car != NULL && curr->car->type == TYPE_SEXPR) {
+            delete_se_recursive(curr->car->ptr.se_ptr);
+        }
         free(curr->car);
         if (curr->cdr != NULL && curr->cdr->type == TYPE_SEXPR) {
             se = sexpr_next(curr);
