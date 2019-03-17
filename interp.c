@@ -1808,19 +1808,19 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
                         if (args_tp->type == TYPE_ERROR) {
                             result = args_tp;
                         } else {
-                            s_expr* arg = create_s_expr(create_atom_tp(TYPE_BOOL, 1), args_tp);
-                            typed_ptr* last = arg->car;
-                            while (!is_empty_list(arg)) {
-                                last = arg->car;
-                                if (is_false_literal(arg->car)) {
+                            s_expr* arg_se = create_s_expr(create_atom_tp(TYPE_BOOL, 1), args_tp);
+                            s_expr* curr_se = arg_se;
+                            s_expr* last = arg_se;
+                            while (!is_empty_list(curr_se)) {
+                                last = curr_se;
+                                if (is_false_literal(last->car)) {
                                     break;
                                 }
-                                arg = sexpr_next(arg);
+                                curr_se = sexpr_next(curr_se);
                             }
-                            result = copy_typed_ptr(last);
-                            arg->car = NULL;
-                            delete_se_recursive(args_tp->ptr.se_ptr);
-                            free(args_tp);
+                            result = last->car;
+                            last->car = NULL;
+                            delete_se_recursive(arg_se);
                         }
                         break;
                     }
@@ -1829,19 +1829,19 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
                         if (args_tp->type == TYPE_ERROR) {
                             result = args_tp;
                         } else {
-                            s_expr* arg = create_s_expr(create_atom_tp(TYPE_BOOL, 0), args_tp);
-                            typed_ptr* last = arg->car;
-                            while (!is_empty_list(arg)) {
-                                last = arg->car;
-                                if (!is_false_literal(arg->car)) {
+                            s_expr* arg_se = create_s_expr(create_atom_tp(TYPE_BOOL, 0), args_tp);
+                            s_expr* curr_se = arg_se;
+                            s_expr* last = arg_se;
+                            while (!is_empty_list(curr_se)) {
+                                last = curr_se;
+                                if (!is_false_literal(last->car)) {
                                     break;
                                 }
-                                arg = sexpr_next(arg);
+                                curr_se = sexpr_next(curr_se);
                             }
-                            result = copy_typed_ptr(last);
-                            arg->car = NULL;
-                            delete_se_recursive(args_tp->ptr.se_ptr);
-                            free(args_tp);
+                            result = last->car;
+                            last->car = NULL;
+                            delete_se_recursive(arg_se);
                         }
                         break;
                     }
