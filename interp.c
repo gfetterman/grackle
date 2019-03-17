@@ -1727,7 +1727,7 @@ typed_ptr* collect_args(const s_expr* se, \
         arg_tail = sexpr_next(arg_tail);
         curr = sexpr_next(curr);
     }
-    if (seen < min_args) {
+    if (err == NULL && seen < min_args) {
         err = create_error(EVAL_ERROR_FEW_ARGS);
     }
     if (err != NULL) {
