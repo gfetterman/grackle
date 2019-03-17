@@ -39,9 +39,8 @@ void e2e_atom_test(char cmd[], type t, unsigned int val, test_env* te) {
     bool pass = check_tp(output, t, (union_idx_se){.idx=val});
     if (output->type == TYPE_SEXPR) {
         delete_se_recursive(output->ptr.se_ptr, true);
-    } else {
-        free(output);
     }
+    free(output);
     printf("%s\n", (pass) ? "PASSED" : "FAILED <=");
     te->passed += (pass) ? 1 : 0;
     te->run++;
@@ -67,6 +66,9 @@ void e2e_pair_test(char cmd[], typed_ptr** tplist, unsigned int len, test_env* t
     printf("test command: %-40s", cmd);
     typed_ptr* output = parse_and_eval(cmd, te->env);
     bool pass = check_pair(output, tplist, len, te->env);
+    if (output->type == TYPE_SEXPR) {
+        delete_se_recursive(output->ptr.se_ptr, true);
+    }
     free(output);
     printf("%s\n", (pass) ? "PASSED" : "FAILED <=");
     te->passed += (pass) ? 1 : 0;
@@ -117,6 +119,9 @@ void e2e_sexpr_test(char cmd[], typed_ptr** tplist, unsigned int len, test_env* 
     printf("test command: %-40s", cmd);
     typed_ptr* output = parse_and_eval(cmd, te->env);
     bool pass = check_sexpr(output, tplist, len, te->env);
+    if (output->type == TYPE_SEXPR) {
+        delete_se_recursive(output->ptr.se_ptr, true);
+    }
     free(output);
     printf("%s\n", (pass) ? "PASSED" : "FAILED <=");
     te->passed += (pass) ? 1 : 0;
