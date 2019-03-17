@@ -1376,7 +1376,7 @@ typed_ptr* eval_cond(const s_expr* se, environment* env) {
         if (is_empty_list(arg_se)) {
             delete_se_recursive(args_tp->ptr.se_ptr);
             free(args_tp);
-            return create_typed_ptr(TYPE_VOID, (union_idx_se){.idx=0});
+            return eval_interm;
         }
         bool pred_true = false;
         s_expr* then_bodies = NULL;
