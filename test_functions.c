@@ -10,7 +10,7 @@ typed_ptr* parse_and_eval(char command[], environment* env) {
         s_expr* super_se = create_s_expr(create_sexpr_tp(parse_output), \
                                          create_sexpr_tp(create_empty_s_expr()));
         output = evaluate(super_se, env);
-        delete_se_recursive(super_se);
+        delete_se_recursive(super_se, true);
     }
     return output;
 }
@@ -38,7 +38,7 @@ void e2e_atom_test(char cmd[], type t, unsigned int val, test_env* te) {
     typed_ptr* output = parse_and_eval(cmd, te->env);
     bool pass = check_tp(output, t, (union_idx_se){.idx=val});
     if (output->type == TYPE_SEXPR) {
-        delete_se_recursive(output->ptr.se_ptr);
+        delete_se_recursive(output->ptr.se_ptr, true);
     } else {
         free(output);
     }
