@@ -96,6 +96,29 @@ s_expr* create_empty_s_expr() {
     return create_s_expr(NULL, NULL);
 }
 
+s_expr* copy_s_expr(const s_expr* se) {
+    if (se == NULL) {
+        return NULL;
+    }
+    s_expr* new_se = create_empty_s_expr();
+    s_expr* curr_se = new_se;
+    while (!is_empty_list(se)) {
+        curr_se->car = copy_typed_ptr(se->car);
+        if (curr_se->car->type == TYPE_SEXPR) {
+            curr_se->car->ptr.se_ptr = copy_s_expr(curr_se->car->ptr.se_ptr);
+        } // otherwise it's atomic and a copy of the typed_ptr is enough
+        curr_se->cdr = copy_typed_ptr(se->cdr);
+        if (curr_se->cdr->type == TYPE_SEXPR) {
+            curr_se->cdr->ptr.se_ptr = create_empty_s_expr();
+            curr_se = sexpr_next(curr_se);
+            se = sexpr_next(se);
+        } else { // se is a pair, so we're done
+            break;
+        }
+    }
+    return new_se;
+}
+
 // The s-expression is only shallow-deleted - this function will not follow
 // the car or cdr pointers recursively.
 // Obviously the s-expression and its car and cdr pointers must be safe to free.
@@ -543,6 +566,8 @@ typed_ptr* value_lookup_index(environment* env, const typed_ptr* tp) {
         if (curr->symbol_number == tp->ptr.idx) {
             if (curr->type == TYPE_UNDEF) {
                 return create_error(EVAL_ERROR_UNDEF_SYM);
+            } else if (curr->type == TYPE_SEXPR) {
+                return create_sexpr_tp(copy_s_expr(curr->value.se_ptr));
             } else {
                 return create_typed_ptr(curr->type, curr->value);
             }
