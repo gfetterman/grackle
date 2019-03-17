@@ -263,6 +263,8 @@ void end_to_end_tests() {
     e2e_sexpr_test("(list (- 3 2) (+ 1 1))", cons_test_num_pair, 2, t_env);
     e2e_atom_test("(list (-) 2 3)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(list 1 (-) 3)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
+    free(num_1);
+    free(num_2);
     // lambda
     printf("# lambda #\n");
     e2e_atom_test("(lambda)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
