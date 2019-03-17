@@ -1537,6 +1537,9 @@ typed_ptr* eval_lambda(const s_expr* se, environment* env) {
             } else {
                 environment* closure_env = copy_environment(env);
                 typed_ptr* body = copy_typed_ptr(second);
+                if (body->type == TYPE_SEXPR) {
+                    body->ptr.se_ptr = copy_s_expr(body->ptr.se_ptr);
+                }
                 result = install_function(env, params, closure_env, body);
             }
         }
