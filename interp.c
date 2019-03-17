@@ -229,6 +229,9 @@ environment* copy_environment(environment* env) {
                                                strdup(curr_stn->symbol), \
                                                curr_stn->type, \
                                                curr_stn->value);
+        if (new_stn->type == TYPE_SEXPR) {
+            new_stn->value.se_ptr = copy_s_expr(new_stn->value.se_ptr);
+        }
         new_stn->next = new_env->symbol_table->head;
         new_env->symbol_table->head = new_stn;
         curr_stn = curr_stn->next;
@@ -285,7 +288,10 @@ void delete_env_full(environment* env) {
         // free closure environment
         delete_env_shared_ft(curr_ftn->closure_env);
         // free body s-expression
-        delete_se_recursive(curr_ftn->body->ptr.se_ptr, true);
+        if (curr_ftn->body->type == TYPE_SEXPR) {
+            delete_se_recursive(curr_ftn->body->ptr.se_ptr, true);
+        }
+        free(curr_ftn->body);
         free(curr_ftn);
         curr_ftn = next_ftn;
     }
