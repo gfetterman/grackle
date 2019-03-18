@@ -77,18 +77,6 @@ s_expr* copy_s_expr(const s_expr* se) {
     return new_se;
 }
 
-// The s-expression is only shallow-deleted - this function will not follow
-// the car or cdr pointers recursively.
-// Obviously the s-expression and its car and cdr pointers must be safe to free.
-void delete_s_expr(s_expr* se) {
-    if (se != NULL) {
-        free(se->car);
-        free(se->cdr);
-        free(se);
-    }
-    return;
-}
-
 void delete_se_recursive(s_expr* se, bool delete_sexpr_cars) {
     s_expr* curr = se;
     while (curr != NULL) {
@@ -1084,7 +1072,7 @@ s_expr* parse(char str[], environment* env) {
         free(temp_env->symbol_table);
         free(temp_env->function_table);
         free(temp_env);
-        delete_s_expr(head);
+        delete_se_recursive(head, true);
         head = create_s_expr(create_error(error_code), \
                              create_sexpr_tp(create_empty_s_expr()));
     }
