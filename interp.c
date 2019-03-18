@@ -1,7 +1,5 @@
 #include "interp.h"
 
-#define EMPTY_LIST_IDX 0
-
 // The returned typed_ptr is the caller's responsibility to free; it can be
 //   safely (shallow) freed without harm to any other object.
 typed_ptr* create_typed_ptr(type type, union_idx_se ptr) {
