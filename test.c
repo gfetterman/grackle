@@ -28,7 +28,8 @@ void end_to_end_tests() {
     printf("## - ##\n");
     e2e_atom_test("(- 10 1 2 3)", TYPE_NUM, 4, t_env);
     e2e_atom_test("(- 10 1)", TYPE_NUM, 9, t_env);
-    e2e_atom_test("(- 10)", TYPE_NUM, 4294967286, t_env); // unfortunate consequence of unsigned ints
+    // unfortunate consequence of unsigned ints
+    e2e_atom_test("(- 10)", TYPE_NUM, 4294967286, t_env);
     e2e_atom_test("(-)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(- 1 #t)", TYPE_ERROR, EVAL_ERROR_NEED_NUM, t_env);
     e2e_atom_test("(- 1 (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
@@ -221,11 +222,13 @@ void end_to_end_tests() {
     e2e_atom_test("(car (cdr (cdr (list 1 2 3))))", TYPE_NUM, 3, t_env);
     e2e_atom_test("(car 1)", TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE, t_env);
     e2e_atom_test("(car)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    e2e_atom_test("(car (cons 1 2) (cons 3 4))", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
+    char* car_many = "(car (cons 1 2) (cons 3 4))";
+    e2e_atom_test(car_many, TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("(car null)", TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE, t_env);
     e2e_atom_test("(cdr 1)", TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE, t_env);
     e2e_atom_test("(cdr)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    e2e_atom_test("(cdr (cons 1 2) (cons 3 4))", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
+    char* cdr_many = "(cdr (cons 1 2) (cons 3 4))";
+    e2e_atom_test(cdr_many, TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("(cdr null)", TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE, t_env);
     e2e_atom_test("(car (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(cdr (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
@@ -238,8 +241,10 @@ void end_to_end_tests() {
     e2e_atom_test("(cond (#f 1))", TYPE_VOID, 0, t_env);
     e2e_atom_test("(cond (#t 1) (else 2))", TYPE_NUM, 1, t_env);
     e2e_atom_test("(cond (#f 1) (else 2))", TYPE_NUM, 2, t_env);
-    e2e_atom_test("(cond (#f 1) (else))", TYPE_ERROR, EVAL_ERROR_EMPTY_ELSE, t_env);
-    e2e_atom_test("(cond (#f 1) (else 2) (#t 3))", TYPE_ERROR, EVAL_ERROR_NONTERMINAL_ELSE, t_env);
+    char* empty_else = "(cond (#f 1) (else))";
+    e2e_atom_test(empty_else, TYPE_ERROR, EVAL_ERROR_EMPTY_ELSE, t_env);
+    char* nonterm_else = "(cond (#f 1) (else 2) (#t 3))";
+    e2e_atom_test(nonterm_else, TYPE_ERROR, EVAL_ERROR_NONTERMINAL_ELSE, t_env);
     e2e_atom_test("(cond (#t (+ 1 1) (+ 2 2)))", TYPE_NUM, 4, t_env);
     e2e_atom_test("(cond ((-) 1))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(cond (#t (-)))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
@@ -274,16 +279,23 @@ void end_to_end_tests() {
     e2e_atom_test("((lambda () 1))", TYPE_NUM, 1, t_env);
     e2e_atom_test("((lambda () 1) 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("((lambda () (+ 1 1)))", TYPE_NUM, 2, t_env);
-    e2e_atom_test("((lambda (x) (* x 10)))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
+    char* lam_0_few = "((lambda (x) (* x 10)))";
+    e2e_atom_test(lam_0_few, TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("((lambda (x) (* x 10)) 3)", TYPE_NUM, 30, t_env);
     e2e_atom_test("((lambda (x) (* x 10)) (+ 1 2))", TYPE_NUM, 30, t_env);
-    e2e_atom_test("((lambda (x) (* x 10)) #t)", TYPE_ERROR, EVAL_ERROR_NEED_NUM, t_env);
-    e2e_atom_test("((lambda (x) (* x 10)) (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    e2e_atom_test("((lambda (x) (* x 10)) 3 4)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
-    e2e_atom_test("((lambda (x 2) (* x 10)) 3)", TYPE_ERROR, EVAL_ERROR_NOT_ID, t_env);
+    char* lam_body_error = "((lambda (x) (* x 10)) #t)";
+    e2e_atom_test(lam_body_error, TYPE_ERROR, EVAL_ERROR_NEED_NUM, t_env);
+    char* lam_prop_error = "((lambda (x) (* x 10)) (-))";
+    e2e_atom_test(lam_prop_error, TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
+    char* lam_0_many = "((lambda (x) (* x 10)) 3 4)";
+    e2e_atom_test(lam_0_many, TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
+    char* lam_not_id = "((lambda (x 2) (* x 10)) 3)";
+    e2e_atom_test(lam_not_id, TYPE_ERROR, EVAL_ERROR_NOT_ID, t_env);
     e2e_atom_test("((lambda (x y) (* x y)) 3 4)", TYPE_NUM, 12, t_env);
-    e2e_atom_test("((lambda (x y) (* x y)) 3)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    e2e_atom_test("((lambda (x y) (* x y)) 3 4 5)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
+    char* lam_1_few = "((lambda (x y) (* x y)) 3)";
+    e2e_atom_test(lam_1_few, TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
+    char* lam_1_many = "((lambda (x y) (* x y)) 3 4 5)";
+    e2e_atom_test(lam_1_many, TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     // set!
     printf("# set! #\n");
     e2e_atom_test("(set!)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
@@ -296,7 +308,10 @@ void end_to_end_tests() {
     char* set_line4 = "(set! x (-))";
     char* set_lines[] = {set_line1, set_line2, set_line3};
     char* set_lines2[] = {set_line1, set_line4};
-    e2e_multiline_atom_test(set_lines2, 2, TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
+    e2e_multiline_atom_test(set_lines2, \
+                            2, \
+                            TYPE_ERROR, \
+                            EVAL_ERROR_FEW_ARGS, t_env);
     e2e_multiline_atom_test(set_lines, 2, TYPE_VOID, 0, t_env);
     e2e_multiline_atom_test(set_lines, 3, TYPE_NUM, 3, t_env);
     // define
@@ -316,7 +331,7 @@ void end_to_end_tests() {
     e2e_atom_test("(define (x 1) 1)", TYPE_ERROR, EVAL_ERROR_NOT_ID, t_env);
     e2e_atom_test("(define (x) (-))", TYPE_VOID, 0, t_env);
     char* def_fnx_zero_param = "(define (x) 10)";
-    char* def_fnx_zero_param_sexpr = "(define (x) (+ 1 2))";
+    char* def_fnx_zero_param_se = "(define (x) (+ 1 2))";
     char* def_fnx_one_param = "(define (x y) (* y 10))";
     char* def_fnx_two_param = "(define (x y z) (+ (* y 10) z))";
     char* def_fnx_body_error = "(define (x) (+ 1 null))";
@@ -325,31 +340,95 @@ void end_to_end_tests() {
     char* fnx_call_two_arg = "(x 2 5)";
     char* fnx_call_three_arg = "(x 2 5 9)";
     char* fnx_call_arg_error = "(x (+ 2 null))";
-    char* def_call_fnx_zero_param_zero_arg[] = {def_fnx_zero_param, fnx_call_zero_arg};
-    char* def_call_fnx_zero_param_sexpr_zero_arg[] = {def_fnx_zero_param_sexpr, fnx_call_zero_arg};
-    char* def_call_fnx_zero_param_one_arg[] = {def_fnx_zero_param_sexpr, fnx_call_one_arg};
-    char* def_call_fnx_one_param_zero_arg[] = {def_fnx_one_param, fnx_call_zero_arg};
-    char* def_call_fnx_one_param_one_arg[] = {def_fnx_one_param, fnx_call_one_arg};
-    char* def_call_fnx_one_param_two_arg[] = {def_fnx_one_param, fnx_call_two_arg};
-    char* def_call_fnx_two_param_zero_arg[] = {def_fnx_two_param, fnx_call_zero_arg};
-    char* def_call_fnx_two_param_one_arg[] = {def_fnx_two_param, fnx_call_one_arg};
-    char* def_call_fnx_two_param_two_arg[] = {def_fnx_two_param, fnx_call_two_arg};
-    char* def_call_fnx_two_param_three_arg[] = {def_fnx_two_param, fnx_call_three_arg};
-    char* def_call_fnx_body_error_zero_arg[] = {def_fnx_body_error, fnx_call_zero_arg};
-    char* def_call_fnx_one_param_arg_error[] = {def_fnx_one_param, fnx_call_arg_error};
-    e2e_multiline_atom_test(def_call_fnx_zero_param_zero_arg, 1, TYPE_VOID, 0, t_env);
-    e2e_multiline_atom_test(def_call_fnx_zero_param_zero_arg, 2, TYPE_NUM, 10, t_env);
-    e2e_multiline_atom_test(def_call_fnx_zero_param_sexpr_zero_arg, 2, TYPE_NUM, 3, t_env);
-    e2e_multiline_atom_test(def_call_fnx_zero_param_one_arg, 2, TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
-    e2e_multiline_atom_test(def_call_fnx_one_param_zero_arg, 2, TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    e2e_multiline_atom_test(def_call_fnx_one_param_one_arg, 2, TYPE_NUM, 20, t_env);
-    e2e_multiline_atom_test(def_call_fnx_one_param_two_arg, 2, TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
-    e2e_multiline_atom_test(def_call_fnx_two_param_zero_arg, 2, TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    e2e_multiline_atom_test(def_call_fnx_two_param_one_arg, 2, TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    e2e_multiline_atom_test(def_call_fnx_two_param_two_arg, 2, TYPE_NUM, 25, t_env);
-    e2e_multiline_atom_test(def_call_fnx_two_param_three_arg, 2, TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
-    e2e_multiline_atom_test(def_call_fnx_body_error_zero_arg, 2, TYPE_ERROR, EVAL_ERROR_NEED_NUM, t_env);
-    e2e_multiline_atom_test(def_call_fnx_one_param_arg_error, 2, TYPE_ERROR, EVAL_ERROR_NEED_NUM, t_env);
+    char* def_call_fnx_zero_param_zero_arg[] = {def_fnx_zero_param, \
+                                                fnx_call_zero_arg};
+    char* def_call_fnx_zero_param_sexpr_zero_arg[] = {def_fnx_zero_param_se, \
+                                                      fnx_call_zero_arg};
+    char* def_call_fnx_zero_param_one_arg[] = {def_fnx_zero_param_se, \
+                                               fnx_call_one_arg};
+    char* def_call_fnx_one_param_zero_arg[] = {def_fnx_one_param, \
+                                               fnx_call_zero_arg};
+    char* def_call_fnx_one_param_one_arg[] = {def_fnx_one_param, \
+                                              fnx_call_one_arg};
+    char* def_call_fnx_one_param_two_arg[] = {def_fnx_one_param, \
+                                              fnx_call_two_arg};
+    char* def_call_fnx_two_param_zero_arg[] = {def_fnx_two_param, \
+                                               fnx_call_zero_arg};
+    char* def_call_fnx_two_param_one_arg[] = {def_fnx_two_param, \
+                                              fnx_call_one_arg};
+    char* def_call_fnx_two_param_two_arg[] = {def_fnx_two_param, \
+                                              fnx_call_two_arg};
+    char* def_call_fnx_two_param_three_arg[] = {def_fnx_two_param, \
+                                                fnx_call_three_arg};
+    char* def_call_fnx_body_error_zero_arg[] = {def_fnx_body_error, \
+                                                fnx_call_zero_arg};
+    char* def_call_fnx_one_param_arg_error[] = {def_fnx_one_param, \
+                                                fnx_call_arg_error};
+    e2e_multiline_atom_test(def_call_fnx_zero_param_zero_arg, \
+                            1, \
+                            TYPE_VOID, \
+                            0, \
+                            t_env);
+    e2e_multiline_atom_test(def_call_fnx_zero_param_zero_arg, \
+                            2, \
+                            TYPE_NUM, \
+                            10, \
+                            t_env);
+    e2e_multiline_atom_test(def_call_fnx_zero_param_sexpr_zero_arg, \
+                            2, \
+                            TYPE_NUM, \
+                            3, \
+                            t_env);
+    e2e_multiline_atom_test(def_call_fnx_zero_param_one_arg, \
+                            2, \
+                            TYPE_ERROR, \
+                            EVAL_ERROR_MANY_ARGS, \
+                            t_env);
+    e2e_multiline_atom_test(def_call_fnx_one_param_zero_arg, \
+                            2, \
+                            TYPE_ERROR, \
+                            EVAL_ERROR_FEW_ARGS, \
+                            t_env);
+    e2e_multiline_atom_test(def_call_fnx_one_param_one_arg, \
+                            2, \
+                            TYPE_NUM, \
+                            20, \
+                            t_env);
+    e2e_multiline_atom_test(def_call_fnx_one_param_two_arg, \
+                            2, \
+                            TYPE_ERROR, \
+                            EVAL_ERROR_MANY_ARGS, \
+                            t_env);
+    e2e_multiline_atom_test(def_call_fnx_two_param_zero_arg, \
+                            2, \
+                            TYPE_ERROR, \
+                            EVAL_ERROR_FEW_ARGS, \
+                            t_env);
+    e2e_multiline_atom_test(def_call_fnx_two_param_one_arg, \
+                            2, \
+                            TYPE_ERROR, \
+                            EVAL_ERROR_FEW_ARGS, \
+                            t_env);
+    e2e_multiline_atom_test(def_call_fnx_two_param_two_arg, \
+                            2, \
+                            TYPE_NUM, \
+                            25, \
+                            t_env);
+    e2e_multiline_atom_test(def_call_fnx_two_param_three_arg, \
+                            2, \
+                            TYPE_ERROR, \
+                            EVAL_ERROR_MANY_ARGS, \
+                            t_env);
+    e2e_multiline_atom_test(def_call_fnx_body_error_zero_arg, \
+                            2, \
+                            TYPE_ERROR, \
+                            EVAL_ERROR_NEED_NUM, \
+                            t_env);
+    e2e_multiline_atom_test(def_call_fnx_one_param_arg_error, \
+                            2, \
+                            TYPE_ERROR, \
+                            EVAL_ERROR_NEED_NUM, \
+                            t_env);
     // reporting
     printf("-----\n");
     printf("tests passed/run: %u/%u\n", t_env->passed, t_env->run);

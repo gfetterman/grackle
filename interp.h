@@ -121,6 +121,7 @@ sym_tab_node* create_st_node(unsigned int symbol_number, \
                              char* name, \
                              type type, \
                              union_idx_se value);
+sym_tab_node* create_error_stn(interpreter_error err_code);
 
 typedef struct SYMBOL_TABLE {
     sym_tab_node* head;
@@ -176,7 +177,7 @@ typedef struct ENVIRONMENT {
     function_table* function_table;
 } environment;
 
-environment* create_environment(unsigned int st_offset, unsigned int ft_offset);
+environment* create_environment(unsigned int st_start, unsigned int ft_start);
 environment* copy_environment(environment* env);
 void delete_env_shared_ft(environment* env);
 void delete_env_full(environment* env);

@@ -245,15 +245,14 @@ function_table* create_function_table(unsigned int offset) {
     return new_ft;
 }
 
-environment* create_environment(unsigned int st_offset, \
-                                unsigned int ft_offset) {
+environment* create_environment(unsigned int st_start, unsigned int ft_start) {
     environment* new_env = malloc(sizeof(environment));
     if (new_env == NULL) {
         fprintf(stderr, "malloc failed in create_environment()\n");
         exit(-1);
     }
-    new_env->symbol_table = create_symbol_table(st_offset);
-    new_env->function_table = create_function_table(ft_offset);
+    new_env->symbol_table = create_symbol_table(st_start);
+    new_env->function_table = create_function_table(ft_start);
     return new_env;
 }
 
@@ -457,34 +456,38 @@ typed_ptr* install_function(environment* env, \
 }
 
 void setup_symbol_table(environment* env) {
+    builtin_code tbi = TYPE_BUILTIN;
     blind_install_symbol_atom(env, strdup("NULL_SENTINEL"), TYPE_UNDEF, 0);
-    blind_install_symbol_atom(env, strdup("+"), TYPE_BUILTIN, BUILTIN_ADD);
-    blind_install_symbol_atom(env, strdup("*"), TYPE_BUILTIN, BUILTIN_MUL);
-    blind_install_symbol_atom(env, strdup("-"), TYPE_BUILTIN, BUILTIN_SUB);
-    blind_install_symbol_atom(env, strdup("/"), TYPE_BUILTIN, BUILTIN_DIV);
-    blind_install_symbol_atom(env, strdup("define"), TYPE_BUILTIN, BUILTIN_DEFINE);
-    blind_install_symbol_atom(env, strdup("set!"), TYPE_BUILTIN, BUILTIN_SETVAR);
-    blind_install_symbol_atom(env, strdup("exit"), TYPE_BUILTIN, BUILTIN_EXIT);
-    blind_install_symbol_atom(env, strdup("cons"), TYPE_BUILTIN, BUILTIN_CONS);
-    blind_install_symbol_atom(env, strdup("car"), TYPE_BUILTIN, BUILTIN_CAR);
-    blind_install_symbol_atom(env, strdup("cdr"), TYPE_BUILTIN, BUILTIN_CDR);
-    blind_install_symbol_atom(env, strdup("and"), TYPE_BUILTIN, BUILTIN_AND);
-    blind_install_symbol_atom(env, strdup("or"), TYPE_BUILTIN, BUILTIN_OR);
-    blind_install_symbol_atom(env, strdup("not"), TYPE_BUILTIN, BUILTIN_NOT);
-    blind_install_symbol_atom(env, strdup("cond"), TYPE_BUILTIN, BUILTIN_COND);
-    blind_install_symbol_atom(env, strdup("list"), TYPE_BUILTIN, BUILTIN_LIST);
-    blind_install_symbol_atom(env, strdup("pair?"), TYPE_BUILTIN, BUILTIN_PAIRPRED);
-    blind_install_symbol_atom(env, strdup("list?"), TYPE_BUILTIN, BUILTIN_LISTPRED);
-    blind_install_symbol_atom(env, strdup("number?"), TYPE_BUILTIN, BUILTIN_NUMBERPRED);
-    blind_install_symbol_atom(env, strdup("boolean?"), TYPE_BUILTIN, BUILTIN_BOOLPRED);
-    blind_install_symbol_atom(env, strdup("void?"), TYPE_BUILTIN, BUILTIN_VOIDPRED);
-    blind_install_symbol_atom(env, strdup("="), TYPE_BUILTIN, BUILTIN_NUMBEREQ);
-    blind_install_symbol_atom(env, strdup(">"), TYPE_BUILTIN, BUILTIN_NUMBERGT);
-    blind_install_symbol_atom(env, strdup("<"), TYPE_BUILTIN, BUILTIN_NUMBERLT);
-    blind_install_symbol_atom(env, strdup(">="), TYPE_BUILTIN, BUILTIN_NUMBERGE);
-    blind_install_symbol_atom(env, strdup("<="), TYPE_BUILTIN, BUILTIN_NUMBERLE);
-    blind_install_symbol_atom(env, strdup("lambda"), TYPE_BUILTIN, BUILTIN_LAMBDA);
-    blind_install_symbol_sexpr(env, strdup("null"), TYPE_SEXPR, create_empty_s_expr());
+    blind_install_symbol_atom(env, strdup("+"), tbi, BUILTIN_ADD);
+    blind_install_symbol_atom(env, strdup("*"), tbi, BUILTIN_MUL);
+    blind_install_symbol_atom(env, strdup("-"), tbi, BUILTIN_SUB);
+    blind_install_symbol_atom(env, strdup("/"), tbi, BUILTIN_DIV);
+    blind_install_symbol_atom(env, strdup("define"), tbi, BUILTIN_DEFINE);
+    blind_install_symbol_atom(env, strdup("set!"), tbi, BUILTIN_SETVAR);
+    blind_install_symbol_atom(env, strdup("exit"), tbi, BUILTIN_EXIT);
+    blind_install_symbol_atom(env, strdup("cons"), tbi, BUILTIN_CONS);
+    blind_install_symbol_atom(env, strdup("car"), tbi, BUILTIN_CAR);
+    blind_install_symbol_atom(env, strdup("cdr"), tbi, BUILTIN_CDR);
+    blind_install_symbol_atom(env, strdup("and"), tbi, BUILTIN_AND);
+    blind_install_symbol_atom(env, strdup("or"), tbi, BUILTIN_OR);
+    blind_install_symbol_atom(env, strdup("not"), tbi, BUILTIN_NOT);
+    blind_install_symbol_atom(env, strdup("cond"), tbi, BUILTIN_COND);
+    blind_install_symbol_atom(env, strdup("list"), tbi, BUILTIN_LIST);
+    blind_install_symbol_atom(env, strdup("pair?"), tbi, BUILTIN_PAIRPRED);
+    blind_install_symbol_atom(env, strdup("list?"), tbi, BUILTIN_LISTPRED);
+    blind_install_symbol_atom(env, strdup("number?"), tbi, BUILTIN_NUMBERPRED);
+    blind_install_symbol_atom(env, strdup("boolean?"), tbi, BUILTIN_BOOLPRED);
+    blind_install_symbol_atom(env, strdup("void?"), tbi, BUILTIN_VOIDPRED);
+    blind_install_symbol_atom(env, strdup("="), tbi, BUILTIN_NUMBEREQ);
+    blind_install_symbol_atom(env, strdup(">"), tbi, BUILTIN_NUMBERGT);
+    blind_install_symbol_atom(env, strdup("<"), tbi, BUILTIN_NUMBERLT);
+    blind_install_symbol_atom(env, strdup(">="), tbi, BUILTIN_NUMBERGE);
+    blind_install_symbol_atom(env, strdup("<="), tbi, BUILTIN_NUMBERLE);
+    blind_install_symbol_atom(env, strdup("lambda"), tbi, BUILTIN_LAMBDA);
+    blind_install_symbol_sexpr(env, \
+                               strdup("null"), \
+                               TYPE_SEXPR, \
+                               create_empty_s_expr());
     blind_install_symbol_atom(env, strdup("#t"), TYPE_BOOL, 1);
     blind_install_symbol_atom(env, strdup("#f"), TYPE_BOOL, 0);
     blind_install_symbol_atom(env, strdup("else"), TYPE_UNDEF, 0);
@@ -631,13 +634,16 @@ void print_error(const typed_ptr* tp) {
             printf("evaluation: too few arguments to function or special form");
             break;
         case EVAL_ERROR_MANY_ARGS:
-            printf("evaluation: too many arguments to function or special form");
+            printf("evaluation: too many arguments to function or special ");
+            printf("form");
             break;
         case EVAL_ERROR_BAD_ARG_TYPE:
-            printf("evaluation: argument to function or special form had the wrong type");
+            printf("evaluation: argument to function or special form had the ");
+            printf("wrong type");
             break;
         case EVAL_ERROR_NEED_NUM:
-            printf("evaluation: function or special form takes only number arguments");
+            printf("evaluation: function or special form takes only number ");
+            printf("arguments");
             break;
         case EVAL_ERROR_DIV_ZERO:
             printf("evaluation: cannot divide by zero");
@@ -649,10 +655,12 @@ void print_error(const typed_ptr* tp) {
             printf("evaluation: car of s-expression was not a callable");
             break;
         case EVAL_ERROR_NOT_ID:
-            printf("evaluation: first argument to 'set!' must be an identifier");
+            printf("evaluation: first argument to 'set!' must be an ");
+            printf("identifier");
             break;
         case EVAL_ERROR_MISSING_PROCEDURE:
-            printf("evaluation: missing procedure expression; probably originally bare ()");
+            printf("evaluation: missing procedure expression; probably ");
+            printf("originally bare ()");
             break;
         case EVAL_ERROR_BAD_SYNTAX:
             printf("evaluation: bad syntax for a function or special form");
@@ -1259,28 +1267,35 @@ typed_ptr* eval_define(const s_expr* se, environment* env) {
                 } else {
                     // create a dummy (lambda arg-list body) s-expression
                     typed_ptr* arg_list = arg->ptr.se_ptr->cdr;
-                    arg->ptr.se_ptr->cdr = create_sexpr_tp(create_empty_s_expr());
+                    s_expr* empty = create_empty_s_expr();
+                    arg->ptr.se_ptr->cdr = create_sexpr_tp(empty);
                     typed_ptr* fn_body = sexpr_next(args_tp->ptr.se_ptr)->car;
                     sexpr_next(args_tp->ptr.se_ptr)->car = NULL;
-                    sym_tab_node* lambda_stn = symbol_lookup_string(env, "lambda");
-                    typed_ptr* lambda = create_atom_tp(TYPE_SYM, \
-                                                       lambda_stn->symbol_number);
-                    s_expr* fn_body_se = create_s_expr(fn_body, create_sexpr_tp(create_empty_s_expr()));
-                    s_expr* arg_list_se = create_s_expr(arg_list, \
-                                                        create_sexpr_tp(fn_body_se));
-                    s_expr* dummy_lambda = create_s_expr(lambda, \
-                                                         create_sexpr_tp(arg_list_se));
-                    typed_ptr* fn = eval_lambda(dummy_lambda, env);
+                    sym_tab_node* lam_stn = symbol_lookup_string(env, "lambda");
+                    typed_ptr* lam = create_atom_tp(TYPE_SYM, \
+                                                    lam_stn->symbol_number);
+                    empty = create_empty_s_expr();
+                    s_expr* fn_body_se = create_s_expr(fn_body, \
+                                                       create_sexpr_tp(empty));
+                    typed_ptr* fn_body_tp = create_sexpr_tp(fn_body_se);
+                    s_expr* arg_list_se = create_s_expr(arg_list, fn_body_tp);
+                    typed_ptr* arg_list_tp = create_sexpr_tp(arg_list_se);
+                    s_expr* dummy_lam = create_s_expr(lam, arg_list_tp);
+                    typed_ptr* fn = eval_lambda(dummy_lam, env);
                     if (fn->type == TYPE_ERROR) {
-                        delete_se_recursive(dummy_lambda, true);
+                        delete_se_recursive(dummy_lam, true);
                         result = fn;
                     } else {
                         delete_se_recursive(arg_list->ptr.se_ptr, true);
-                        delete_se_recursive(dummy_lambda, false);
+                        delete_se_recursive(dummy_lam, false);
                         char* name = strdup(sym_entry->symbol);
-                        blind_install_symbol_atom(env, name, fn->type, fn->ptr.idx);
+                        blind_install_symbol_atom(env, \
+                                                  name, \
+                                                  fn->type, \
+                                                  fn->ptr.idx);
                         free(fn);
-                        result = create_typed_ptr(TYPE_VOID, (union_idx_se){.idx=0});
+                        result = create_typed_ptr(TYPE_VOID, \
+                                                  (union_idx_se){.idx=0});
                     }
                 }
             }
@@ -1354,8 +1369,7 @@ typed_ptr* eval_car_cdr(const s_expr* se, environment* env) {
         result = args_tp;
     } else {
         typed_ptr* arg = args_tp->ptr.se_ptr->car;
-        if (arg->type != TYPE_SEXPR || \
-            is_empty_list(arg->ptr.se_ptr)) {
+        if (arg->type != TYPE_SEXPR || is_empty_list(arg->ptr.se_ptr)) {
             result = create_error(EVAL_ERROR_BAD_ARG_TYPE);
         } else if (se->car->ptr.idx == BUILTIN_CAR) {
             result = arg->ptr.se_ptr->car;
@@ -1471,7 +1485,8 @@ typed_ptr* eval_cond(const s_expr* se, environment* env) {
     if (args_tp->type == TYPE_ERROR) {
         return args_tp;
     } else {
-        typed_ptr* eval_interm = create_typed_ptr(TYPE_VOID, (union_idx_se){.idx=0});
+        typed_ptr* eval_interm = create_typed_ptr(TYPE_VOID, \
+                                                  (union_idx_se){.idx=0});
         s_expr* arg_se = sexpr_next(se);
         if (is_empty_list(arg_se)) {
             delete_se_recursive(args_tp->ptr.se_ptr, false);
@@ -1492,8 +1507,9 @@ typed_ptr* eval_cond(const s_expr* se, environment* env) {
                 eval_interm = create_error(EVAL_ERROR_BAD_SYNTAX);
                 break;
             }
+            sym_tab_node* else_stn = symbol_lookup_string(env, "else");
             if (cond_clause->car->type == TYPE_SYM && \
-                cond_clause->car->ptr.idx == symbol_lookup_string(env, "else")->symbol_number) {
+                cond_clause->car->ptr.idx == else_stn->symbol_number) {
                 s_expr* next_clause = sexpr_next(arg_se);
                 if (!is_empty_list(next_clause)) {
                     free(eval_interm);
@@ -1520,7 +1536,7 @@ typed_ptr* eval_cond(const s_expr* se, environment* env) {
             arg_se = sexpr_next(arg_se);
         }
         typed_ptr* result = NULL;
-        if (!pred_true) { // no cond-clauses were true or we encountered an error
+        if (!pred_true) { // no cond-clauses were true, or there was an error
             if (eval_interm->type == TYPE_ERROR) {
                 result = eval_interm;
             } else {
@@ -1541,6 +1557,10 @@ typed_ptr* eval_cond(const s_expr* se, environment* env) {
     }
 }
 
+sym_tab_node* create_error_stn(interpreter_error err_code) {
+    return create_st_node(0, NULL, TYPE_ERROR, (union_idx_se){.idx=err_code});
+}
+
 // At first, we will restrict user-defined functions to have a finite number of
 //   parameters.
 // tp is expected to be a pointer to an s-expression. If it's empty, NULL is
@@ -1558,25 +1578,31 @@ sym_tab_node* collect_parameters(typed_ptr* tp, environment* env) {
         return params;
     }
     if (se->car->type != TYPE_SYM) {
-        params = create_st_node(0, NULL, TYPE_ERROR, (union_idx_se){.idx=EVAL_ERROR_NOT_ID});
+        params = create_error_stn(EVAL_ERROR_NOT_ID);
     } else {
         char* name = symbol_lookup_index(env, se->car)->symbol;
-        params = create_st_node(0, strdup(name), TYPE_UNDEF, (union_idx_se){.idx=0});
+        params = create_st_node(0, \
+                                strdup(name), \
+                                TYPE_UNDEF, \
+                                (union_idx_se){.idx=0});
         sym_tab_node* curr = params;
         se = sexpr_next(se);
         while (!is_empty_list(se)) {
             if (se->cdr == NULL || se->cdr->type != TYPE_SEXPR) {
                 delete_st_node_list(params);
-                params = create_st_node(0, NULL, TYPE_ERROR, (union_idx_se){.idx=EVAL_ERROR_BAD_ARG_TYPE});
+                params = create_error_stn(EVAL_ERROR_BAD_ARG_TYPE);
                 break;
             }
             if (se->car == NULL || se->car->type != TYPE_SYM) {
                 delete_st_node_list(params);
-                params = create_st_node(0, NULL, TYPE_ERROR, (union_idx_se){.idx=EVAL_ERROR_NOT_ID});
+                params = create_error_stn(EVAL_ERROR_NOT_ID);
                 break;
             }
             name = symbol_lookup_index(env, se->car)->symbol;
-            curr->next = create_st_node(0, strdup(name), TYPE_UNDEF, (union_idx_se){.idx=0});
+            curr->next = create_st_node(0, \
+                                        strdup(name), \
+                                        TYPE_UNDEF, \
+                                        (union_idx_se){.idx=0});
             curr = curr->next;
             se = sexpr_next(se);
         }
@@ -1641,9 +1667,9 @@ sym_tab_node* bind_args(environment* env, fun_tab_node* ftn, typed_ptr* args) {
     if (ftn->arg_list == NULL && is_empty_list(args->ptr.se_ptr)) {
         return NULL;
     } else if (is_empty_list(args->ptr.se_ptr)) {
-        return create_st_node(0, NULL, TYPE_ERROR, (union_idx_se){.idx=EVAL_ERROR_FEW_ARGS});
+        return create_error_stn(EVAL_ERROR_FEW_ARGS);
     } else if (ftn->arg_list == NULL) {
-        return create_st_node(0, NULL, TYPE_ERROR, (union_idx_se){.idx=EVAL_ERROR_MANY_ARGS});
+        return create_error_stn(EVAL_ERROR_MANY_ARGS);
     } else {
         sym_tab_node* curr_param = ftn->arg_list;
         s_expr* arg_se = args->ptr.se_ptr;
@@ -1657,21 +1683,21 @@ sym_tab_node* bind_args(environment* env, fun_tab_node* ftn, typed_ptr* args) {
         while (!is_empty_list(arg_se)) {
             if (curr_param == NULL) {
                 delete_st_node_list(bound_args);
-                bound_args = create_st_node(0, NULL, TYPE_ERROR, (union_idx_se){.idx=EVAL_ERROR_MANY_ARGS});
+                bound_args = create_error_stn(EVAL_ERROR_MANY_ARGS);
                 break;
             }
-            sym_tab_node* new_bound_arg = create_st_node(0, \
-                                                         strdup(curr_param->symbol), \
-                                                         arg_se->car->type, \
-                                                         arg_se->car->ptr);
-            new_bound_arg->next = bound_args;
-            bound_args = new_bound_arg;
+            sym_tab_node* new_arg = create_st_node(0, \
+                                                   strdup(curr_param->symbol), \
+                                                   arg_se->car->type, \
+                                                   arg_se->car->ptr);
+            new_arg->next = bound_args;
+            bound_args = new_arg;
             curr_param = curr_param->next;
             arg_se = sexpr_next(arg_se);
         }
         if (curr_param != NULL) {
             delete_st_node_list(bound_args);
-            bound_args = create_st_node(0, NULL, TYPE_ERROR, (union_idx_se){.idx=EVAL_ERROR_FEW_ARGS});
+            bound_args = create_error_stn(EVAL_ERROR_FEW_ARGS);
         }
         return bound_args;
     }
@@ -1718,18 +1744,19 @@ typed_ptr* eval_user_function(const s_expr* se, environment* env) {
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
-        sym_tab_node* bound_args = bind_args(env, ftn, args_tp);
-        if (bound_args != NULL && bound_args->type == TYPE_ERROR) {
-            result = create_error(bound_args->value.idx);
+        sym_tab_node* arg_vals = bind_args(env, ftn, args_tp);
+        if (arg_vals != NULL && arg_vals->type == TYPE_ERROR) {
+            result = create_error(arg_vals->value.idx);
         } else {
-            environment* bound_env = make_eval_env(ftn->closure_env, bound_args);
+            environment* bound_env = make_eval_env(ftn->closure_env, arg_vals);
+            s_expr* empty = create_empty_s_expr();
             s_expr* super_se = create_s_expr(copy_typed_ptr(ftn->body), \
-                                             create_sexpr_tp(create_empty_s_expr()));
+                                             create_sexpr_tp(empty));
             result = evaluate(super_se, bound_env);
             delete_se_recursive(super_se, false);
             delete_env_shared_ft(bound_env);
         }
-        delete_st_node_list(bound_args);
+        delete_st_node_list(arg_vals);
         delete_se_recursive(args_tp->ptr.se_ptr, true);
         free(args_tp);
     }
@@ -1789,12 +1816,14 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
                         if (args_tp->type == TYPE_ERROR) {
                             result = args_tp;
                         } else {
-                            s_expr* arg_list = args_tp->ptr.se_ptr;
-                            result = create_sexpr_tp(create_s_expr(arg_list->car, \
-                                                                   sexpr_next(arg_list)->car));
-                            arg_list->car = NULL;
-                            sexpr_next(arg_list)->car = NULL;
-                            delete_se_recursive(arg_list, true);
+                            s_expr* args = args_tp->ptr.se_ptr;
+                            s_expr* rest = sexpr_next(args);
+                            s_expr* result_se = create_s_expr(args->car, \
+                                                              rest->car);
+                            result = create_sexpr_tp(result_se);
+                            args->car = NULL;
+                            rest->car = NULL;
+                            delete_se_recursive(args, true);
                             free(args_tp);
                         }
                         break;
@@ -1811,7 +1840,8 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
                         if (args_tp->type == TYPE_ERROR) {
                             result = args_tp;
                         } else {
-                            s_expr* arg_se = create_s_expr(create_atom_tp(TYPE_BOOL, 1), args_tp);
+                            typed_ptr* true_tp = create_atom_tp(TYPE_BOOL, 1);
+                            s_expr* arg_se = create_s_expr(true_tp, args_tp);
                             s_expr* curr_se = arg_se;
                             s_expr* last = arg_se;
                             while (!is_empty_list(curr_se)) {
@@ -1832,7 +1862,8 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
                         if (args_tp->type == TYPE_ERROR) {
                             result = args_tp;
                         } else {
-                            s_expr* arg_se = create_s_expr(create_atom_tp(TYPE_BOOL, 0), args_tp);
+                            typed_ptr* false_tp = create_atom_tp(TYPE_BOOL, 0);
+                            s_expr* arg_se = create_s_expr(false_tp, args_tp);
                             s_expr* curr_se = arg_se;
                             s_expr* last = arg_se;
                             while (!is_empty_list(curr_se)) {
@@ -1902,8 +1933,9 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
                 if (is_empty_list(se_to_eval)) {
                     result = create_error(EVAL_ERROR_MISSING_PROCEDURE);
                 } else {
+                    s_expr* empty = create_empty_s_expr();
                     s_expr* dummy_se = create_s_expr(se_to_eval->car, \
-                                                     create_sexpr_tp(create_empty_s_expr()));
+                                                     create_sexpr_tp(empty));
                     typed_ptr* fn = evaluate(dummy_se, env);
                     free(sexpr_next(dummy_se));
                     free(dummy_se->cdr);
@@ -1911,7 +1943,8 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
                     if (fn->type == TYPE_ERROR) {
                         result = fn;
                     } else {
-                        if (fn->type == TYPE_BUILTIN || fn->type == TYPE_USER_FN) {
+                        if (fn->type == TYPE_BUILTIN || \
+                            fn->type == TYPE_USER_FN) {
                             dummy_se = create_s_expr(fn, se_to_eval->cdr);
                             result = evaluate(dummy_se, env);
                             free(dummy_se);

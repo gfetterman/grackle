@@ -3,7 +3,6 @@
 #define PROMPT ">>>"
 #define BUF_SIZE 80
 
-// Sets up the environment for execution, and runs the REPL.
 int main() {
     bool exit = 0;
     char input[BUF_SIZE];
@@ -18,12 +17,14 @@ int main() {
             printf("\n");
             delete_se_recursive(input_s_expr, true);
         } else {
+            s_expr* empty = create_empty_s_expr();
             s_expr* super_se = create_s_expr(create_sexpr_tp(input_s_expr), \
-                                             create_sexpr_tp(create_empty_s_expr()));
+                                             create_sexpr_tp(empty));
             typed_ptr* result = evaluate(super_se, env);
             print_result(result, env);
             printf("\n");
-            if (result->type == TYPE_ERROR && result->ptr.idx == EVAL_ERROR_EXIT) {
+            if (result->type == TYPE_ERROR && \
+                result->ptr.idx == EVAL_ERROR_EXIT) {
                 exit = true;
             }
             free(result);
