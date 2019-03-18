@@ -130,6 +130,7 @@ typedef struct SYMBOL_TABLE {
 } Symbol_Table;
 
 Symbol_Table* create_symbol_table(unsigned int offset);
+void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second);
 
 // s-expression storage nodes (used during parsing)
 
@@ -176,11 +177,11 @@ typedef struct ENVIRONMENT {
     function_table* function_table;
 } environment;
 
-environment* create_environment(unsigned int st_offset, \
-                                unsigned int ft_offset);
+environment* create_environment(unsigned int st_offset, unsigned int ft_offset);
 environment* copy_environment(environment* env);
 void delete_env_shared_ft(environment* env);
 void delete_env_full(environment* env);
+
 typed_ptr* install_symbol(environment* env, \
                           char* name, \
                           type type, \
@@ -202,9 +203,10 @@ typed_ptr* install_function(environment* env, \
                             sym_tab_node* arg_list, \
                             environment* closure_env, \
                             typed_ptr* body);
+
 void setup_symbol_table(environment* env);
 void setup_environment(environment* env);
-void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second);
+
 sym_tab_node* symbol_lookup_string(environment* env, const char* name);
 sym_tab_node* symbol_lookup_index(environment* env, const typed_ptr* tp);
 sym_tab_node* builtin_lookup_index(environment* env, const typed_ptr* tp);
@@ -219,10 +221,12 @@ void print_s_expression(const s_expr* se, environment* env);
 void print_result(const typed_ptr* tp, environment* env);
 
 // helper functions
+
 char* substring(char* str, unsigned int start, unsigned int end);
 bool string_is_number(const char str[]);
 bool is_false_literal(const typed_ptr* tp);
 bool is_empty_list(const s_expr* se);
+bool is_pair(const s_expr* se);
 s_expr* sexpr_next(const s_expr* se);
 
 // primary functions

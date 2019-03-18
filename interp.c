@@ -39,46 +39,6 @@ typed_ptr* copy_typed_ptr(const typed_ptr* tp) {
     return create_typed_ptr(tp->type, tp->ptr);
 }
 
-// The caller should ensure that the node's symbol number in the symbol table
-//   will be unique.
-// The string pointed to by name is now the symbol table's responsibility
-//   to free. It also must be safe to free (i.e., it must be heap-allocated)
-//   and nobody else should free it.
-// The returned sym_tab_node is the caller's (i.e., the symbol table's)
-//   responsibility to free.
-sym_tab_node* create_st_node(unsigned int symbol_number, \
-                             char* name, \
-                             type type, \
-                             union_idx_se value) {
-    sym_tab_node* new_node = malloc(sizeof(sym_tab_node));
-    if (new_node == NULL) {
-        fprintf(stderr, "fatal error: malloc failed in create_st_node()\n");
-        exit(-1);
-    }
-    new_node->symbol_number = symbol_number;
-    new_node->symbol = name;
-    new_node->type = type;
-    new_node->value = value;
-    new_node->next = NULL;
-    return new_node;
-}
-
-// The offset allows a temporary symbol table (used while parsing for easy
-//   walkback if the parsing fails) to avoid symbol number collisions with the
-//   real symbol table. This makes merging the two after a successful parse much
-//   easier.
-Symbol_Table* create_symbol_table(unsigned int offset) {
-    Symbol_Table* new_st = malloc(sizeof(Symbol_Table));
-    if (new_st == NULL) {
-        fprintf(stderr, "malloc failed in create_symbol_table()\n");
-        exit(-1);
-    }
-    new_st->head = NULL;
-    new_st->length = 0;
-    new_st->symbol_number_offset = offset;
-    return new_st;
-}
-
 // The s-expression returned is the caller's responsibility to free.
 s_expr* create_s_expr(typed_ptr* car, typed_ptr* cdr) {
     s_expr* new_se = malloc(sizeof(s_expr));
@@ -131,6 +91,85 @@ void delete_s_expr(s_expr* se) {
     return;
 }
 
+void delete_se_recursive(s_expr* se, bool delete_sexpr_cars) {
+    s_expr* curr = se;
+    while (curr != NULL) {
+        if (delete_sexpr_cars && \
+            curr->car != NULL && \
+            curr->car->type == TYPE_SEXPR) {
+            delete_se_recursive(curr->car->ptr.se_ptr, true);
+        }
+        free(curr->car);
+        if (curr->cdr != NULL && curr->cdr->type == TYPE_SEXPR) {
+            se = sexpr_next(curr);
+            free(curr->cdr);
+        } else {
+            se = NULL;
+            free(curr->cdr);
+        }
+        free(curr);
+        curr = se;
+    }
+    return;
+}
+
+// The caller should ensure that the node's symbol number in the symbol table
+//   will be unique.
+// The string pointed to by name is now the symbol table's responsibility
+//   to free. It also must be safe to free (i.e., it must be heap-allocated)
+//   and nobody else should free it.
+// The returned sym_tab_node is the caller's (i.e., the symbol table's)
+//   responsibility to free.
+sym_tab_node* create_st_node(unsigned int symbol_number, \
+                             char* name, \
+                             type type, \
+                             union_idx_se value) {
+    sym_tab_node* new_node = malloc(sizeof(sym_tab_node));
+    if (new_node == NULL) {
+        fprintf(stderr, "fatal error: malloc failed in create_st_node()\n");
+        exit(-1);
+    }
+    new_node->symbol_number = symbol_number;
+    new_node->symbol = name;
+    new_node->type = type;
+    new_node->value = value;
+    new_node->next = NULL;
+    return new_node;
+}
+
+// The offset allows a temporary symbol table (used while parsing for easy
+//   walkback if the parsing fails) to avoid symbol number collisions with the
+//   real symbol table. This makes merging the two after a successful parse much
+//   easier.
+Symbol_Table* create_symbol_table(unsigned int offset) {
+    Symbol_Table* new_st = malloc(sizeof(Symbol_Table));
+    if (new_st == NULL) {
+        fprintf(stderr, "malloc failed in create_symbol_table()\n");
+        exit(-1);
+    }
+    new_st->head = NULL;
+    new_st->length = 0;
+    new_st->symbol_number_offset = offset;
+    return new_st;
+}
+
+// Merges the second symbol table into the first; the second pointer remains
+//   valid.
+// Makes no attempt to guard against name or symbol number collisions.
+void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second) {
+    if (first->head == NULL) {
+        first->head = second->head;
+    } else {
+        sym_tab_node* curr = first->head;
+        while (curr->next != NULL) {
+            curr = curr->next;
+        }
+        curr->next = second->head;
+    }
+    first->length += second->length;
+    return;
+}
+
 // The s-expression storage node is the caller's responsibility to free.
 s_expr_storage* create_s_expr_storage(unsigned int list_number, s_expr* se) {
     s_expr_storage* new_ses = malloc(sizeof(s_expr_storage));
@@ -142,6 +181,40 @@ s_expr_storage* create_s_expr_storage(unsigned int list_number, s_expr* se) {
     new_ses->se = se;
     new_ses->next = NULL;
     return new_ses;
+}
+
+// This stack is used to keep track of open s-expressions during parsing.
+// It doesn't use the list_number member of s_expr_storage, so this function
+//   should not be used to install s-expressions into the list area.
+void se_stack_push(s_expr_storage** stack, s_expr* new_se) {
+    if (stack == NULL) {
+        fprintf(stderr, "stack double pointer NULL in se_stack_push()\n");
+        exit(-1);
+    }
+    s_expr_storage* new_node = create_s_expr_storage(0, new_se);
+    new_node->next = *stack;
+    *stack = new_node;
+    return;
+}
+
+// This stack is used to keep track of open s-expressions during parsing.
+// This function should not be used to remove s-expressions from the list area.
+// While it pops the top item off of the stack and frees the s_expr_storage, it
+//   does not free the s-expressions stored therein.
+// If the stack is empty, this will fail and exit the interpreter.
+void se_stack_pop(s_expr_storage** stack) {
+    if (stack == NULL) {
+        fprintf(stderr, "stack double pointer NULL in se_stack_pop()\n");
+        exit(-1);
+    }
+    if (*stack == NULL) {
+        fprintf(stderr, "cannot pop() from empty se_stack\n");
+        exit(-1);
+    }
+    s_expr_storage* old_head = *stack;
+    *stack = old_head->next;
+    free(old_head);
+    return;
 }
 
 void delete_st_node_list(sym_tab_node* stn) {
@@ -184,22 +257,6 @@ function_table* create_function_table(unsigned int offset) {
     new_ft->length = 0;
     new_ft->offset = offset;
     return new_ft;
-}
-
-// The fun_tab_node returned shouldn't (usually) be freed.
-// tp is assumed to be an atomic typed_ptr.
-fun_tab_node* function_lookup_index(environment* env, const typed_ptr* tp) {
-    if (tp == NULL || tp->type != TYPE_USER_FN) {
-        return NULL;
-    }
-    fun_tab_node* curr = env->function_table->head;
-    while (curr != NULL) {
-        if (curr->function_number == tp->ptr.idx) {
-            return curr;
-        }
-        curr = curr->next;
-    }
-    return curr;
 }
 
 environment* create_environment(unsigned int st_offset, \
@@ -300,35 +357,6 @@ void delete_env_full(environment* env) {
     return;
 }
 
-// The returned sym_tab_node should (usually) not be freed.
-// If the given name does not match any symbol table entry, NULL is returned.
-sym_tab_node* symbol_lookup_string(environment* env, const char* name) {
-    sym_tab_node* curr = env->symbol_table->head;
-    while (curr != NULL) {
-        if (!strcmp(curr->symbol, name)) {
-            return curr;
-        }
-        curr = curr->next;
-    }
-    return NULL;
-}
-
-// The returned sym_tab_node should (usually) not be freed.
-// If the given index does not match any symbol table entry, NULL is returned.
-sym_tab_node* symbol_lookup_index(environment* env, const typed_ptr* tp) {
-    if (tp == NULL || tp->type != TYPE_SYM) {
-        return NULL;
-    }
-    sym_tab_node* curr = env->symbol_table->head;
-    while (curr != NULL) {
-        if (curr->symbol_number == tp->ptr.idx) {
-            break;
-        }
-        curr = curr->next;
-    }
-    return curr;
-}
-
 // The string pointed to by name is now the symbol table's responsibility to
 //   free. It also must be safe to free (i.e., it must be heap-allocated), and
 //   nobody else should free it.
@@ -390,26 +418,56 @@ void blind_install_symbol_sexpr(environment* env, \
     return;
 }
 
-// The string returned is a valid null-terminated C string.
-// The string returned is the caller's responsibility to free.
-char* substring(char* str, unsigned int start, unsigned int end) {
-    unsigned int len = strlen(str);
-    if (str == NULL || len < (end - start)) {
-        fprintf(stderr, \
-                "fatal error: bad substring from %u to %u, for str len %u\n", \
-                start, \
-                end, \
-                len);
-        exit(-1);
+// A convenience function for use in parse().
+// If there is a symbol whose name matches the specified substring in either
+//   the symbol table or the temporary symbol table, a pointer to that symbol is
+//   returned. If not, the appropriate symbol is installed in the temporary
+//   symbol table, with type TYPE_UNDEF.
+// In all cases, the returned typed_ptr is the caller's responsibility to free;
+//   it is always safe to free without harm to either symbol table or any other
+//   object.
+typed_ptr* install_symbol_substring(environment* env, \
+                                    environment* temp_env, \
+                                    char str[], \
+                                    unsigned int start, \
+                                    unsigned int end) {
+    char* name = substring(str, start, end);
+    if (string_is_number(name)) {
+        unsigned int value = atoi(name);
+        free(name);
+        return create_atom_tp(TYPE_NUM, value);
+    } else {
+        sym_tab_node* found = symbol_lookup_string(env, name);
+        if (found == NULL) {
+            found = symbol_lookup_string(temp_env, name);
+            if (found == NULL) {
+                return install_symbol(temp_env, \
+                                      name, \
+                                      TYPE_UNDEF, \
+                                      (union_idx_se){.idx=0});
+            }
+        }
+        free(name);
+        return create_atom_tp(TYPE_SYM, found->symbol_number);
     }
-    char* ss = malloc(sizeof(char) * (end - start + 1));
-    if (ss == NULL) {
-        fprintf(stderr, "fatal error: malloc failed in substring()\n");
-        exit(-1);
-    }
-    memcpy(ss, (str + start), (sizeof(char) * (end - start)));
-    ss[end - start] = '\0';
-    return ss;
+}
+
+// The arg list and closure environment are now the (general) environment's
+//   concern. The body pointed to by the typed pointer remains someone else's
+//   problem, and won't be freed by the environment.
+// The typed pointer returned is the caller's responsibility to free.
+typed_ptr* install_function(environment* env, \
+                            sym_tab_node* arg_list, \
+                            environment* closure_env, \
+                            typed_ptr* body) {
+    unsigned int num = env->function_table->length;
+    fun_tab_node* new_ftn = create_ft_node(num, arg_list, closure_env, body);
+    new_ftn->next = env->function_table->head;
+    env->function_table->head = new_ftn;
+    env->function_table->length++;
+    // and it's now also in closure_env, because the two environments share
+    // list areas and function pointers
+    return create_atom_tp(TYPE_USER_FN, num);
 }
 
 void setup_symbol_table(environment* env) {
@@ -447,101 +505,38 @@ void setup_symbol_table(environment* env) {
     return;
 }
 
-void get_input(char* prompt, char buffer[], unsigned int buffer_size) {
-    printf("%s ", prompt);
-    fgets(buffer, buffer_size, stdin); // yes, this is unsafe
-    // drop newline at end of input
-    if ((strlen(buffer) > 0) && (buffer[strlen(buffer) - 1] == '\n')) {
-        buffer[strlen(buffer) - 1] = '\0';
-    }
-    return;
-}
-
 void setup_environment(environment* env) {
     setup_symbol_table(env);
     return;
 }
 
-// This stack is used to keep track of open s-expressions during parsing.
-// It doesn't use the list_number member of s_expr_storage, so this function
-//   should not be used to install s-expressions into the list area.
-void se_stack_push(s_expr_storage** stack, s_expr* new_se) {
-    if (stack == NULL) {
-        fprintf(stderr, "stack double pointer NULL in se_stack_push()\n");
-        exit(-1);
+// The returned sym_tab_node should (usually) not be freed.
+// If the given name does not match any symbol table entry, NULL is returned.
+sym_tab_node* symbol_lookup_string(environment* env, const char* name) {
+    sym_tab_node* curr = env->symbol_table->head;
+    while (curr != NULL) {
+        if (!strcmp(curr->symbol, name)) {
+            return curr;
+        }
+        curr = curr->next;
     }
-    s_expr_storage* new_node = create_s_expr_storage(0, new_se);
-    new_node->next = *stack;
-    *stack = new_node;
-    return;
+    return NULL;
 }
 
-// This stack is used to keep track of open s-expressions during parsing.
-// This function should not be used to remove s-expressions from the list area.
-// While it pops the top item off of the stack and frees the s_expr_storage, it
-//   does not free the s-expressions stored therein.
-// If the stack is empty, this will fail and exit the interpreter.
-void se_stack_pop(s_expr_storage** stack) {
-    if (stack == NULL) {
-        fprintf(stderr, "stack double pointer NULL in se_stack_pop()\n");
-        exit(-1);
+// The returned sym_tab_node should (usually) not be freed.
+// If the given index does not match any symbol table entry, NULL is returned.
+sym_tab_node* symbol_lookup_index(environment* env, const typed_ptr* tp) {
+    if (tp == NULL || tp->type != TYPE_SYM) {
+        return NULL;
     }
-    if (*stack == NULL) {
-        fprintf(stderr, "cannot pop() from empty se_stack\n");
-        exit(-1);
-    }
-    s_expr_storage* old_head = *stack;
-    *stack = old_head->next;
-    free(old_head);
-    return;
-}
-
-// Determines whether a string represents a number (rather than a symbol).
-// Currently only recognizes nonnegative integers.
-bool string_is_number(const char str[]) {
-    char c;
-    bool ok = true;
-    while ((c = *str++)) {
-        if (c < 48 || c > 57) {
-            ok = false;
+    sym_tab_node* curr = env->symbol_table->head;
+    while (curr != NULL) {
+        if (curr->symbol_number == tp->ptr.idx) {
             break;
         }
+        curr = curr->next;
     }
-    return ok;
-}
-
-// A convenience function for use in parse().
-// If there is a symbol whose name matches the specified substring in either
-//   the symbol table or the temporary symbol table, a pointer to that symbol is
-//   returned. If not, the appropriate symbol is installed in the temporary
-//   symbol table, with type TYPE_UNDEF.
-// In all cases, the returned typed_ptr is the caller's responsibility to free;
-//   it is always safe to free without harm to either symbol table or any other
-//   object.
-typed_ptr* install_symbol_substring(environment* env, \
-                                    environment* temp_env, \
-                                    char str[], \
-                                    unsigned int start, \
-                                    unsigned int end) {
-    char* name = substring(str, start, end);
-    if (string_is_number(name)) {
-        unsigned int value = atoi(name);
-        free(name);
-        return create_atom_tp(TYPE_NUM, value);
-    } else {
-        sym_tab_node* found = symbol_lookup_string(env, name);
-        if (found == NULL) {
-            found = symbol_lookup_string(temp_env, name);
-            if (found == NULL) {
-                return install_symbol(temp_env, \
-                                      name, \
-                                      TYPE_UNDEF, \
-                                      (union_idx_se){.idx=0});
-            }
-        }
-        free(name);
-        return create_atom_tp(TYPE_SYM, found->symbol_number);
-    }
+    return curr;
 }
 
 sym_tab_node* builtin_lookup_index(environment* env, const typed_ptr* tp) {
@@ -581,6 +576,32 @@ typed_ptr* value_lookup_index(environment* env, const typed_ptr* tp) {
         curr = curr->next;
     }
     return NULL;
+}
+
+// The fun_tab_node returned shouldn't (usually) be freed.
+// tp is assumed to be an atomic typed_ptr.
+fun_tab_node* function_lookup_index(environment* env, const typed_ptr* tp) {
+    if (tp == NULL || tp->type != TYPE_USER_FN) {
+        return NULL;
+    }
+    fun_tab_node* curr = env->function_table->head;
+    while (curr != NULL) {
+        if (curr->function_number == tp->ptr.idx) {
+            return curr;
+        }
+        curr = curr->next;
+    }
+    return curr;
+}
+
+void get_input(char* prompt, char buffer[], unsigned int buffer_size) {
+    printf("%s ", prompt);
+    fgets(buffer, buffer_size, stdin); // yes, this is unsafe
+    // drop newline at end of input
+    if ((strlen(buffer) > 0) && (buffer[strlen(buffer) - 1] == '\n')) {
+        buffer[strlen(buffer) - 1] = '\0';
+    }
+    return;
 }
 
 void print_error(const typed_ptr* tp) {
@@ -726,21 +747,119 @@ void print_result(const typed_ptr* tp, environment* env) {
     return;
 }
 
-// Merges the second symbol table into the first; the second pointer remains
-//   valid.
-// Makes no attempt to guard against name or symbol number collisions.
-void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second) {
-    if (first->head == NULL) {
-        first->head = second->head;
-    } else {
-        sym_tab_node* curr = first->head;
-        while (curr->next != NULL) {
-            curr = curr->next;
-        }
-        curr->next = second->head;
+// The string returned is a valid null-terminated C string.
+// The string returned is the caller's responsibility to free.
+char* substring(char* str, unsigned int start, unsigned int end) {
+    unsigned int len = strlen(str);
+    if (str == NULL || len < (end - start)) {
+        fprintf(stderr, \
+                "fatal error: bad substring from %u to %u, for str len %u\n", \
+                start, \
+                end, \
+                len);
+        exit(-1);
     }
-    first->length += second->length;
-    return;
+    char* ss = malloc(sizeof(char) * (end - start + 1));
+    if (ss == NULL) {
+        fprintf(stderr, "fatal error: malloc failed in substring()\n");
+        exit(-1);
+    }
+    memcpy(ss, (str + start), (sizeof(char) * (end - start)));
+    ss[end - start] = '\0';
+    return ss;
+}
+
+// Determines whether a string represents a number (rather than a symbol).
+// Currently only recognizes nonnegative integers.
+bool string_is_number(const char str[]) {
+    char c;
+    bool ok = true;
+    while ((c = *str++)) {
+        if (c < 48 || c > 57) {
+            ok = false;
+            break;
+        }
+    }
+    return ok;
+}
+
+bool is_false_literal(const typed_ptr* tp) {
+    return (tp->type == TYPE_BOOL && tp->ptr.idx == 0);
+}
+
+bool is_empty_list(const s_expr* se) {
+    if (se == NULL) {
+        printf("cannot determine if NULL se is empty list\n");
+        exit(-1);
+    } else {
+        return (se->car == NULL && se->cdr == NULL);
+    }
+}
+
+bool is_pair(const s_expr* se) {
+    if (se == NULL) {
+        printf("cannot determine pair-ness of NULL s-expression\n");
+        exit(-1);
+    }
+    if (se->cdr == NULL) {
+        printf("cannot determine pair-ness if cdr is NULL\n");
+        exit(-1);
+    }
+    return se->cdr->type != TYPE_SEXPR;
+}
+
+s_expr* sexpr_next(const s_expr* se) {
+    return se->cdr->ptr.se_ptr;
+}
+
+typed_ptr* collect_args(const s_expr* se, \
+                        environment* env, \
+                        int min_args, \
+                        int max_args, \
+                        bool evaluate_all_args) {
+    int seen = 0;
+    if (is_pair(se)) {
+        return create_error(EVAL_ERROR_ILLEGAL_PAIR);
+    }
+    s_expr* curr = sexpr_next(se);
+    s_expr* arg_head = create_empty_s_expr();
+    s_expr* arg_tail = arg_head;
+    typed_ptr* err = NULL;
+    while (!is_empty_list(curr)) {
+        if (is_pair(curr)) {
+            err = create_error(EVAL_ERROR_ILLEGAL_PAIR);
+            break;
+        }
+        seen++;
+        if (max_args >= 0 && seen > max_args) {
+            err = create_error(EVAL_ERROR_MANY_ARGS);
+            break;
+        }
+        arg_tail->car = copy_typed_ptr(curr->car);
+        arg_tail->cdr = create_sexpr_tp(create_empty_s_expr());
+        if (evaluate_all_args && \
+            arg_tail->car->type != TYPE_BUILTIN && \
+            arg_tail->car->type != TYPE_USER_FN) {
+            typed_ptr* temp = arg_tail->car;
+            arg_tail->car = evaluate(arg_tail, env);
+            free(temp);
+        }
+        if (arg_tail->car->type == TYPE_ERROR) {
+            err = copy_typed_ptr(arg_tail->car);
+            break;
+        }
+        arg_tail = sexpr_next(arg_tail);
+        curr = sexpr_next(curr);
+    }
+    if (err == NULL && seen < min_args) {
+        err = create_error(EVAL_ERROR_FEW_ARGS);
+    }
+    if (err != NULL) {
+        delete_se_recursive(arg_head, evaluate_all_args);
+        return err;
+    } else {
+        return create_sexpr_tp(arg_head);
+    }
 }
 
 // Takes an input string and attempts to parse it into a valid s-expression.
@@ -1342,19 +1461,6 @@ typed_ptr* eval_list_construction(const s_expr* se, environment* env) {
     return collect_args(se, env, 0, -1, true);
 }
 
-bool is_false_literal(const typed_ptr* tp) {
-    return (tp->type == TYPE_BOOL && tp->ptr.idx == 0);
-}
-
-bool is_empty_list(const s_expr* se) {
-    if (se == NULL) {
-        printf("cannot determine if NULL se is empty list\n");
-        exit(-1);
-    } else {
-        return (se->car == NULL && se->cdr == NULL);
-    }
-}
-
 // Evaluates an s-expression whose car is the built-in special form
 //   BUILTIN_COND.
 // This special form takes any number of arguments.
@@ -1490,24 +1596,6 @@ sym_tab_node* collect_parameters(typed_ptr* tp, environment* env) {
         }
     }
     return params;
-}
-
-// The arg list and closure environment are now the (general) environment's
-//   concern. The body pointed to by the typed pointer remains someone else's
-//   problem, and won't be freed by the environment.
-// The typed pointer returned is the caller's responsibility to free.
-typed_ptr* install_function(environment* env, \
-                            sym_tab_node* arg_list, \
-                            environment* closure_env, \
-                            typed_ptr* body) {
-    unsigned int num = env->function_table->length;
-    fun_tab_node* new_ftn = create_ft_node(num, arg_list, closure_env, body);
-    new_ftn->next = env->function_table->head;
-    env->function_table->head = new_ftn;
-    env->function_table->length++;
-    // and it's now also in closure_env, because the two environments share
-    // list areas and function pointers
-    return create_atom_tp(TYPE_USER_FN, num);
 }
 
 // Evaluates an s-expression whose car is the built-in special form
@@ -1660,94 +1748,6 @@ typed_ptr* eval_user_function(const s_expr* se, environment* env) {
         free(args_tp);
     }
     return result;
-}
-
-bool is_pair(const s_expr* se) {
-    if (se == NULL) {
-        printf("cannot determine pair-ness of NULL s-expression\n");
-        exit(-1);
-    }
-    if (se->cdr == NULL) {
-        printf("cannot determine pair-ness if cdr is NULL\n");
-        exit(-1);
-    }
-    return se->cdr->type != TYPE_SEXPR;
-}
-
-s_expr* sexpr_next(const s_expr* se) {
-    return se->cdr->ptr.se_ptr;
-}
-
-void delete_se_recursive(s_expr* se, bool delete_sexpr_cars) {
-    s_expr* curr = se;
-    while (curr != NULL) {
-        if (delete_sexpr_cars && \
-            curr->car != NULL && \
-            curr->car->type == TYPE_SEXPR) {
-            delete_se_recursive(curr->car->ptr.se_ptr, true);
-        }
-        free(curr->car);
-        if (curr->cdr != NULL && curr->cdr->type == TYPE_SEXPR) {
-            se = sexpr_next(curr);
-            free(curr->cdr);
-        } else {
-            se = NULL;
-            free(curr->cdr);
-        }
-        free(curr);
-        curr = se;
-    }
-    return;
-}
-
-typed_ptr* collect_args(const s_expr* se, \
-                        environment* env, \
-                        int min_args, \
-                        int max_args, \
-                        bool evaluate_all_args) {
-    int seen = 0;
-    if (is_pair(se)) {
-        return create_error(EVAL_ERROR_ILLEGAL_PAIR);
-    }
-    s_expr* curr = sexpr_next(se);
-    s_expr* arg_head = create_empty_s_expr();
-    s_expr* arg_tail = arg_head;
-    typed_ptr* err = NULL;
-    while (!is_empty_list(curr)) {
-        if (is_pair(curr)) {
-            err = create_error(EVAL_ERROR_ILLEGAL_PAIR);
-            break;
-        }
-        seen++;
-        if (max_args >= 0 && seen > max_args) {
-            err = create_error(EVAL_ERROR_MANY_ARGS);
-            break;
-        }
-        arg_tail->car = copy_typed_ptr(curr->car);
-        arg_tail->cdr = create_sexpr_tp(create_empty_s_expr());
-        if (evaluate_all_args && \
-            arg_tail->car->type != TYPE_BUILTIN && \
-            arg_tail->car->type != TYPE_USER_FN) {
-            typed_ptr* temp = arg_tail->car;
-            arg_tail->car = evaluate(arg_tail, env);
-            free(temp);
-        }
-        if (arg_tail->car->type == TYPE_ERROR) {
-            err = copy_typed_ptr(arg_tail->car);
-            break;
-        }
-        arg_tail = sexpr_next(arg_tail);
-        curr = sexpr_next(curr);
-    }
-    if (err == NULL && seen < min_args) {
-        err = create_error(EVAL_ERROR_FEW_ARGS);
-    }
-    if (err != NULL) {
-        delete_se_recursive(arg_head, evaluate_all_args);
-        return err;
-    } else {
-        return create_sexpr_tp(arg_head);
-    }
 }
 
 // Evaluates an s-expression of any kind within the context of the provided
