@@ -1,4 +1,5 @@
-#include "interp.h"
+#include "fundamentals.h"
+#include "environment.h"
 #include "test_functions.h"
 
 void end_to_end_tests() {

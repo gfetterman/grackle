@@ -5,7 +5,11 @@
 #include<assert.h>
 #include<stdio.h>
 
-#include "interp.h"
+#include "fundamentals.h"
+#include "environment.h"
+#include "parse.h"
+#include "evaluate.h"
+#include "grackle_utils.h"
 
 typedef struct TEST_ENV {
     environment* env;

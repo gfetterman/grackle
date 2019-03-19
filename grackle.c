@@ -1,4 +1,9 @@
-#include "interp.h"
+#include "fundamentals.h"
+#include "environment.h"
+#include "parse.h"
+#include "evaluate.h"
+#include "grackle_io.h"
+#include "grackle_utils.h"
 
 #define PROMPT ">>>"
 #define BUF_SIZE 80
