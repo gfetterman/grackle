@@ -92,7 +92,7 @@ void print_error(const typed_ptr* tp) {
             printf("evaluation: undefined user function");
             break;
         default:
-            printf("unknown error: error code %u", tp->ptr.idx);
+            printf("unknown error: error code %ld", tp->ptr.idx);
             break;
     }
     return;
@@ -132,7 +132,7 @@ void print_result(const typed_ptr* tp, environment* env) {
             print_error(tp);
             break;
         case TYPE_NUM:
-            printf("%u", tp->ptr.idx);
+            printf("%ld", tp->ptr.idx);
             break;
         case TYPE_SEXPR:
             print_s_expression(tp->ptr.se_ptr, env);

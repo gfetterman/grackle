@@ -233,7 +233,7 @@ typed_ptr* install_symbol(environment* env, \
 void blind_install_symbol_atom(environment* env, \
                                char* symbol, \
                                type type, \
-                               unsigned int value) {
+                               long value) {
     typed_ptr* tp = install_symbol(env, \
                                    symbol, \
                                    type, \
@@ -272,7 +272,7 @@ typed_ptr* install_symbol_substring(environment* env, \
                                     unsigned int end) {
     char* name = substring(str, start, end);
     if (string_is_number(name)) {
-        unsigned int value = atoi(name);
+        long value = atol(name);
         free(name);
         return create_atom_tp(TYPE_NUM, value);
     } else {

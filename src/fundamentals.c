@@ -15,7 +15,7 @@ typed_ptr* create_typed_ptr(type type, union_idx_se ptr) {
 
 // The returned typed_ptr is the caller's responsibility to free; it can be
 //   safely (shallow) freed without harm to any other object.
-typed_ptr* create_atom_tp(type type, unsigned int idx) {
+typed_ptr* create_atom_tp(type type, long idx) {
     return create_typed_ptr(type, (union_idx_se){.idx=idx});
 }
 
@@ -27,7 +27,7 @@ typed_ptr* create_sexpr_tp(s_expr* se_ptr) {
 
 // The returned typed_ptr is the caller's responsibility to free; it can be
 //   safely (shallow) freed without harm to any other object.
-typed_ptr* create_error(unsigned int err_code) {
+typed_ptr* create_error(interpreter_error err_code) {
     return create_atom_tp(TYPE_ERROR, err_code);
 }
 

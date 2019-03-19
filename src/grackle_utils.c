@@ -27,10 +27,17 @@ char* substring(char* str, unsigned int start, unsigned int end) {
 bool string_is_number(const char str[]) {
     char c;
     bool ok = true;
-    while ((c = *str++)) {
-        if (c < 48 || c > 57) {
-            ok = false;
-            break;
+    if (*str == '-') {
+        str++;
+    }
+    if (*str == '\0') {
+        ok = false;
+    } else {
+        while ((c = *str++)) {
+            if (c < 48 || c > 57) {
+                ok = false;
+                break;
+            }
         }
     }
     return ok;

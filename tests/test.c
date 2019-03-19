@@ -29,8 +29,7 @@ void end_to_end_tests() {
     printf("## - ##\n");
     e2e_atom_test("(- 10 1 2 3)", TYPE_NUM, 4, t_env);
     e2e_atom_test("(- 10 1)", TYPE_NUM, 9, t_env);
-    // unfortunate consequence of unsigned ints
-    e2e_atom_test("(- 10)", TYPE_NUM, 4294967286, t_env);
+    e2e_atom_test("(- 10)", TYPE_NUM, -10, t_env);
     e2e_atom_test("(-)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(- 1 #t)", TYPE_ERROR, EVAL_ERROR_NEED_NUM, t_env);
     e2e_atom_test("(- 1 (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);

@@ -69,7 +69,7 @@ typed_ptr* eval_arithmetic(const s_expr* se, environment* env) {
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
-        unsigned int initial = (op == BUILTIN_ADD || op == BUILTIN_SUB) ? 0 : 1;
+        long initial = (op == BUILTIN_ADD || op == BUILTIN_SUB) ? 0 : 1;
         result = create_atom_tp(TYPE_NUM, initial);
         s_expr* arg = args_tp->ptr.se_ptr;
         if ((op == BUILTIN_SUB || op == BUILTIN_DIV) && \
@@ -138,8 +138,8 @@ typed_ptr* eval_comparison(const s_expr* se, environment* env) {
         if (arg_se->car->type != TYPE_NUM) {
             result = create_error(EVAL_ERROR_NEED_NUM);
         } else {
-            unsigned int truth = 1;
-            unsigned int last_num = arg_se->car->ptr.idx;
+            long truth = 1;
+            long last_num = arg_se->car->ptr.idx;
             arg_se = sexpr_next(arg_se);
             while (!is_empty_list(arg_se) && truth == 1) {
                 if (arg_se->car->type != TYPE_NUM) {
