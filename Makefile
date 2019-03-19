@@ -1,5 +1,7 @@
 CC = gcc
-CC_OPTS = -Wall -std=gnu99
+CC_OPTS = -Wall -std=gnu99 -I./src
+
+VPATH = src:tests
 
 grackle : grackle.o fundamentals.o environment.o parse.o evaluate.o grackle_io.o grackle_utils.o
 	$(CC) $(CC_OPTS) $^ -o $@
