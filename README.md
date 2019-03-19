@@ -1,6 +1,6 @@
 # Grackle
 
-`Grackle` is a command-line interpreter for a (very) limited subset of the
+`Grackle` is a command-line tree-walking interpreter for a limited subset of the
 [Racket](https://racket-lang.org) dialect of Lisp.
 
 This is a hobby project, with features being added as I figure them out, and 
@@ -8,19 +8,20 @@ have time.
 
 ## Supported language features
 
-* arbitrarily-nested s-expression arithmetic (on unsigned integers)
+* arbitrarily-nested s-expression arithmetic (on bounded integers)
 * variable definition
 * list manipulation
 * predicate and conditional expressions
+* user-defined lambdas and named functions, with lexical scoping
 
 ## Next language feature to be added
 
-* user-defined functions
+* `quote` and user-defined macros
 
 ## Installation
 
 Binaries are not currently available. Compilation from source requires `make`
-and `gcc`.
+and `gcc`, but no external libraries.
 
     $ git clone https://github.com/gfetterman/grackle.git
     $ cd grackle

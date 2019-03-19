@@ -7,8 +7,9 @@ typed_ptr* parse_and_eval(char command[], environment* env) {
         parse_output->car->type == TYPE_ERROR) {
         output = parse_output->car;
     } else {
+        s_expr* empty = create_empty_s_expr();
         s_expr* super_se = create_s_expr(create_sexpr_tp(parse_output), \
-                                         create_sexpr_tp(create_empty_s_expr()));
+                                         create_sexpr_tp(empty));
         output = evaluate(super_se, env);
         delete_se_recursive(super_se, true);
     }
@@ -47,7 +48,10 @@ void e2e_atom_test(char cmd[], type t, unsigned int val, test_env* te) {
     return;
 }
 
-bool check_pair(typed_ptr* tp, typed_ptr** tplist, unsigned int len, environment* env) {
+bool check_pair(typed_ptr* tp, \
+                typed_ptr** tplist, \
+                unsigned int len, \
+                environment* env) {
     if (tp == NULL || tp->type != TYPE_SEXPR || len != 2) {
         return false;
     }
@@ -62,7 +66,10 @@ bool check_pair(typed_ptr* tp, typed_ptr** tplist, unsigned int len, environment
     }
 }
 
-void e2e_pair_test(char cmd[], typed_ptr** tplist, unsigned int len, test_env* te) {
+void e2e_pair_test(char cmd[], \
+                   typed_ptr** tplist, \
+                   unsigned int len, \
+                   test_env* te) {
     printf("test command: %-40s", cmd);
     typed_ptr* output = parse_and_eval(cmd, te->env);
     bool pass = check_pair(output, tplist, len, te->env);
@@ -76,8 +83,11 @@ void e2e_pair_test(char cmd[], typed_ptr** tplist, unsigned int len, test_env* t
     return;
 }
 
-bool check_sexpr(typed_ptr* tp, typed_ptr** tplist, unsigned int len, environment* env) {
-    // this doesn't currently handle nested lists, but that's alright for the moment
+bool check_sexpr(typed_ptr* tp, \
+                 typed_ptr** tplist, \
+                 unsigned int len, \
+                 environment* env) {
+    // doesn't currently handle nested lists, but that's ok for now
     if (tp == NULL || tp->type != TYPE_SEXPR) {
         return false;
     }
@@ -115,7 +125,10 @@ bool check_sexpr(typed_ptr* tp, typed_ptr** tplist, unsigned int len, environmen
     }
 }
 
-void e2e_sexpr_test(char cmd[], typed_ptr** tplist, unsigned int len, test_env* te) {
+void e2e_sexpr_test(char cmd[], \
+                    typed_ptr** tplist, \
+                    unsigned int len, \
+                    test_env* te) {
     printf("test command: %-40s", cmd);
     typed_ptr* output = parse_and_eval(cmd, te->env);
     bool pass = check_sexpr(output, tplist, len, te->env);
@@ -129,7 +142,11 @@ void e2e_sexpr_test(char cmd[], typed_ptr** tplist, unsigned int len, test_env* 
     return;
 }
 
-void e2e_multiline_atom_test(char* cmds[], unsigned int cmd_num, type t, unsigned int val, test_env* te) {
+void e2e_multiline_atom_test(char* cmds[], \
+                             unsigned int cmd_num, \
+                             type t, \
+                             unsigned int val, \
+                             test_env* te) {
     printf("test command: %-40s", cmds[0]);
     typed_ptr* output = parse_and_eval(cmds[0], te->env);
     for (unsigned int i = 1; i < cmd_num; i++) {
