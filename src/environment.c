@@ -24,6 +24,10 @@ sym_tab_node* create_st_node(unsigned int symbol_number, \
     return new_node;
 }
 
+sym_tab_node* create_error_stn(interpreter_error err_code) {
+    return create_st_node(0, NULL, TYPE_ERROR, (union_idx_se){.idx=err_code});
+}
+
 // The offset allows a temporary symbol table (used while parsing for easy
 //   walkback if the parsing fails) to avoid symbol number collisions with the
 //   real symbol table. This makes merging the two after a successful parse much
