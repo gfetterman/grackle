@@ -34,5 +34,6 @@ typed_ptr* collect_args(const s_expr* se, \
                         int min_args, \
                         int max_args, \
                         bool evaluate_all_args);
+static sym_tab_node* create_error_stn(interpreter_error err_code);
 
 #endif
