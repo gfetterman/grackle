@@ -73,7 +73,7 @@ s_expr* parse(char str[], environment* env) {
     unsigned int symbol_start = 0;
     environment* temp_env = create_environment(env->symbol_table->length, \
                                                env->function_table->length);
-    s_expr* head = NULL;
+    s_expr* head = create_empty_s_expr();
     typed_ptr* new_tp = NULL;
     while (str[curr] && state != PARSE_ERROR) {
         switch (state) {
@@ -82,7 +82,7 @@ s_expr* parse(char str[], environment* env) {
                     case ' ': // ignore leading whitespace
                         break;
                     case '(':
-                        head = create_empty_s_expr();
+                        // head is already an empty s-expression
                         se_stack_push(&stack, head);
                         state = PARSE_NEW_SEXPR;
                         break;

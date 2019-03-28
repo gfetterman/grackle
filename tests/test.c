@@ -15,6 +15,14 @@ void end_to_end_tests() {
     t_env->env = env;
     t_env->passed = 0;
     t_env->run = 0;
+    // parsing
+    printf("# parsing #\n");
+    e2e_atom_test("", TYPE_ERROR, EVAL_ERROR_MISSING_PROCEDURE, t_env);
+    e2e_atom_test("(", TYPE_ERROR, PARSE_ERROR_UNBAL_PAREN, t_env);
+    e2e_atom_test(")", TYPE_ERROR, PARSE_ERROR_UNBAL_PAREN, t_env);
+    e2e_atom_test("a", TYPE_ERROR, PARSE_ERROR_BARE_SYM, t_env);
+    e2e_atom_test("()", TYPE_ERROR, EVAL_ERROR_MISSING_PROCEDURE, t_env);
+    e2e_atom_test("(+ 1 1) (+ 1 1)", TYPE_ERROR, PARSE_ERROR_TOO_MANY, t_env);
     // arithmetic
     printf("# arithmetic #\n");
     //     addition
