@@ -1,52 +1,5 @@
 #include "parse.h"
 
-// The s-expression storage node is the caller's responsibility to free.
-s_expr_storage* create_s_expr_storage(unsigned int list_number, s_expr* se) {
-    s_expr_storage* new_ses = malloc(sizeof(s_expr_storage));
-    if (new_ses == NULL) {
-        fprintf(stderr, "malloc failed in create_s_expr_storage()\n");
-        exit(-1);
-    }
-    new_ses->list_number = list_number;
-    new_ses->se = se;
-    new_ses->next = NULL;
-    return new_ses;
-}
-
-// This stack is used to keep track of open s-expressions during parsing.
-// It doesn't use the list_number member of s_expr_storage, so this function
-//   should not be used to install s-expressions into the list area.
-void se_stack_push(s_expr_storage** stack, s_expr* new_se) {
-    if (stack == NULL) {
-        fprintf(stderr, "stack double pointer NULL in se_stack_push()\n");
-        exit(-1);
-    }
-    s_expr_storage* new_node = create_s_expr_storage(0, new_se);
-    new_node->next = *stack;
-    *stack = new_node;
-    return;
-}
-
-// This stack is used to keep track of open s-expressions during parsing.
-// This function should not be used to remove s-expressions from the list area.
-// While it pops the top item off of the stack and frees the s_expr_storage, it
-//   does not free the s-expressions stored therein.
-// If the stack is empty, this will fail and exit the interpreter.
-void se_stack_pop(s_expr_storage** stack) {
-    if (stack == NULL) {
-        fprintf(stderr, "stack double pointer NULL in se_stack_pop()\n");
-        exit(-1);
-    }
-    if (*stack == NULL) {
-        fprintf(stderr, "cannot pop() from empty se_stack\n");
-        exit(-1);
-    }
-    s_expr_storage* old_head = *stack;
-    *stack = old_head->next;
-    free(old_head);
-    return;
-}
-
 // Takes an input string and attempts to parse it into a valid s-expression.
 // If it cannot be parsed, returns an s-expression containing an error
 //   typed_ptr. In this case, no changes are made to the given symbol table or
@@ -276,4 +229,51 @@ s_expr* parse(char str[], environment* env) {
                              create_sexpr_tp(create_empty_s_expr()));
     }
     return head;
+}
+
+// The s-expression storage node is the caller's responsibility to free.
+s_expr_storage* create_s_expr_storage(unsigned int list_number, s_expr* se) {
+    s_expr_storage* new_ses = malloc(sizeof(s_expr_storage));
+    if (new_ses == NULL) {
+        fprintf(stderr, "malloc failed in create_s_expr_storage()\n");
+        exit(-1);
+    }
+    new_ses->list_number = list_number;
+    new_ses->se = se;
+    new_ses->next = NULL;
+    return new_ses;
+}
+
+// This stack is used to keep track of open s-expressions during parsing.
+// It doesn't use the list_number member of s_expr_storage, so this function
+//   should not be used to install s-expressions into the list area.
+void se_stack_push(s_expr_storage** stack, s_expr* new_se) {
+    if (stack == NULL) {
+        fprintf(stderr, "stack double pointer NULL in se_stack_push()\n");
+        exit(-1);
+    }
+    s_expr_storage* new_node = create_s_expr_storage(0, new_se);
+    new_node->next = *stack;
+    *stack = new_node;
+    return;
+}
+
+// This stack is used to keep track of open s-expressions during parsing.
+// This function should not be used to remove s-expressions from the list area.
+// While it pops the top item off of the stack and frees the s_expr_storage, it
+//   does not free the s-expressions stored therein.
+// If the stack is empty, this will fail and exit the interpreter.
+void se_stack_pop(s_expr_storage** stack) {
+    if (stack == NULL) {
+        fprintf(stderr, "stack double pointer NULL in se_stack_pop()\n");
+        exit(-1);
+    }
+    if (*stack == NULL) {
+        fprintf(stderr, "cannot pop() from empty se_stack\n");
+        exit(-1);
+    }
+    s_expr_storage* old_head = *stack;
+    *stack = old_head->next;
+    free(old_head);
+    return;
 }

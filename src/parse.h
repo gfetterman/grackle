@@ -15,10 +15,10 @@ typedef struct S_EXPR_STORAGE_NODE {
     struct S_EXPR_STORAGE_NODE* next;
 } s_expr_storage;
 
+s_expr* parse(char str[], environment* env);
+
 s_expr_storage* create_s_expr_storage(unsigned int list_number, s_expr* se);
 void se_stack_push(s_expr_storage** stack, s_expr* new_se);
 void se_stack_pop(s_expr_storage** stack);
-
-s_expr* parse(char str[], environment* env);
 
 #endif
