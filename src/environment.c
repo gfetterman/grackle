@@ -45,7 +45,7 @@ Symbol_Table* create_symbol_table(unsigned int offset) {
 }
 
 // Merges the second symbol table into the first; the second pointer remains
-//   valid.
+//   valid, but its head is set to NULL.
 // Makes no attempt to guard against name or symbol number collisions.
 void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second) {
     if (first->head == NULL) {
@@ -58,6 +58,7 @@ void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second) {
         curr->next = second->head;
     }
     first->length += second->length;
+    second->head = NULL;
     return;
 }
 
@@ -269,28 +270,23 @@ void blind_install_symbol_sexpr(environment* env, \
 // In all cases, the returned typed_ptr is the caller's responsibility to free;
 //   it is always safe to free without harm to either symbol table or any other
 //   object.
-typed_ptr* install_symbol_substring(environment* env, \
-                                    environment* temp_env, \
-                                    char str[], \
-                                    unsigned int start, \
-                                    unsigned int end) {
-    char* name = substring(str, start, end);
-    if (string_is_number(name)) {
-        long value = atol(name);
-        free(name);
+typed_ptr* install_symbol_temp(environment* env, environment* temp, char* sym) {
+    if (string_is_number(sym)) {
+        long value = atol(sym);
+        free(sym);
         return create_atom_tp(TYPE_NUM, value);
     } else {
-        sym_tab_node* found = symbol_lookup_string(env, name);
+        sym_tab_node* found = symbol_lookup_string(env, sym);
         if (found == NULL) {
-            found = symbol_lookup_string(temp_env, name);
+            found = symbol_lookup_string(temp, sym);
             if (found == NULL) {
-                return install_symbol(temp_env, \
-                                      name, \
+                return install_symbol(temp, \
+                                      sym, \
                                       TYPE_UNDEF, \
                                       (union_idx_se){.idx=0});
             }
         }
-        free(name);
+        free(sym);
         return create_atom_tp(TYPE_SYM, found->symbol_number);
     }
 }
