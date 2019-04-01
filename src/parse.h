@@ -22,7 +22,7 @@ typedef struct S_EXPR_STORAGE_NODE {
     struct S_EXPR_STORAGE_NODE* next;
 } s_expr_storage;
 
-s_expr* parse(char str[], environment* env);
+typed_ptr* parse(char str[], environment* env);
 
 void init_new_s_expr(s_expr_storage** stack);
 void extend_s_expr(s_expr_storage** stack);
