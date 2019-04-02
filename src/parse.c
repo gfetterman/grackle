@@ -172,8 +172,23 @@ Parse_State terminate_s_expr(s_expr_storage** stack, interpreter_error* error) {
 void register_symbol(s_expr_storage** stack, \
                      environment* env, \
                      environment* temp, \
-                     char* new_symbol) {
-    (*stack)->se->car = install_symbol_temp(env, temp, new_symbol);
+                     char* sym) {
+    typed_ptr* car = NULL;
+    if (string_is_number(sym)) {
+        long value = atol(sym);
+        free(sym);
+        car = create_atom_tp(TYPE_NUM, value);
+    } else {
+        sym_tab_node* found = symbol_lookup_string(env, sym);
+        found = (found == NULL) ? symbol_lookup_string(temp, sym) : found;
+        if (found == NULL) {
+            car = install_symbol(temp, sym, TYPE_UNDEF, (union_idx_se){.idx=0});
+        } else {
+            free(sym);
+            car = create_atom_tp(TYPE_SYM, found->symbol_number);
+        }
+    }
+    (*stack)->se->car = car;
     return;
 }
 

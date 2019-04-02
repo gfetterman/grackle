@@ -262,35 +262,6 @@ void blind_install_symbol_sexpr(environment* env, \
     return;
 }
 
-// A convenience function for use in parse().
-// If there is a symbol whose name matches the specified substring in either
-//   the symbol table or the temporary symbol table, a pointer to that symbol is
-//   returned. If not, the appropriate symbol is installed in the temporary
-//   symbol table, with type TYPE_UNDEF.
-// In all cases, the returned typed_ptr is the caller's responsibility to free;
-//   it is always safe to free without harm to either symbol table or any other
-//   object.
-typed_ptr* install_symbol_temp(environment* env, environment* temp, char* sym) {
-    if (string_is_number(sym)) {
-        long value = atol(sym);
-        free(sym);
-        return create_atom_tp(TYPE_NUM, value);
-    } else {
-        sym_tab_node* found = symbol_lookup_string(env, sym);
-        if (found == NULL) {
-            found = symbol_lookup_string(temp, sym);
-            if (found == NULL) {
-                return install_symbol(temp, \
-                                      sym, \
-                                      TYPE_UNDEF, \
-                                      (union_idx_se){.idx=0});
-            }
-        }
-        free(sym);
-        return create_atom_tp(TYPE_SYM, found->symbol_number);
-    }
-}
-
 // The arg list and closure environment are now the (general) environment's
 //   concern. The body pointed to by the typed pointer remains someone else's
 //   problem, and won't be freed by the environment.

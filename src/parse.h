@@ -30,7 +30,7 @@ Parse_State terminate_s_expr(s_expr_storage** stack, interpreter_error* error);
 void register_symbol(s_expr_storage** stack, \
                      environment* env, \
                      environment* temp, \
-                     char* new_symbol);
+                     char* sym);
 
 s_expr_storage* create_s_expr_storage(unsigned int list_number, s_expr* se);
 void se_stack_push(s_expr_storage** stack, s_expr* new_se);

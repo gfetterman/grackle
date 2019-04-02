@@ -84,9 +84,6 @@ void blind_install_symbol_sexpr(environment* env, \
                                 char* symbol, \
                                 type type, \
                                 s_expr* value);
-typed_ptr* install_symbol_temp(environment* env, \
-                               environment* temp_env, \
-                               char* sym);
 typed_ptr* install_function(environment* env, \
                             sym_tab_node* arg_list, \
                             environment* closure_env, \
