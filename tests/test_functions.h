@@ -30,11 +30,11 @@ bool check_sexpr(typed_ptr* tp, \
                  environment* env);
 
 void e2e_autofail_test(char cmd[], test_env* te);
-void e2e_atom_test(char cmd[], type t, unsigned int val, test_env* te);
+void e2e_atom_test(char cmd[], type t, long val, test_env* te);
 void e2e_multiline_atom_test(char* cmds[], \
                              unsigned int cmd_num, \
                              type t, \
-                             unsigned int val, \
+                             long val, \
                              test_env* te);
 void e2e_pair_test(char cmd[], \
                    typed_ptr** tplist, \

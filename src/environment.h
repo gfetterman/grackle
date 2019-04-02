@@ -56,15 +56,15 @@ typedef struct FUNCTION_TABLE {
     fun_tab_node* head;
     unsigned int length;
     unsigned int offset;
-} function_table;
+} Function_Table;
 
-function_table* create_function_table(unsigned int offset);
+Function_Table* create_function_table(unsigned int offset);
 
 // the environment structure
 
 typedef struct ENVIRONMENT {
     Symbol_Table* symbol_table;
-    function_table* function_table;
+    Function_Table* function_table;
 } environment;
 
 environment* create_environment(unsigned int st_start, unsigned int ft_start);
@@ -84,11 +84,6 @@ void blind_install_symbol_sexpr(environment* env, \
                                 char* symbol, \
                                 type type, \
                                 s_expr* value);
-typed_ptr* install_symbol_substring(environment* env, \
-                                    environment* temp_env, \
-                                    char str[], \
-                                    unsigned int start, \
-                                    unsigned int end);
 typed_ptr* install_function(environment* env, \
                             sym_tab_node* arg_list, \
                             environment* closure_env, \

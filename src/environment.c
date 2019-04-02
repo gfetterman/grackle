@@ -24,6 +24,10 @@ sym_tab_node* create_st_node(unsigned int symbol_number, \
     return new_node;
 }
 
+sym_tab_node* create_error_stn(interpreter_error err_code) {
+    return create_st_node(0, NULL, TYPE_ERROR, (union_idx_se){.idx=err_code});
+}
+
 // The offset allows a temporary symbol table (used while parsing for easy
 //   walkback if the parsing fails) to avoid symbol number collisions with the
 //   real symbol table. This makes merging the two after a successful parse much
@@ -41,7 +45,7 @@ Symbol_Table* create_symbol_table(unsigned int offset) {
 }
 
 // Merges the second symbol table into the first; the second pointer remains
-//   valid.
+//   valid, but its head is set to NULL.
 // Makes no attempt to guard against name or symbol number collisions.
 void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second) {
     if (first->head == NULL) {
@@ -54,6 +58,7 @@ void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second) {
         curr->next = second->head;
     }
     first->length += second->length;
+    second->head = NULL;
     return;
 }
 
@@ -87,8 +92,8 @@ fun_tab_node* create_ft_node(unsigned int function_number, \
     return new_ftn;
 }
 
-function_table* create_function_table(unsigned int offset) {
-    function_table* new_ft = malloc(sizeof(function_table));
+Function_Table* create_function_table(unsigned int offset) {
+    Function_Table* new_ft = malloc(sizeof(Function_Table));
     if (new_ft == NULL) {
         fprintf(stderr, "malloc failed in create_function_table()\n");
         exit(-1);
@@ -255,40 +260,6 @@ void blind_install_symbol_sexpr(environment* env, \
                                    (union_idx_se){.se_ptr=value});
     free(tp);
     return;
-}
-
-// A convenience function for use in parse().
-// If there is a symbol whose name matches the specified substring in either
-//   the symbol table or the temporary symbol table, a pointer to that symbol is
-//   returned. If not, the appropriate symbol is installed in the temporary
-//   symbol table, with type TYPE_UNDEF.
-// In all cases, the returned typed_ptr is the caller's responsibility to free;
-//   it is always safe to free without harm to either symbol table or any other
-//   object.
-typed_ptr* install_symbol_substring(environment* env, \
-                                    environment* temp_env, \
-                                    char str[], \
-                                    unsigned int start, \
-                                    unsigned int end) {
-    char* name = substring(str, start, end);
-    if (string_is_number(name)) {
-        long value = atol(name);
-        free(name);
-        return create_atom_tp(TYPE_NUM, value);
-    } else {
-        sym_tab_node* found = symbol_lookup_string(env, name);
-        if (found == NULL) {
-            found = symbol_lookup_string(temp_env, name);
-            if (found == NULL) {
-                return install_symbol(temp_env, \
-                                      name, \
-                                      TYPE_UNDEF, \
-                                      (union_idx_se){.idx=0});
-            }
-        }
-        free(name);
-        return create_atom_tp(TYPE_SYM, found->symbol_number);
-    }
 }
 
 // The arg list and closure environment are now the (general) environment's

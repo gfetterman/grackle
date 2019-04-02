@@ -1,53 +1,121 @@
 #include "evaluate.h"
 
-typed_ptr* collect_args(const s_expr* se, \
-                        environment* env, \
-                        int min_args, \
-                        int max_args, \
-                        bool evaluate_all_args) {
-    int seen = 0;
-    if (is_pair(se)) {
-        return create_error(EVAL_ERROR_ILLEGAL_PAIR);
-    }
-    s_expr* curr = sexpr_next(se);
-    s_expr* arg_head = create_empty_s_expr();
-    s_expr* arg_tail = arg_head;
-    typed_ptr* err = NULL;
-    while (!is_empty_list(curr)) {
-        if (is_pair(curr)) {
-            err = create_error(EVAL_ERROR_ILLEGAL_PAIR);
-            break;
-        }
-        seen++;
-        if (max_args >= 0 && seen > max_args) {
-            err = create_error(EVAL_ERROR_MANY_ARGS);
-            break;
-        }
-        arg_tail->car = copy_typed_ptr(curr->car);
-        arg_tail->cdr = create_sexpr_tp(create_empty_s_expr());
-        if (evaluate_all_args && \
-            arg_tail->car->type != TYPE_BUILTIN && \
-            arg_tail->car->type != TYPE_USER_FN) {
-            typed_ptr* temp = arg_tail->car;
-            arg_tail->car = evaluate(arg_tail, env);
-            free(temp);
-        }
-        if (arg_tail->car->type == TYPE_ERROR) {
-            err = copy_typed_ptr(arg_tail->car);
-            break;
-        }
-        arg_tail = sexpr_next(arg_tail);
-        curr = sexpr_next(curr);
-    }
-    if (err == NULL && seen < min_args) {
-        err = create_error(EVAL_ERROR_FEW_ARGS);
-    }
-    if (err != NULL) {
-        delete_se_recursive(arg_head, evaluate_all_args);
-        return err;
+// Evaluates an s-expression of any kind within the context of the provided
+//   environment.
+// Returns a typed_ptr containing an error code (if the evaluation failed) or
+//   the result (if it succeeded).
+// In either case, the returned typed_ptr is the caller's responsibility to
+//   free, and is safe to (shallow) free without harm to the symbol table, list
+//   area, or any other object.
+typed_ptr* evaluate(const s_expr* se, environment* env) {
+    typed_ptr* result = NULL;
+    if (se == NULL) {
+        result = create_error(EVAL_ERROR_NULL_SEXPR);
+    } else if (is_empty_list(se)) {
+        result = create_error(EVAL_ERROR_MISSING_PROCEDURE);
+    } else if (se->car == NULL || se->cdr == NULL) {
+        result = create_error(EVAL_ERROR_MALFORMED_SEXPR);
     } else {
-        return create_sexpr_tp(arg_head);
+        switch (se->car->type) {
+            case TYPE_UNDEF:
+                result = create_error(EVAL_ERROR_UNDEF_SYM);
+                break;
+            case TYPE_ERROR:
+                result = se->car;
+                break;
+            case TYPE_BUILTIN: 
+                result = eval_builtin(se, env);
+                break;
+            case TYPE_SEXPR: 
+                result = eval_sexpr(se, env);
+                break;
+            case TYPE_USER_FN:
+                result = eval_user_function(se, env);
+                break;
+            case TYPE_SYM:
+                result = value_lookup_index(env, se->car);
+                break;
+            case TYPE_NUM:  // fall-through
+            case TYPE_BOOL: // fall-through
+            case TYPE_VOID:
+                result = copy_typed_ptr(se->car);
+                break;
+            default:
+                result = create_error(EVAL_ERROR_UNDEF_TYPE);
+                break;
+        }
     }
+    return result;
+}
+
+typed_ptr* eval_builtin(const s_expr* se, environment* env) {
+    typed_ptr* result = NULL;
+    switch (se->car->ptr.idx) {
+        case BUILTIN_ADD: // fall-through
+        case BUILTIN_MUL: // fall-through
+        case BUILTIN_SUB: // fall-through
+        case BUILTIN_DIV:
+            result = eval_arithmetic(se, env);
+            break;
+        case BUILTIN_DEFINE:
+            result = eval_define(se, env);
+            break;
+        case BUILTIN_SETVAR:
+            result = eval_set_variable(se, env);
+            break;
+        case BUILTIN_EXIT:
+            result = eval_exit(se, env);
+            break;
+        case BUILTIN_CONS:
+            result = eval_cons(se, env);
+            break;
+        case BUILTIN_CAR: // fall-through
+        case BUILTIN_CDR:
+            result = eval_car_cdr(se, env);
+            break;
+        case BUILTIN_LIST:
+            result = eval_list_construction(se, env);
+            break;
+        case BUILTIN_AND: // fall-through
+        case BUILTIN_OR:
+            result = eval_and_or(se, env);
+            break;
+        case BUILTIN_NOT:
+            result = eval_not(se, env);
+            break;
+        case BUILTIN_COND:
+            result = eval_cond(se, env);
+            break;
+        case BUILTIN_LISTPRED:
+            result = eval_list_pred(se, env);
+            break;
+        case BUILTIN_PAIRPRED:
+            result = eval_atom_pred(se, env, TYPE_SEXPR);
+            break;
+        case BUILTIN_NUMBERPRED:
+            result = eval_atom_pred(se, env, TYPE_NUM);
+            break;
+        case BUILTIN_BOOLPRED:
+            result = eval_atom_pred(se, env, TYPE_BOOL);
+            break;
+        case BUILTIN_VOIDPRED:
+            result = eval_atom_pred(se, env, TYPE_VOID);
+            break;
+        case BUILTIN_NUMBEREQ: // fall-through
+        case BUILTIN_NUMBERGT: // fall-through
+        case BUILTIN_NUMBERLT: // fall-through
+        case BUILTIN_NUMBERGE: // fall-through
+        case BUILTIN_NUMBERLE:
+            result = eval_comparison(se, env);
+            break;
+        case BUILTIN_LAMBDA:
+            result = eval_lambda(se, env);
+            break;
+        default:
+            result = create_error(EVAL_ERROR_UNDEF_BUILTIN);
+            break;
+    }
+    return result;
 }
 
 // Evaluates an s-expression whose car is a built-in function in the set
@@ -316,6 +384,37 @@ typed_ptr* eval_set_variable(const s_expr* se, environment* env) {
     return result;
 }
 
+typed_ptr* eval_exit(const s_expr* se, environment* env) {
+    typed_ptr* result = NULL;
+    typed_ptr* args_tp = collect_args(se, env, 0, 0, false);
+    if (args_tp->type == TYPE_ERROR) {
+        result = args_tp;
+    } else {
+        result = create_error(EVAL_ERROR_EXIT);
+        delete_se_recursive(args_tp->ptr.se_ptr, false);
+        free(args_tp);
+    }
+    return result;
+}
+
+typed_ptr* eval_cons(const s_expr* se, environment* env) {
+    typed_ptr* result = NULL;
+    typed_ptr* args_tp = collect_args(se, env, 2, 2, true);
+    if (args_tp->type == TYPE_ERROR) {
+        result = args_tp;
+    } else {
+        s_expr* args = args_tp->ptr.se_ptr;
+        s_expr* rest = sexpr_next(args);
+        s_expr* result_se = create_s_expr(args->car, rest->car);
+        result = create_sexpr_tp(result_se);
+        args->car = NULL;
+        rest->car = NULL;
+        delete_se_recursive(args, true);
+        free(args_tp);
+    }
+    return result;
+}
+
 // Evaluates an s-expression whose car is in the set
 //   {BUILTIN_xxx | xxx in {CAR, CDR}}.
 // This function takes exactly one argument, which is evaluated.
@@ -424,6 +523,50 @@ typed_ptr* eval_list_construction(const s_expr* se, environment* env) {
     return collect_args(se, env, 0, -1, true);
 }
 
+typed_ptr* eval_and_or(const s_expr* se, environment* env) {
+    typed_ptr* result = NULL;
+    typed_ptr* args_tp = collect_args(se, env, 0, -1, true);
+    if (args_tp->type == TYPE_ERROR) {
+        result = args_tp;
+    } else {
+        // the "starting" typed-pointer and the test in the while-loop are the
+        // only ways in which "and" and "or" differ
+        typed_ptr* start_tp = create_atom_tp(TYPE_BOOL, \
+                                             se->car->ptr.idx == BUILTIN_AND);
+        s_expr* arg_se = create_s_expr(start_tp, args_tp);
+        s_expr* curr_se = arg_se;
+        s_expr* last = arg_se;
+        while (!is_empty_list(curr_se)) {
+            last = curr_se;
+            if (is_false_literal(last->car) == start_tp->ptr.idx) {
+                break;
+            }
+            curr_se = sexpr_next(curr_se);
+        }
+        result = last->car;
+        last->car = NULL;
+        delete_se_recursive(arg_se, true);
+    }
+    return result;
+}
+
+typed_ptr* eval_not(const s_expr* se, environment* env) {
+    typed_ptr* result = NULL;
+    typed_ptr* args_tp = collect_args(se, env, 1, 1, true);
+    if (args_tp->type == TYPE_ERROR) {
+        result = args_tp;
+    } else {
+        if (is_false_literal(args_tp->ptr.se_ptr->car)) {
+            result = create_atom_tp(TYPE_BOOL, 1);
+        } else {
+            result = create_atom_tp(TYPE_BOOL, 0);
+        }
+        delete_se_recursive(args_tp->ptr.se_ptr, true);
+        free(args_tp);
+    }
+    return result;
+}
+
 // Evaluates an s-expression whose car is the built-in special form
 //   BUILTIN_COND.
 // This special form takes any number of arguments.
@@ -520,8 +663,46 @@ typed_ptr* eval_cond(const s_expr* se, environment* env) {
     }
 }
 
-sym_tab_node* create_error_stn(interpreter_error err_code) {
-    return create_st_node(0, NULL, TYPE_ERROR, (union_idx_se){.idx=err_code});
+// Evaluates an s-expression whose car is the built-in special form
+//   BUILTIN_LAMBDA.
+// This special form takes two arguments.
+// The first argument must be a list (nested s-expression) of symbols, which
+//   become the parameters of the lambda. Anything else returns an error. This
+//   argument is not evaluated.
+// The second argument may be anything, and is not evaluated, but stored as the
+//   body of the lambda.
+// The function installed in the environment, and its associated data, is now
+//   the environment's responsibility.
+// The typed pointer returned is the caller's responsibility to free, and can
+//   safely be (shallow) freed.
+typed_ptr* eval_lambda(const s_expr* se, environment* env) {
+    typed_ptr* result = NULL;
+    typed_ptr* args_tp = collect_args(se, env, 2, 2, false);
+    if (args_tp->type == TYPE_ERROR) {
+        result = args_tp;
+    } else {
+        typed_ptr* first = args_tp->ptr.se_ptr->car;
+        typed_ptr* second = sexpr_next(args_tp->ptr.se_ptr)->car;
+        if (first->type != TYPE_SEXPR) {
+            result = create_error(EVAL_ERROR_BAD_ARG_TYPE);
+        } else {
+            sym_tab_node* params = collect_parameters(first, env);
+            if (params != NULL && params->type == TYPE_ERROR) {
+                result = create_error(params->value.idx);
+                delete_st_node_list(params);
+            } else {
+                environment* closure_env = copy_environment(env);
+                typed_ptr* body = copy_typed_ptr(second);
+                if (body->type == TYPE_SEXPR) {
+                    body->ptr.se_ptr = copy_s_expr(body->ptr.se_ptr);
+                }
+                result = install_function(env, params, closure_env, body);
+            }
+        }
+        delete_se_recursive(args_tp->ptr.se_ptr, false);
+        free(args_tp);
+    }
+    return result;
 }
 
 // At first, we will restrict user-defined functions to have a finite number of
@@ -573,43 +754,70 @@ sym_tab_node* collect_parameters(typed_ptr* tp, environment* env) {
     return params;
 }
 
-// Evaluates an s-expression whose car is the built-in special form
-//   BUILTIN_LAMBDA.
-// This special form takes two arguments.
-// The first argument must be a list (nested s-expression) of symbols, which
-//   become the parameters of the lambda. Anything else returns an error. This
-//   argument is not evaluated.
-// The second argument may be anything, and is not evaluated, but stored as the
-//   body of the lambda.
-// The function installed in the environment, and its associated data, is now
-//   the environment's responsibility.
-// The typed pointer returned is the caller's responsibility to free, and can
-//   safely be (shallow) freed.
-typed_ptr* eval_lambda(const s_expr* se, environment* env) {
+typed_ptr* eval_sexpr(const s_expr* se, environment* env) {
     typed_ptr* result = NULL;
-    typed_ptr* args_tp = collect_args(se, env, 2, 2, false);
+    s_expr* se_to_eval = se->car->ptr.se_ptr;
+    if (is_empty_list(se_to_eval)) {
+        result = create_error(EVAL_ERROR_MISSING_PROCEDURE);
+    } else {
+        s_expr* empty = create_empty_s_expr();
+        s_expr* dummy_se = create_s_expr(se_to_eval->car, \
+                                         create_sexpr_tp(empty));
+        typed_ptr* fn = evaluate(dummy_se, env);
+        free(sexpr_next(dummy_se));
+        free(dummy_se->cdr);
+        free(dummy_se);
+        if (fn->type == TYPE_ERROR) {
+            result = fn;
+        } else {
+            if (fn->type == TYPE_BUILTIN || \
+                fn->type == TYPE_USER_FN) {
+                dummy_se = create_s_expr(fn, se_to_eval->cdr);
+                result = evaluate(dummy_se, env);
+                free(dummy_se);
+            } else {
+                result = create_error(EVAL_ERROR_CAR_NOT_CALLABLE);
+            }
+            free(fn);
+        }
+    }
+    return result;
+}
+
+// Evaluates an s-expression whose car has type TYPE_USER_FN.
+// The s-expression's cdr must contain the proper number of arguments for the
+//   user function being invoked. Any mismatch, or error arising during
+//   evaluation of any of the members of the cdr, returns an error.
+// Returns a typed_ptr containing an error code (if any argument evaluation
+//   failed, or if an error arising during evaluation of the function body) or
+//   the result of evaluating the function body using the provided arguments.
+// In either case, the returned typed_ptr is the caller's responsibility to
+//   free, and is safe to (shallow) free without harm to the symbol table, list
+//   area, or any other object.
+typed_ptr* eval_user_function(const s_expr* se, environment* env) {
+    typed_ptr* result = NULL;
+    fun_tab_node* ftn = function_lookup_index(env, se->car);
+    if (ftn == NULL) {
+        return create_error(EVAL_ERROR_UNDEF_FUNCTION);
+    }
+    typed_ptr* args_tp = collect_args(se, env, 0, -1, true);
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
-        typed_ptr* first = args_tp->ptr.se_ptr->car;
-        typed_ptr* second = sexpr_next(args_tp->ptr.se_ptr)->car;
-        if (first->type != TYPE_SEXPR) {
-            result = create_error(EVAL_ERROR_BAD_ARG_TYPE);
+        sym_tab_node* arg_vals = bind_args(env, ftn, args_tp);
+        if (arg_vals != NULL && arg_vals->type == TYPE_ERROR) {
+            result = create_error(arg_vals->value.idx);
         } else {
-            sym_tab_node* params = collect_parameters(first, env);
-            if (params != NULL && params->type == TYPE_ERROR) {
-                result = create_error(params->value.idx);
-                delete_st_node_list(params);
-            } else {
-                environment* closure_env = copy_environment(env);
-                typed_ptr* body = copy_typed_ptr(second);
-                if (body->type == TYPE_SEXPR) {
-                    body->ptr.se_ptr = copy_s_expr(body->ptr.se_ptr);
-                }
-                result = install_function(env, params, closure_env, body);
-            }
+            environment* bound_env = make_eval_env(ftn->closure_env, arg_vals);
+            s_expr* empty = create_empty_s_expr();
+            s_expr* super_se = create_s_expr(copy_typed_ptr(ftn->body), \
+                                             create_sexpr_tp(empty));
+            result = evaluate(super_se, bound_env);
+            delete_se_recursive(super_se, false);
+            delete_env_shared_ft(bound_env);
         }
-        delete_se_recursive(args_tp->ptr.se_ptr, false);
+        delete_st_node_list(arg_vals);
+        delete_se_recursive(args_tp->ptr.se_ptr, true);
         free(args_tp);
     }
     return result;
@@ -687,253 +895,52 @@ environment* make_eval_env(environment* env, sym_tab_node* bound_args) {
     return eval_env;
 }
 
-// Evaluates an s-expression whose car has type TYPE_USER_FN.
-// The s-expression's cdr must contain the proper number of arguments for the
-//   user function being invoked. Any mismatch, or error arising during
-//   evaluation of any of the members of the cdr, returns an error.
-// Returns a typed_ptr containing an error code (if any argument evaluation
-//   failed, or if an error arising during evaluation of the function body) or
-//   the result of evaluating the function body using the provided arguments.
-// In either case, the returned typed_ptr is the caller's responsibility to
-//   free, and is safe to (shallow) free without harm to the symbol table, list
-//   area, or any other object.
-typed_ptr* eval_user_function(const s_expr* se, environment* env) {
-    typed_ptr* result = NULL;
-    fun_tab_node* ftn = function_lookup_index(env, se->car);
-    if (ftn == NULL) {
-        return create_error(EVAL_ERROR_UNDEF_FUNCTION);
+typed_ptr* collect_args(const s_expr* se, \
+                        environment* env, \
+                        int min_args, \
+                        int max_args, \
+                        bool evaluate_all_args) {
+    int seen = 0;
+    if (is_pair(se)) {
+        return create_error(EVAL_ERROR_ILLEGAL_PAIR);
     }
-    typed_ptr* args_tp = collect_args(se, env, 0, -1, true);
-    if (args_tp->type == TYPE_ERROR) {
-        result = args_tp;
-    } else {
-        sym_tab_node* arg_vals = bind_args(env, ftn, args_tp);
-        if (arg_vals != NULL && arg_vals->type == TYPE_ERROR) {
-            result = create_error(arg_vals->value.idx);
-        } else {
-            environment* bound_env = make_eval_env(ftn->closure_env, arg_vals);
-            s_expr* empty = create_empty_s_expr();
-            s_expr* super_se = create_s_expr(copy_typed_ptr(ftn->body), \
-                                             create_sexpr_tp(empty));
-            result = evaluate(super_se, bound_env);
-            delete_se_recursive(super_se, false);
-            delete_env_shared_ft(bound_env);
+    s_expr* curr = sexpr_next(se);
+    s_expr* arg_head = create_empty_s_expr();
+    s_expr* arg_tail = arg_head;
+    typed_ptr* err = NULL;
+    while (!is_empty_list(curr)) {
+        if (is_pair(curr)) {
+            err = create_error(EVAL_ERROR_ILLEGAL_PAIR);
+            break;
         }
-        delete_st_node_list(arg_vals);
-        delete_se_recursive(args_tp->ptr.se_ptr, true);
-        free(args_tp);
-    }
-    return result;
-}
-
-// Evaluates an s-expression of any kind within the context of the provided
-//   symbol table and list area.
-// Returns a typed_ptr containing an error code (if the evaluation failed) or
-//   the result (if it succeeded).
-// In either case, the returned typed_ptr is the caller's responsibility to
-//   free, and is safe to (shallow) free without harm to the symbol table, list
-//   area, or any other object.
-typed_ptr* evaluate(const s_expr* se, environment* env) {
-    typed_ptr* result = NULL;
-    if (se == NULL) {
-        result = create_error(EVAL_ERROR_NULL_SEXPR);
-    } else if (is_empty_list(se)) {
-        result = create_error(EVAL_ERROR_MISSING_PROCEDURE);
-    } else if (se->car == NULL || se->cdr == NULL) {
-        result = create_error(EVAL_ERROR_MALFORMED_SEXPR);
-    } else {
-        switch (se->car->type) {
-            case TYPE_UNDEF:
-                result = create_error(EVAL_ERROR_UNDEF_SYM);
-                break;
-            case TYPE_ERROR: // future: add info for traceback
-                result = se->car;
-                break;
-            case TYPE_BUILTIN: {
-                switch (se->car->ptr.idx) {
-                    case BUILTIN_ADD: //    -|
-                    case BUILTIN_MUL: //    -|
-                    case BUILTIN_SUB: //    -|
-                    case BUILTIN_DIV: //     v
-                        result = eval_arithmetic(se, env);
-                        break;
-                    case BUILTIN_DEFINE:
-                        result = eval_define(se, env);
-                        break;
-                    case BUILTIN_SETVAR:
-                        result = eval_set_variable(se, env);
-                        break;
-                    case BUILTIN_EXIT: {
-                        typed_ptr* args_tp = collect_args(se, env, 0, 0, false);
-                        if (args_tp->type == TYPE_ERROR) {
-                            result = args_tp;
-                        } else {
-                            result = create_error(EVAL_ERROR_EXIT);
-                            delete_se_recursive(args_tp->ptr.se_ptr, false);
-                            free(args_tp);
-                        }
-                        break;
-                    }
-                    case BUILTIN_CONS: {
-                        typed_ptr* args_tp = collect_args(se, env, 2, 2, true);
-                        if (args_tp->type == TYPE_ERROR) {
-                            result = args_tp;
-                        } else {
-                            s_expr* args = args_tp->ptr.se_ptr;
-                            s_expr* rest = sexpr_next(args);
-                            s_expr* result_se = create_s_expr(args->car, \
-                                                              rest->car);
-                            result = create_sexpr_tp(result_se);
-                            args->car = NULL;
-                            rest->car = NULL;
-                            delete_se_recursive(args, true);
-                            free(args_tp);
-                        }
-                        break;
-                    }
-                    case BUILTIN_CAR: //    -|
-                    case BUILTIN_CDR: //    -V
-                        result = eval_car_cdr(se, env);
-                        break;
-                    case BUILTIN_LIST:
-                        result = eval_list_construction(se, env);
-                        break;
-                    case BUILTIN_AND: {
-                        typed_ptr* args_tp = collect_args(se, env, 0, -1, true);
-                        if (args_tp->type == TYPE_ERROR) {
-                            result = args_tp;
-                        } else {
-                            typed_ptr* true_tp = create_atom_tp(TYPE_BOOL, 1);
-                            s_expr* arg_se = create_s_expr(true_tp, args_tp);
-                            s_expr* curr_se = arg_se;
-                            s_expr* last = arg_se;
-                            while (!is_empty_list(curr_se)) {
-                                last = curr_se;
-                                if (is_false_literal(last->car)) {
-                                    break;
-                                }
-                                curr_se = sexpr_next(curr_se);
-                            }
-                            result = last->car;
-                            last->car = NULL;
-                            delete_se_recursive(arg_se, true);
-                        }
-                        break;
-                    }
-                    case BUILTIN_OR: {
-                        typed_ptr* args_tp = collect_args(se, env, 0, -1, true);
-                        if (args_tp->type == TYPE_ERROR) {
-                            result = args_tp;
-                        } else {
-                            typed_ptr* false_tp = create_atom_tp(TYPE_BOOL, 0);
-                            s_expr* arg_se = create_s_expr(false_tp, args_tp);
-                            s_expr* curr_se = arg_se;
-                            s_expr* last = arg_se;
-                            while (!is_empty_list(curr_se)) {
-                                last = curr_se;
-                                if (!is_false_literal(last->car)) {
-                                    break;
-                                }
-                                curr_se = sexpr_next(curr_se);
-                            }
-                            result = last->car;
-                            last->car = NULL;
-                            delete_se_recursive(arg_se, true);
-                        }
-                        break;
-                    }
-                    case BUILTIN_NOT: {
-                        typed_ptr* args_tp = collect_args(se, env, 1, 1, true);
-                        if (args_tp->type == TYPE_ERROR) {
-                            result = args_tp;
-                        } else {
-                            if (is_false_literal(args_tp->ptr.se_ptr->car)) {
-                                result = create_atom_tp(TYPE_BOOL, 1);
-                            } else {
-                                result = create_atom_tp(TYPE_BOOL, 0);
-                            }
-                            delete_se_recursive(args_tp->ptr.se_ptr, true);
-                            free(args_tp);
-                        }
-                        break;
-                    }
-                    case BUILTIN_COND:
-                        result = eval_cond(se, env);
-                        break;
-                    case BUILTIN_LISTPRED:
-                        result = eval_list_pred(se, env);
-                        break;
-                    case BUILTIN_PAIRPRED:
-                        result = eval_atom_pred(se, env, TYPE_SEXPR);
-                        break;
-                    case BUILTIN_NUMBERPRED:
-                        result = eval_atom_pred(se, env, TYPE_NUM);
-                        break;
-                    case BUILTIN_BOOLPRED:
-                        result = eval_atom_pred(se, env, TYPE_BOOL);
-                        break;
-                    case BUILTIN_VOIDPRED:
-                        result = eval_atom_pred(se, env, TYPE_VOID);
-                        break;
-                    case BUILTIN_NUMBEREQ: //    -|
-                    case BUILTIN_NUMBERGT: //    -|
-                    case BUILTIN_NUMBERLT: //    -|
-                    case BUILTIN_NUMBERGE: //    -|
-                    case BUILTIN_NUMBERLE: //    -V
-                        result = eval_comparison(se, env);
-                        break;
-                    case BUILTIN_LAMBDA:
-                        result = eval_lambda(se, env);
-                        break;
-                    default:
-                        result = create_error(EVAL_ERROR_UNDEF_BUILTIN);
-                        break;
-                }
-                break;
-            }
-            case TYPE_SEXPR: {
-                s_expr* se_to_eval = se->car->ptr.se_ptr;
-                if (is_empty_list(se_to_eval)) {
-                    result = create_error(EVAL_ERROR_MISSING_PROCEDURE);
-                } else {
-                    s_expr* empty = create_empty_s_expr();
-                    s_expr* dummy_se = create_s_expr(se_to_eval->car, \
-                                                     create_sexpr_tp(empty));
-                    typed_ptr* fn = evaluate(dummy_se, env);
-                    free(sexpr_next(dummy_se));
-                    free(dummy_se->cdr);
-                    free(dummy_se);
-                    if (fn->type == TYPE_ERROR) {
-                        result = fn;
-                    } else {
-                        if (fn->type == TYPE_BUILTIN || \
-                            fn->type == TYPE_USER_FN) {
-                            dummy_se = create_s_expr(fn, se_to_eval->cdr);
-                            result = evaluate(dummy_se, env);
-                            free(dummy_se);
-                        } else {
-                            result = create_error(EVAL_ERROR_CAR_NOT_CALLABLE);
-                        }
-                        free(fn);
-                    }
-                }
-                break;
-            }
-            case TYPE_USER_FN:
-                result = eval_user_function(se, env);
-                break;
-            case TYPE_SYM:
-                result = value_lookup_index(env, se->car);
-                break;
-            case TYPE_NUM:  //    -| 
-            case TYPE_BOOL: //    -|
-            case TYPE_VOID: //    -V
-                result = copy_typed_ptr(se->car);
-                break;
-            default:
-                result = create_error(EVAL_ERROR_UNDEF_TYPE);
-                break;
+        seen++;
+        if (max_args >= 0 && seen > max_args) {
+            err = create_error(EVAL_ERROR_MANY_ARGS);
+            break;
         }
+        arg_tail->car = copy_typed_ptr(curr->car);
+        arg_tail->cdr = create_sexpr_tp(create_empty_s_expr());
+        if (evaluate_all_args && \
+            arg_tail->car->type != TYPE_BUILTIN && \
+            arg_tail->car->type != TYPE_USER_FN) {
+            typed_ptr* temp = arg_tail->car;
+            arg_tail->car = evaluate(arg_tail, env);
+            free(temp);
+        }
+        if (arg_tail->car->type == TYPE_ERROR) {
+            err = copy_typed_ptr(arg_tail->car);
+            break;
+        }
+        arg_tail = sexpr_next(arg_tail);
+        curr = sexpr_next(curr);
     }
-    return result;
+    if (err == NULL && seen < min_args) {
+        err = create_error(EVAL_ERROR_FEW_ARGS);
+    }
+    if (err != NULL) {
+        delete_se_recursive(arg_head, evaluate_all_args);
+        return err;
+    } else {
+        return create_sexpr_tp(arg_head);
+    }
 }

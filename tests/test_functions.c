@@ -1,15 +1,10 @@
 #include "test_functions.h"
 
 typed_ptr* parse_and_eval(char command[], environment* env) {
-    typed_ptr* output = NULL;
-    s_expr* parse_output = parse(command, env);
-    if (!is_empty_list(parse_output) && \
-        parse_output->car->type == TYPE_ERROR) {
-        output = parse_output->car;
-    } else {
+    typed_ptr* output = parse(command, env);
+    if (output->type != TYPE_ERROR) {
         s_expr* empty = create_empty_s_expr();
-        s_expr* super_se = create_s_expr(create_sexpr_tp(parse_output), \
-                                         create_sexpr_tp(empty));
+        s_expr* super_se = create_s_expr(output, create_sexpr_tp(empty));
         output = evaluate(super_se, env);
         delete_se_recursive(super_se, true);
     }
@@ -34,7 +29,7 @@ bool check_tp(typed_ptr* tp, type t, union_idx_se ptr) {
     }
 }
 
-void e2e_atom_test(char cmd[], type t, unsigned int val, test_env* te) {
+void e2e_atom_test(char cmd[], type t, long val, test_env* te) {
     printf("test command: %-40s", cmd);
     typed_ptr* output = parse_and_eval(cmd, te->env);
     bool pass = check_tp(output, t, (union_idx_se){.idx=val});
@@ -145,7 +140,7 @@ void e2e_sexpr_test(char cmd[], \
 void e2e_multiline_atom_test(char* cmds[], \
                              unsigned int cmd_num, \
                              type t, \
-                             unsigned int val, \
+                             long val, \
                              test_env* te) {
     printf("test command: %-40s", cmds[0]);
     typed_ptr* output = parse_and_eval(cmds[0], te->env);

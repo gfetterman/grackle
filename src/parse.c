@@ -1,5 +1,197 @@
 #include "parse.h"
 
+// Takes an input string and attempts to parse it into a valid s-expression.
+// If it cannot be parsed, returns an s-expression containing an error
+//   typed_ptr. In this case, no changes are made to the given symbol table or
+//   list area.
+// If successful, returns an s-expression. The given symbol table is updated to
+//   include any new symbols encountered during the parse; their type is
+//   TYPE_UNDEF. The given list area is updated to include the new s-expression
+//   command's nodes.
+// In either case, the s-expression returned is the caller's responsibility to
+//   free; it may be (shallow) freed without harm to the list area, symbol
+//   table, or any other object.
+typed_ptr* parse(char str[], environment* env) {
+    Parse_State state = PARSE_START;
+    interpreter_error error = PARSE_ERROR_NONE;
+    s_expr_storage* stack = NULL;
+    unsigned int curr = 0;
+    unsigned int symbol_start = 0;
+    char* new_symbol = NULL;
+    environment* temp_env = create_environment(env->symbol_table->length, \
+                                               env->function_table->length);
+    s_expr* head = create_empty_s_expr();
+    while (str[curr] && state != PARSE_ERROR) {
+        switch (state) {
+            case PARSE_START:
+                switch (str[curr]) {
+                    case ' ': // ignore leading whitespace
+                        break;
+                    case '(':
+                        se_stack_push(&stack, head);
+                        state = PARSE_NEW_SEXPR;
+                        break;
+                    case ')':
+                        state = PARSE_ERROR;
+                        error = PARSE_ERROR_UNBAL_PAREN;
+                        break;
+                    default:
+                        state = PARSE_ERROR;
+                        error = PARSE_ERROR_BARE_SYM;
+                        break;
+                }
+                break;
+            case PARSE_NEW_SEXPR:
+                switch (str[curr]) {
+                    case ' ': // ignore leading whitespace
+                        break;
+                    case '(':
+                        init_new_s_expr(&stack);
+                        break;
+                    case ')':
+                        state = terminate_s_expr(&stack, &error);
+                        break;
+                    default:
+                        symbol_start = curr;
+                        state = PARSE_READ_SYMBOL;
+                        break;
+                }
+                break;
+            case PARSE_READY:
+                switch (str[curr]) {
+                    case ' ': // lump whitespace together
+                        break;
+                    case '(':
+                        extend_s_expr(&stack);
+                        init_new_s_expr(&stack);
+                        state = PARSE_NEW_SEXPR;
+                        break;
+                    case ')':
+                        state = terminate_s_expr(&stack, &error);
+                        break;
+                    default:
+                        symbol_start = curr;
+                        extend_s_expr(&stack);
+                        state = PARSE_READ_SYMBOL;
+                        break;
+                }
+                break;
+            case PARSE_READ_SYMBOL:
+                if (str[curr] == ' ' || str[curr] == '(' || str[curr] == ')') {
+                    new_symbol = substring(str, symbol_start, curr);
+                    register_symbol(&stack, env, temp_env, new_symbol);
+                    new_symbol = NULL;
+                }
+                switch (str[curr]) {
+                    case ' ':
+                        state = PARSE_READY;
+                        break;
+                    case '(':
+                        extend_s_expr(&stack);
+                        init_new_s_expr(&stack);
+                        state = PARSE_NEW_SEXPR;
+                        break;
+                    case ')':
+                        state = terminate_s_expr(&stack, &error);
+                        break;
+                    default: // just keep reading
+                        break;
+                }
+                break;
+            case PARSE_FINISH:
+                switch (str[curr]) {
+                    case ' ': // ignore trailing whitespace
+                        break;
+                    case '(':
+                        state = PARSE_ERROR;
+                        error = PARSE_ERROR_TOO_MANY;
+                        break;
+                    case ')':
+                        state = PARSE_ERROR;
+                        error = PARSE_ERROR_UNBAL_PAREN;
+                        break;
+                    default:
+                        state = PARSE_ERROR;
+                        error = PARSE_ERROR_BARE_SYM;
+                        break;
+                }
+                break;
+            default:
+                fprintf(stderr, "fatal error: parser in unknown state\n");
+                exit(-1);
+        }
+        curr++;
+    }
+    if (state != PARSE_ERROR && stack != NULL) {
+        state = PARSE_ERROR;
+        error = PARSE_ERROR_UNBAL_PAREN;
+    }
+    if (state != PARSE_ERROR) {
+        merge_symbol_tables(env->symbol_table, temp_env->symbol_table);
+    } else {
+        while (stack != NULL) {
+            s_expr_storage* stack_temp = stack;
+            stack = stack->next;
+            // s-expressions pointed to on the stack are accessible from head
+            free(stack_temp);
+        }
+        delete_se_recursive(head, true);
+    }
+    delete_env_full(temp_env);
+    return (state == PARSE_ERROR) ? create_error(error) : create_sexpr_tp(head);
+}
+
+void init_new_s_expr(s_expr_storage** stack) {
+    se_stack_push(stack, create_empty_s_expr());
+    (*stack)->next->se->car = create_sexpr_tp((*stack)->se);
+    return;
+}
+
+void extend_s_expr(s_expr_storage** stack) {
+    se_stack_push(stack, create_empty_s_expr());
+    (*stack)->next->se->cdr = create_sexpr_tp((*stack)->se);
+    return;
+}
+
+Parse_State terminate_s_expr(s_expr_storage** stack, interpreter_error* error) {
+    if (*stack == NULL || (*stack)->se->cdr != NULL) {
+        *error = PARSE_ERROR_UNBAL_PAREN;
+        return PARSE_ERROR;
+    } else {
+        if (!is_empty_list((*stack)->se)) {
+            (*stack)->se->cdr = create_sexpr_tp(create_empty_s_expr());
+        }
+        se_stack_pop(stack);
+        while (*stack != NULL && (*stack)->se->cdr != NULL) {
+            se_stack_pop(stack);
+        }
+        return (*stack == NULL) ? PARSE_FINISH : PARSE_READY;
+    }
+}
+
+void register_symbol(s_expr_storage** stack, \
+                     environment* env, \
+                     environment* temp, \
+                     char* sym) {
+    typed_ptr* car = NULL;
+    if (string_is_number(sym)) {
+        long value = atol(sym);
+        free(sym);
+        car = create_atom_tp(TYPE_NUM, value);
+    } else {
+        sym_tab_node* found = symbol_lookup_string(env, sym);
+        found = (found == NULL) ? symbol_lookup_string(temp, sym) : found;
+        if (found == NULL) {
+            car = install_symbol(temp, sym, TYPE_UNDEF, (union_idx_se){.idx=0});
+        } else {
+            free(sym);
+            car = create_atom_tp(TYPE_SYM, found->symbol_number);
+        }
+    }
+    (*stack)->se->car = car;
+    return;
+}
+
 // The s-expression storage node is the caller's responsibility to free.
 s_expr_storage* create_s_expr_storage(unsigned int list_number, s_expr* se) {
     s_expr_storage* new_ses = malloc(sizeof(s_expr_storage));
@@ -45,235 +237,4 @@ void se_stack_pop(s_expr_storage** stack) {
     *stack = old_head->next;
     free(old_head);
     return;
-}
-
-// Takes an input string and attempts to parse it into a valid s-expression.
-// If it cannot be parsed, returns an s-expression containing an error
-//   typed_ptr. In this case, no changes are made to the given symbol table or
-//   list area.
-// If successful, returns an s-expression. The given symbol table is updated to
-//   include any new symbols encountered during the parse; their type is
-//   TYPE_UNDEF. The given list area is updated to include the new s-expression
-//   command's nodes.
-// In either case, the s-expression returned is the caller's responsibility to
-//   free; it may be (shallow) freed without harm to the list area, symbol
-//   table, or any other object.
-s_expr* parse(char str[], environment* env) {
-    enum Parse_State {PARSE_START, \
-                      PARSE_NEW_SEXPR, \
-                      PARSE_READY, \
-                      PARSE_READ_SYMBOL, \
-                      PARSE_FINISH, \
-                      PARSE_ERROR};
-    enum Parse_State state = PARSE_START;
-    interpreter_error error_code = PARSE_ERROR_NONE;
-    s_expr_storage* stack = NULL;
-    s_expr* new_s_expr = NULL;
-    unsigned int curr = 0;
-    unsigned int symbol_start = 0;
-    environment* temp_env = create_environment(env->symbol_table->length, \
-                                               env->function_table->length);
-    s_expr* head = NULL;
-    typed_ptr* new_tp = NULL;
-    while (str[curr] && state != PARSE_ERROR) {
-        switch (state) {
-            case PARSE_START:
-                switch (str[curr]) {
-                    case ' ': // ignore leading whitespace
-                        break;
-                    case '(':
-                        head = create_empty_s_expr();
-                        se_stack_push(&stack, head);
-                        state = PARSE_NEW_SEXPR;
-                        break;
-                    case ')':
-                        state = PARSE_ERROR;
-                        error_code = PARSE_ERROR_UNBAL_PAREN;
-                        break;
-                    default:
-                        state = PARSE_ERROR;
-                        error_code = PARSE_ERROR_BARE_SYM;
-                        break;
-                }
-                break;
-            case PARSE_NEW_SEXPR:
-                switch (str[curr]) {
-                    case ' ': // ignore leading whitespace
-                        break;
-                    case '(':
-                        new_s_expr = create_empty_s_expr();
-                        stack->se->car = create_sexpr_tp(new_s_expr);
-                        se_stack_push(&stack, new_s_expr);
-                        break;
-                    case ')':
-                        if (stack == NULL) {
-                            state = PARSE_ERROR;
-                            error_code = PARSE_ERROR_UNBAL_PAREN;
-                        } else {
-                            // this will necessarily be an empty list
-                            // so we needn't terminate it with one
-                            se_stack_pop(&stack);
-                            while (stack != NULL && stack->se->cdr != NULL) {
-                                se_stack_pop(&stack);
-                            }
-                            state = (stack == NULL) ? PARSE_FINISH : \
-                                                      PARSE_READY;
-                        }
-                        break;
-                    default:
-                        symbol_start = curr;
-                        state = PARSE_READ_SYMBOL;
-                        break;
-                }
-                break;
-            case PARSE_READY:
-                switch (str[curr]) {
-                    case ' ': // lump whitespace together
-                        break;
-                    case '(':
-                        // create the next backbone node
-                        new_s_expr = create_empty_s_expr();
-                        stack->se->cdr = create_sexpr_tp(new_s_expr);
-                        se_stack_push(&stack, new_s_expr);
-                        // create the new s-expression's initial node
-                        new_s_expr = create_empty_s_expr();
-                        stack->se->car = create_sexpr_tp(new_s_expr);
-                        se_stack_push(&stack, new_s_expr);
-                        state = PARSE_NEW_SEXPR;
-                        break;
-                    case ')':
-                        if (stack == NULL || stack->se->cdr != NULL) {
-                            state = PARSE_ERROR;
-                            error_code = PARSE_ERROR_UNBAL_PAREN;
-                        } else {
-                            // terminate the stack's top s-expression
-                            new_s_expr = create_empty_s_expr();
-                            stack->se->cdr = create_sexpr_tp(new_s_expr);
-                            se_stack_pop(&stack);
-                            while (stack != NULL && stack->se->cdr != NULL) {
-                                se_stack_pop(&stack);
-                            }
-                            state = (stack == NULL) ? PARSE_FINISH : \
-                                                      PARSE_READY;
-                        }
-                        break;
-                    default:
-                        symbol_start = curr;
-                        se_stack_push(&stack, create_empty_s_expr());
-                        stack->next->se->cdr = create_sexpr_tp(stack->se);
-                        state = PARSE_READ_SYMBOL;
-                        break;
-                }
-                break;
-            case PARSE_READ_SYMBOL:
-                switch (str[curr]) {
-                    case ' ':
-                        // update the current backbone node
-                        new_tp = install_symbol_substring(env, \
-                                                          temp_env, \
-                                                          str, \
-                                                          symbol_start, \
-                                                          curr);
-                        stack->se->car = new_tp;
-                        state = PARSE_READY;
-                        break;
-                    case '(':
-                        // update the current backbone node
-                        new_tp = install_symbol_substring(env, \
-                                                          temp_env, \
-                                                          str, \
-                                                          symbol_start, \
-                                                          curr);
-                        stack->se->car = new_tp;
-                        // create the next backbone node
-                        new_s_expr = create_empty_s_expr();
-                        stack->se->cdr = create_sexpr_tp(new_s_expr);
-                        se_stack_push(&stack, new_s_expr);
-                        // create the new s-expression's initial node
-                        new_s_expr = create_empty_s_expr();
-                        stack->se->car = create_sexpr_tp(new_s_expr);
-                        se_stack_push(&stack, new_s_expr);
-                        state = PARSE_NEW_SEXPR;
-                        break;
-                    case ')':
-                        // update the current backbone node
-                        new_tp = install_symbol_substring(env, \
-                                                          temp_env, \
-                                                          str, \
-                                                          symbol_start, \
-                                                          curr);
-                        stack->se->car = new_tp;
-                        if (stack == NULL || stack->se->cdr != NULL) {
-                            state = PARSE_ERROR;
-                            error_code = PARSE_ERROR_UNBAL_PAREN;
-                        } else {
-                            // terminate the stack's top s-expression
-                            new_s_expr = create_empty_s_expr();
-                            stack->se->cdr = create_sexpr_tp(new_s_expr);
-                            se_stack_pop(&stack);
-                            while (stack != NULL && stack->se->cdr != NULL) {
-                                se_stack_pop(&stack);
-                            }
-                            state = (stack == NULL) ? PARSE_FINISH : \
-                                                      PARSE_READY;
-                        }
-                        break;
-                    default: // just keep reading
-                        break;
-                }
-                break;
-            case PARSE_FINISH:
-                switch (str[curr]) {
-                    case ' ': // ignore trailing whitespace
-                        break;
-                    case '(':
-                        state = PARSE_ERROR;
-                        error_code = PARSE_ERROR_TOO_MANY;
-                        break;
-                    case ')':
-                        state = PARSE_ERROR;
-                        error_code = PARSE_ERROR_UNBAL_PAREN;
-                        break;
-                    default:
-                        state = PARSE_ERROR;
-                        error_code = PARSE_ERROR_BARE_SYM;
-                        break;
-                }
-                break;
-            default:
-                fprintf(stderr, "fatal error: parser in unknown state\n");
-                exit(-1);
-        }
-        curr++;
-    }
-    if (state != PARSE_ERROR && stack != NULL) {
-        state = PARSE_ERROR;
-        error_code = PARSE_ERROR_UNBAL_PAREN;
-    }
-    if (error_code == PARSE_ERROR_NONE) {
-        merge_symbol_tables(env->symbol_table, temp_env->symbol_table);
-        free(temp_env->symbol_table);
-        free(temp_env->function_table);
-        free(temp_env);
-    } else {
-        while (stack != NULL) {
-            s_expr_storage* stack_temp = stack;
-            stack = stack->next;
-            // s-expressions pointed to on the stack are accessible from head
-            free(stack_temp);
-        }
-        sym_tab_node* symbol_curr = temp_env->symbol_table->head;
-        while (symbol_curr != NULL) {
-            sym_tab_node* symbol_temp = symbol_curr;
-            symbol_curr = symbol_curr->next;
-            free(symbol_temp);
-        }
-        free(temp_env->symbol_table);
-        free(temp_env->function_table);
-        free(temp_env);
-        delete_se_recursive(head, true);
-        head = create_s_expr(create_error(error_code), \
-                             create_sexpr_tp(create_empty_s_expr()));
-    }
-    return head;
 }
