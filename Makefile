@@ -3,6 +3,8 @@ CC_OPTS = -Wall -std=gnu99 -I./src
 
 VPATH = src:tests
 
+all : grackle test
+
 grackle : grackle.o fundamentals.o environment.o parse.o evaluate.o grackle_io.o grackle_utils.o
 	$(CC) $(CC_OPTS) $^ -o $@
 
