@@ -29,7 +29,7 @@ bool check_tp(typed_ptr* tp, type t, union_idx_se ptr) {
     }
 }
 
-void e2e_atom_test(char cmd[], type t, unsigned int val, test_env* te) {
+void e2e_atom_test(char cmd[], type t, long val, test_env* te) {
     printf("test command: %-40s", cmd);
     typed_ptr* output = parse_and_eval(cmd, te->env);
     bool pass = check_tp(output, t, (union_idx_se){.idx=val});
@@ -140,7 +140,7 @@ void e2e_sexpr_test(char cmd[], \
 void e2e_multiline_atom_test(char* cmds[], \
                              unsigned int cmd_num, \
                              type t, \
-                             unsigned int val, \
+                             long val, \
                              test_env* te) {
     printf("test command: %-40s", cmds[0]);
     typed_ptr* output = parse_and_eval(cmds[0], te->env);
