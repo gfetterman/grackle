@@ -92,8 +92,8 @@ fun_tab_node* create_ft_node(unsigned int function_number, \
     return new_ftn;
 }
 
-function_table* create_function_table(unsigned int offset) {
-    function_table* new_ft = malloc(sizeof(function_table));
+Function_Table* create_function_table(unsigned int offset) {
+    Function_Table* new_ft = malloc(sizeof(Function_Table));
     if (new_ft == NULL) {
         fprintf(stderr, "malloc failed in create_function_table()\n");
         exit(-1);
