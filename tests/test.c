@@ -449,5 +449,5 @@ int main() {
     end_to_end_tests();
     printf("\n----------------\n");
     printf("testing complete\n");
-    return 0;
+    return 64;
 }
