@@ -21,7 +21,7 @@ int main() {
             printf("\n");
         } else {
             s_expr* empty = create_empty_s_expr();
-            s_expr* super_se = create_s_expr(output, create_sexpr_tp(empty));
+            s_expr* super_se = create_s_expr(output, create_s_expr_tp(empty));
             output = evaluate(super_se, env);
             print_result(output, env);
             printf("\n");
@@ -29,7 +29,7 @@ int main() {
                 output->ptr.idx == EVAL_ERROR_EXIT) {
                 exit = true;
             }
-            delete_se_recursive(super_se, true);
+            delete_s_expr_recursive(super_se, true);
         }
         free(output);
     }

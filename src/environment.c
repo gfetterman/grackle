@@ -152,7 +152,7 @@ void delete_env_shared_ft(environment* env) {
         sym_tab_node* next = curr->next;
         free(curr->symbol);
         if (curr->type == TYPE_SEXPR) {
-            delete_se_recursive(curr->value.se_ptr, true);
+            delete_s_expr_recursive(curr->value.se_ptr, true);
         }
         free(curr);
         curr = next;
@@ -169,7 +169,7 @@ void delete_env_full(environment* env) {
         sym_tab_node* next_stn = curr_stn->next;
         free(curr_stn->symbol);
         if (curr_stn->type == TYPE_SEXPR) {
-            delete_se_recursive(curr_stn->value.se_ptr, true);
+            delete_s_expr_recursive(curr_stn->value.se_ptr, true);
         }
         free(curr_stn);
         curr_stn = next_stn;
@@ -190,7 +190,7 @@ void delete_env_full(environment* env) {
         delete_env_shared_ft(curr_ftn->closure_env);
         // free body s-expression
         if (curr_ftn->body->type == TYPE_SEXPR) {
-            delete_se_recursive(curr_ftn->body->ptr.se_ptr, true);
+            delete_s_expr_recursive(curr_ftn->body->ptr.se_ptr, true);
         }
         free(curr_ftn->body);
         free(curr_ftn);

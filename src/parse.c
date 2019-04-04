@@ -135,7 +135,7 @@ typed_ptr* parse(char str[], environment* env) {
             // s-expressions pointed to on the stack are accessible from head
             free(stack_temp);
         }
-        delete_se_recursive(head, true);
+        delete_s_expr_recursive(head, true);
     }
     delete_env_full(temp_env);
     return (state == PARSE_ERROR) ? create_error_tp(error) : \

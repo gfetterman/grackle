@@ -100,7 +100,7 @@ void print_error(const typed_ptr* tp) {
 
 void print_s_expression(const s_expr* se, environment* env) {
     if (se == NULL) {
-        typed_ptr* err = create_error(EVAL_ERROR_NULL_SEXPR);
+        typed_ptr* err = create_error_tp(EVAL_ERROR_NULL_SEXPR);
         print_error(err);
         free(err);
         return;
@@ -137,7 +137,7 @@ void print_result(const typed_ptr* tp, environment* env) {
         case TYPE_SEXPR:
             print_s_expression(tp->ptr.se_ptr, env);
             break;
-        case TYPE_SYM:
+        case TYPE_SYMBOL:
             printf("'%s", symbol_lookup_index(env, tp)->symbol);
             break;
         case TYPE_BUILTIN:
@@ -148,7 +148,7 @@ void print_result(const typed_ptr* tp, environment* env) {
             break;
         case TYPE_VOID:
             break; // print nothing
-        case TYPE_USER_FN:
+        case TYPE_FUNCTION:
             printf("#<procedure>");
             break;
         default:

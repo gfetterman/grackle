@@ -103,7 +103,7 @@ typed_ptr* copy_typed_ptr(const typed_ptr* tp);
 s_expr* create_s_expr(typed_ptr* car, typed_ptr* cdr);
 s_expr* create_empty_s_expr();
 s_expr* copy_s_expr(const s_expr* se);
-void delete_se_recursive(s_expr* se, bool delete_sexpr_cars);
+void delete_s_expr_recursive(s_expr* se, bool delete_s_expr_cars);
 
 s_expr* s_expr_next(const s_expr* se);
 

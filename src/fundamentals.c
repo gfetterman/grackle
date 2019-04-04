@@ -77,13 +77,13 @@ s_expr* copy_s_expr(const s_expr* se) {
     return new_se;
 }
 
-void delete_se_recursive(s_expr* se, bool delete_sexpr_cars) {
+void delete_s_expr_recursive(s_expr* se, bool delete_s_expr_cars) {
     s_expr* curr = se;
     while (curr != NULL) {
-        if (delete_sexpr_cars && \
+        if (delete_s_expr_cars && \
             curr->car != NULL && \
             curr->car->type == TYPE_SEXPR) {
-            delete_se_recursive(curr->car->ptr.se_ptr, true);
+            delete_s_expr_recursive(curr->car->ptr.se_ptr, true);
         }
         free(curr->car);
         if (curr->cdr != NULL && curr->cdr->type == TYPE_SEXPR) {

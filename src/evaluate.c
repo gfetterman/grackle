@@ -179,7 +179,7 @@ typed_ptr* eval_arithmetic(const s_expr* se, environment* env) {
             }
             arg = s_expr_next(arg);
         }
-        delete_se_recursive(args_tp->ptr.se_ptr, true);
+        delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
         free(args_tp);
     }
     return result;
@@ -244,7 +244,7 @@ typed_ptr* eval_comparison(const s_expr* se, environment* env) {
                 result = create_atom_tp(TYPE_BOOL, truth);
             } // otherwise it threw an error
         }
-        delete_se_recursive(args_tp->ptr.se_ptr, true);
+        delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
         free(args_tp);
     }
     return result;
@@ -314,11 +314,11 @@ typed_ptr* eval_define(const s_expr* se, environment* env) {
                     s_expr* dummy_lam = create_s_expr(lam, arg_list_tp);
                     typed_ptr* fn = eval_lambda(dummy_lam, env);
                     if (fn->type == TYPE_ERROR) {
-                        delete_se_recursive(dummy_lam, true);
+                        delete_s_expr_recursive(dummy_lam, true);
                         result = fn;
                     } else {
-                        delete_se_recursive(arg_list->ptr.se_ptr, true);
-                        delete_se_recursive(dummy_lam, false);
+                        delete_s_expr_recursive(arg_list->ptr.se_ptr, true);
+                        delete_s_expr_recursive(dummy_lam, false);
                         char* name = strdup(sym_entry->symbol);
                         blind_install_symbol_atom(env, \
                                                   name, \
@@ -333,7 +333,7 @@ typed_ptr* eval_define(const s_expr* se, environment* env) {
         } else {
             result = create_error_tp(EVAL_ERROR_NOT_ID);
         }
-        delete_se_recursive(args_tp->ptr.se_ptr, false);
+        delete_s_expr_recursive(args_tp->ptr.se_ptr, false);
         free(args_tp);
     }
     return result;
@@ -378,7 +378,7 @@ typed_ptr* eval_set_variable(const s_expr* se, environment* env) {
                 }
             }
         }
-        delete_se_recursive(args_tp->ptr.se_ptr, false);
+        delete_s_expr_recursive(args_tp->ptr.se_ptr, false);
         free(args_tp);
     }
     return result;
@@ -391,7 +391,7 @@ typed_ptr* eval_exit(const s_expr* se, environment* env) {
         result = args_tp;
     } else {
         result = create_error_tp(EVAL_ERROR_EXIT);
-        delete_se_recursive(args_tp->ptr.se_ptr, false);
+        delete_s_expr_recursive(args_tp->ptr.se_ptr, false);
         free(args_tp);
     }
     return result;
@@ -409,7 +409,7 @@ typed_ptr* eval_cons(const s_expr* se, environment* env) {
         result = create_s_expr_tp(result_se);
         args->car = NULL;
         rest->car = NULL;
-        delete_se_recursive(args, true);
+        delete_s_expr_recursive(args, true);
         free(args_tp);
     }
     return result;
@@ -440,7 +440,7 @@ typed_ptr* eval_car_cdr(const s_expr* se, environment* env) {
             result = arg->ptr.se_ptr->cdr;
             arg->ptr.se_ptr->cdr = NULL;
         }
-        delete_se_recursive(args_tp->ptr.se_ptr, true);
+        delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
         free(args_tp);
     }
     return result;
@@ -475,7 +475,7 @@ typed_ptr* eval_list_pred(const s_expr* se, environment* env) {
                 arg_se = s_expr_next(arg_se);
             }
         }
-        delete_se_recursive(args_tp->ptr.se_ptr, true);
+        delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
         free(args_tp);
     }
     return result;
@@ -503,7 +503,7 @@ typed_ptr* eval_atom_pred(const s_expr* se, environment* env, type t) {
         if (arg->type == TYPE_SEXPR && is_empty_list(arg->ptr.se_ptr)) {
             result->ptr.idx = 0;
         }
-        delete_se_recursive(args_tp->ptr.se_ptr, true);
+        delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
         free(args_tp);
     }
     return result;
@@ -545,7 +545,7 @@ typed_ptr* eval_and_or(const s_expr* se, environment* env) {
         }
         result = last->car;
         last->car = NULL;
-        delete_se_recursive(arg_se, true);
+        delete_s_expr_recursive(arg_se, true);
     }
     return result;
 }
@@ -561,7 +561,7 @@ typed_ptr* eval_not(const s_expr* se, environment* env) {
         } else {
             result = create_atom_tp(TYPE_BOOL, 0);
         }
-        delete_se_recursive(args_tp->ptr.se_ptr, true);
+        delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
         free(args_tp);
     }
     return result;
@@ -595,7 +595,7 @@ typed_ptr* eval_cond(const s_expr* se, environment* env) {
                                                   (tp_value){.idx=0});
         s_expr* arg_se = s_expr_next(se);
         if (is_empty_list(arg_se)) {
-            delete_se_recursive(args_tp->ptr.se_ptr, false);
+            delete_s_expr_recursive(args_tp->ptr.se_ptr, false);
             free(args_tp);
             return eval_interm;
         }
@@ -657,7 +657,7 @@ typed_ptr* eval_cond(const s_expr* se, environment* env) {
             }
             result = eval_interm;
         }
-        delete_se_recursive(args_tp->ptr.se_ptr, false);
+        delete_s_expr_recursive(args_tp->ptr.se_ptr, false);
         free(args_tp);
         return result;
     }
@@ -699,7 +699,7 @@ typed_ptr* eval_lambda(const s_expr* se, environment* env) {
                 result = install_function(env, params, closure_env, body);
             }
         }
-        delete_se_recursive(args_tp->ptr.se_ptr, false);
+        delete_s_expr_recursive(args_tp->ptr.se_ptr, false);
         free(args_tp);
     }
     return result;
@@ -813,11 +813,11 @@ typed_ptr* eval_user_function(const s_expr* se, environment* env) {
             s_expr* super_se = create_s_expr(copy_typed_ptr(ftn->body), \
                                              create_s_expr_tp(empty));
             result = evaluate(super_se, bound_env);
-            delete_se_recursive(super_se, false);
+            delete_s_expr_recursive(super_se, false);
             delete_env_shared_ft(bound_env);
         }
         delete_st_node_list(arg_vals);
-        delete_se_recursive(args_tp->ptr.se_ptr, true);
+        delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
         free(args_tp);
     }
     return result;
@@ -938,7 +938,7 @@ typed_ptr* collect_args(const s_expr* se, \
         err = create_error_tp(EVAL_ERROR_FEW_ARGS);
     }
     if (err != NULL) {
-        delete_se_recursive(arg_head, evaluate_all_args);
+        delete_s_expr_recursive(arg_head, evaluate_all_args);
         return err;
     } else {
         return create_s_expr_tp(arg_head);
