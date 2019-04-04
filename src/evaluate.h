@@ -29,13 +29,13 @@ typed_ptr* eval_not(const s_expr* se, environment* env);
 typed_ptr* eval_cond(const s_expr* se, environment* env);
 
 typed_ptr* eval_lambda(const s_expr* se, environment* env);
-sym_tab_node* collect_parameters(typed_ptr* tp, environment* env);
+Symbol_Node* collect_parameters(typed_ptr* tp, environment* env);
 
 typed_ptr* eval_sexpr(const s_expr* se, environment* env);
 
 typed_ptr* eval_user_function(const s_expr* se, environment* env);
-sym_tab_node* bind_args(environment* env, fun_tab_node* ftn, typed_ptr* args);
-environment* make_eval_env(environment* env, sym_tab_node* bound_args);
+Symbol_Node* bind_args(environment* env, fun_tab_node* ftn, typed_ptr* args);
+environment* make_eval_env(environment* env, Symbol_Node* bound_args);
 
 typed_ptr* collect_args(const s_expr* se, \
                         environment* env, \

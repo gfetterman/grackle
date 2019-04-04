@@ -5,13 +5,13 @@
 // The string pointed to by name is now the symbol table's responsibility
 //   to free. It also must be safe to free (i.e., it must be heap-allocated)
 //   and nobody else should free it.
-// The returned sym_tab_node is the caller's (i.e., the symbol table's)
+// The returned Symbol_Node is the caller's (i.e., the symbol table's)
 //   responsibility to free.
-sym_tab_node* create_st_node(unsigned int symbol_number, \
-                             char* name, \
-                             type type, \
-                             tp_value value) {
-    sym_tab_node* new_node = malloc(sizeof(sym_tab_node));
+Symbol_Node* create_st_node(unsigned int symbol_number, \
+                            char* name, \
+                            type type, \
+                            tp_value value) {
+    Symbol_Node* new_node = malloc(sizeof(Symbol_Node));
     if (new_node == NULL) {
         fprintf(stderr, "fatal error: malloc failed in create_st_node()\n");
         exit(-1);
@@ -24,7 +24,7 @@ sym_tab_node* create_st_node(unsigned int symbol_number, \
     return new_node;
 }
 
-sym_tab_node* create_error_stn(interpreter_error err_code) {
+Symbol_Node* create_error_stn(interpreter_error err_code) {
     return create_st_node(0, NULL, TYPE_ERROR, (tp_value){.idx=err_code});
 }
 
@@ -51,7 +51,7 @@ void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second) {
     if (first->head == NULL) {
         first->head = second->head;
     } else {
-        sym_tab_node* curr = first->head;
+        Symbol_Node* curr = first->head;
         while (curr->next != NULL) {
             curr = curr->next;
         }
@@ -62,9 +62,9 @@ void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second) {
     return;
 }
 
-void delete_st_node_list(sym_tab_node* stn) {
+void delete_st_node_list(Symbol_Node* stn) {
     while (stn != NULL) {
-        sym_tab_node* next = stn->next;
+        Symbol_Node* next = stn->next;
         free(stn->symbol);
         free(stn);
         stn = next;
@@ -76,7 +76,7 @@ void delete_st_node_list(sym_tab_node* stn) {
 //   function table node, but the body points to an s-expression that is
 //   represented elsewhere (and so cannot be safely freed using this pointer).
 fun_tab_node* create_ft_node(unsigned int function_number, \
-                             sym_tab_node* arg_list, \
+                             Symbol_Node* arg_list, \
                              environment* closure_env, \
                              typed_ptr* body) {
     fun_tab_node* new_ftn = malloc(sizeof(fun_tab_node));
@@ -124,12 +124,12 @@ environment* create_environment(unsigned int st_start, unsigned int ft_start) {
 //   to ensure it's done safely.
 environment* copy_environment(environment* env) {
     environment* new_env = create_environment(0, 0);
-    sym_tab_node* curr_stn = env->symbol_table->head;
+    Symbol_Node* curr_stn = env->symbol_table->head;
     while (curr_stn != NULL) {
-        sym_tab_node* new_stn = create_st_node(curr_stn->symbol_number, \
-                                               strdup(curr_stn->symbol), \
-                                               curr_stn->type, \
-                                               curr_stn->value);
+        Symbol_Node* new_stn = create_st_node(curr_stn->symbol_number, \
+                                              strdup(curr_stn->symbol), \
+                                              curr_stn->type, \
+                                              curr_stn->value);
         if (new_stn->type == TYPE_SEXPR) {
             new_stn->value.se_ptr = copy_s_expr(new_stn->value.se_ptr);
         }
@@ -147,9 +147,9 @@ environment* copy_environment(environment* env) {
 // Safely deletes an environment that shares a function table with other
 //   environments.
 void delete_env_shared_ft(environment* env) {
-    sym_tab_node* curr = env->symbol_table->head;
+    Symbol_Node* curr = env->symbol_table->head;
     while (curr != NULL) {
-        sym_tab_node* next = curr->next;
+        Symbol_Node* next = curr->next;
         free(curr->symbol);
         if (curr->type == TYPE_SEXPR) {
             delete_s_expr_recursive(curr->value.se_ptr, true);
@@ -164,9 +164,9 @@ void delete_env_shared_ft(environment* env) {
 
 // Fully deletes an environment.
 void delete_env_full(environment* env) {
-    sym_tab_node* curr_stn = env->symbol_table->head;
+    Symbol_Node* curr_stn = env->symbol_table->head;
     while (curr_stn != NULL) {
-        sym_tab_node* next_stn = curr_stn->next;
+        Symbol_Node* next_stn = curr_stn->next;
         free(curr_stn->symbol);
         if (curr_stn->type == TYPE_SEXPR) {
             delete_s_expr_recursive(curr_stn->value.se_ptr, true);
@@ -179,9 +179,9 @@ void delete_env_full(environment* env) {
     while (curr_ftn != NULL) {
         fun_tab_node* next_ftn = curr_ftn->next;
         // free argument list
-        sym_tab_node* curr_arg_stn = curr_ftn->arg_list;
+        Symbol_Node* curr_arg_stn = curr_ftn->arg_list;
         while (curr_arg_stn != NULL) {
-            sym_tab_node* next_arg_stn = curr_arg_stn->next;
+            Symbol_Node* next_arg_stn = curr_arg_stn->next;
             free(curr_arg_stn->symbol);
             free(curr_arg_stn);
             curr_arg_stn = next_arg_stn;
@@ -217,9 +217,9 @@ typed_ptr* install_symbol(environment* env, \
                           tp_value value) {
     unsigned int sym_num = env->symbol_table->length + \
                            env->symbol_table->symbol_number_offset;
-    sym_tab_node* found = symbol_lookup_string(env, name);
+    Symbol_Node* found = symbol_lookup_string(env, name);
     if (found == NULL) {
-        sym_tab_node* new_node = create_st_node(sym_num, name, type, value);
+        Symbol_Node* new_node = create_st_node(sym_num, name, type, value);
         new_node->next = env->symbol_table->head;
         env->symbol_table->head = new_node;
         env->symbol_table->length++;
@@ -267,7 +267,7 @@ void blind_install_symbol_sexpr(environment* env, \
 //   problem, and won't be freed by the environment.
 // The typed pointer returned is the caller's responsibility to free.
 typed_ptr* install_function(environment* env, \
-                            sym_tab_node* arg_list, \
+                            Symbol_Node* arg_list, \
                             environment* closure_env, \
                             typed_ptr* body) {
     unsigned int num = env->function_table->length;
@@ -324,10 +324,10 @@ void setup_environment(environment* env) {
     return;
 }
 
-// The returned sym_tab_node should (usually) not be freed.
+// The returned Symbol_Node should (usually) not be freed.
 // If the given name does not match any symbol table entry, NULL is returned.
-sym_tab_node* symbol_lookup_string(environment* env, const char* name) {
-    sym_tab_node* curr = env->symbol_table->head;
+Symbol_Node* symbol_lookup_string(environment* env, const char* name) {
+    Symbol_Node* curr = env->symbol_table->head;
     while (curr != NULL) {
         if (!strcmp(curr->symbol, name)) {
             return curr;
@@ -337,13 +337,13 @@ sym_tab_node* symbol_lookup_string(environment* env, const char* name) {
     return NULL;
 }
 
-// The returned sym_tab_node should (usually) not be freed.
+// The returned Symbol_Node should (usually) not be freed.
 // If the given index does not match any symbol table entry, NULL is returned.
-sym_tab_node* symbol_lookup_index(environment* env, const typed_ptr* tp) {
+Symbol_Node* symbol_lookup_index(environment* env, const typed_ptr* tp) {
     if (tp == NULL || tp->type != TYPE_SYMBOL) {
         return NULL;
     }
-    sym_tab_node* curr = env->symbol_table->head;
+    Symbol_Node* curr = env->symbol_table->head;
     while (curr != NULL) {
         if (curr->symbol_number == tp->ptr.idx) {
             break;
@@ -353,11 +353,11 @@ sym_tab_node* symbol_lookup_index(environment* env, const typed_ptr* tp) {
     return curr;
 }
 
-sym_tab_node* builtin_lookup_index(environment* env, const typed_ptr* tp) {
+Symbol_Node* builtin_lookup_index(environment* env, const typed_ptr* tp) {
     if (tp == NULL || tp->type != TYPE_BUILTIN) {
         return NULL;
     }
-    sym_tab_node* curr = env->symbol_table->head;
+    Symbol_Node* curr = env->symbol_table->head;
     while (curr != NULL) {
         if (curr->type == TYPE_BUILTIN && curr->value.idx == tp->ptr.idx) {
             return curr;
@@ -376,7 +376,7 @@ typed_ptr* value_lookup_index(environment* env, const typed_ptr* tp) {
     if (tp == NULL || tp->type != TYPE_SYMBOL) {
         return NULL;
     }
-    sym_tab_node* curr = env->symbol_table->head;
+    Symbol_Node* curr = env->symbol_table->head;
     while (curr != NULL) {
         if (curr->symbol_number == tp->ptr.idx) {
             if (curr->type == TYPE_UNDEF) {

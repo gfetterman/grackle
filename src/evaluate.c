@@ -270,7 +270,7 @@ typed_ptr* eval_define(const s_expr* se, environment* env) {
     } else {
         typed_ptr* arg = args_tp->ptr.se_ptr->car;
         if (arg->type == TYPE_SYMBOL) {
-            sym_tab_node* sym_entry = symbol_lookup_index(env, arg);
+            Symbol_Node* sym_entry = symbol_lookup_index(env, arg);
             if (sym_entry == NULL) {
                 result = create_error_tp(EVAL_ERROR_UNDEF_SYM);
             } else {
@@ -292,7 +292,7 @@ typed_ptr* eval_define(const s_expr* se, environment* env) {
                 result = create_error_tp(EVAL_ERROR_NOT_ID);
             } else {
                 typed_ptr* fn_sym = arg->ptr.se_ptr->car;
-                sym_tab_node* sym_entry = symbol_lookup_index(env, fn_sym);
+                Symbol_Node* sym_entry = symbol_lookup_index(env, fn_sym);
                 if (sym_entry == NULL) {
                     result = create_error_tp(EVAL_ERROR_UNDEF_SYM);
                 } else {
@@ -302,7 +302,7 @@ typed_ptr* eval_define(const s_expr* se, environment* env) {
                     arg->ptr.se_ptr->cdr = create_s_expr_tp(empty);
                     typed_ptr* fn_body = s_expr_next(args_tp->ptr.se_ptr)->car;
                     s_expr_next(args_tp->ptr.se_ptr)->car = NULL;
-                    sym_tab_node* lam_stn = symbol_lookup_string(env, "lambda");
+                    Symbol_Node* lam_stn = symbol_lookup_string(env, "lambda");
                     typed_ptr* lam = create_atom_tp(TYPE_SYMBOL, \
                                                     lam_stn->symbol_number);
                     empty = create_empty_s_expr();
@@ -362,7 +362,7 @@ typed_ptr* eval_set_variable(const s_expr* se, environment* env) {
         if (arg->type != TYPE_SYMBOL) {
             result = create_error_tp(EVAL_ERROR_NOT_ID);
         } else {
-            sym_tab_node* sym_entry = symbol_lookup_index(env, arg);
+            Symbol_Node* sym_entry = symbol_lookup_index(env, arg);
             if (sym_entry == NULL || sym_entry->type == TYPE_UNDEF) {
                 result = create_error_tp(EVAL_ERROR_UNDEF_SYM);
             } else {
@@ -613,7 +613,7 @@ typed_ptr* eval_cond(const s_expr* se, environment* env) {
                 eval_interm = create_error_tp(EVAL_ERROR_BAD_SYNTAX);
                 break;
             }
-            sym_tab_node* else_stn = symbol_lookup_string(env, "else");
+            Symbol_Node* else_stn = symbol_lookup_string(env, "else");
             if (cond_clause->car->type == TYPE_SYMBOL && \
                 cond_clause->car->ptr.idx == else_stn->symbol_number) {
                 s_expr* next_clause = s_expr_next(arg_se);
@@ -686,7 +686,7 @@ typed_ptr* eval_lambda(const s_expr* se, environment* env) {
         if (first->type != TYPE_SEXPR) {
             result = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
         } else {
-            sym_tab_node* params = collect_parameters(first, env);
+            Symbol_Node* params = collect_parameters(first, env);
             if (params != NULL && params->type == TYPE_ERROR) {
                 result = create_error_tp(params->value.idx);
                 delete_st_node_list(params);
@@ -710,13 +710,13 @@ typed_ptr* eval_lambda(const s_expr* se, environment* env) {
 // tp is expected to be a pointer to an s-expression. If it's empty, NULL is
 //   returned.
 // If any element of the s-expression pointed to by tp is not a symbol, a
-//   single sym_tab_node containing an error code is returned.
-// Otherwise, a list of sym_tab_nodes is returned, one for each parameter
+//   single Symbol_Node containing an error code is returned.
+// Otherwise, a list of Symbol_Nodes is returned, one for each parameter
 //   symbol discovered.
-// In either case, these sym_tab_nodes are safe to free (and they are the
+// In either case, these Symbol_Nodes are safe to free (and they are the
 //   caller's responsibility to free).
-sym_tab_node* collect_parameters(typed_ptr* tp, environment* env) {
-    sym_tab_node* params = NULL;
+Symbol_Node* collect_parameters(typed_ptr* tp, environment* env) {
+    Symbol_Node* params = NULL;
     s_expr* se = tp->ptr.se_ptr;
     if (is_empty_list(se)) {
         return params;
@@ -729,7 +729,7 @@ sym_tab_node* collect_parameters(typed_ptr* tp, environment* env) {
                                 strdup(name), \
                                 TYPE_UNDEF, \
                                 (tp_value){.idx=0});
-        sym_tab_node* curr = params;
+        Symbol_Node* curr = params;
         se = s_expr_next(se);
         while (!is_empty_list(se)) {
             if (se->cdr == NULL || se->cdr->type != TYPE_SEXPR) {
@@ -804,7 +804,7 @@ typed_ptr* eval_user_function(const s_expr* se, environment* env) {
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
-        sym_tab_node* arg_vals = bind_args(env, ftn, args_tp);
+        Symbol_Node* arg_vals = bind_args(env, ftn, args_tp);
         if (arg_vals != NULL && arg_vals->type == TYPE_ERROR) {
             result = create_error_tp(arg_vals->value.idx);
         } else {
@@ -825,16 +825,16 @@ typed_ptr* eval_user_function(const s_expr* se, environment* env) {
 
 // If the fun_tab_node's arg list is of different length than the s-expression
 //   pointed to by the args typed pointer, an error is returned in the first
-//   sym_tab_node.
+//   Symbol_Node.
 // Otherwise, the parameters in the arg list are bound to the values produced
 //   when evaluating the members of the args s-expression; any error during
 //   evaluation aborts this process and is passed back out in the first
-//   sym_tab_node.
-// If no errors are encountered, the sym_tab_node list contains the bound
+//   Symbol_Node.
+// If no errors are encountered, the Symbol_Node list contains the bound
 //   arguments.
-// In all cases, the sym_tab_node list returned is the caller's responsibility
+// In all cases, the Symbol_Node list returned is the caller's responsibility
 //   to free, and may be safely (shallow) freed.
-sym_tab_node* bind_args(environment* env, fun_tab_node* ftn, typed_ptr* args) {
+Symbol_Node* bind_args(environment* env, fun_tab_node* ftn, typed_ptr* args) {
     if (ftn->arg_list == NULL && is_empty_list(args->ptr.se_ptr)) {
         return NULL;
     } else if (is_empty_list(args->ptr.se_ptr)) {
@@ -842,9 +842,9 @@ sym_tab_node* bind_args(environment* env, fun_tab_node* ftn, typed_ptr* args) {
     } else if (ftn->arg_list == NULL) {
         return create_error_stn(EVAL_ERROR_MANY_ARGS);
     } else {
-        sym_tab_node* curr_param = ftn->arg_list;
+        Symbol_Node* curr_param = ftn->arg_list;
         s_expr* arg_se = args->ptr.se_ptr;
-        sym_tab_node* bound_args = NULL;
+        Symbol_Node* bound_args = NULL;
         bound_args = create_st_node(0, \
                                     strdup(curr_param->symbol), \
                                     arg_se->car->type, \
@@ -857,7 +857,7 @@ sym_tab_node* bind_args(environment* env, fun_tab_node* ftn, typed_ptr* args) {
                 bound_args = create_error_stn(EVAL_ERROR_MANY_ARGS);
                 break;
             }
-            sym_tab_node* new_arg = create_st_node(0, \
+            Symbol_Node* new_arg = create_st_node(0, \
                                                    strdup(curr_param->symbol), \
                                                    arg_se->car->type, \
                                                    arg_se->car->ptr);
@@ -878,11 +878,11 @@ sym_tab_node* bind_args(environment* env, fun_tab_node* ftn, typed_ptr* args) {
 // The input environment is not modified.
 // The returned environment is the caller's responsibility to delete, using
 //   delete_env_shared_ft() below.
-environment* make_eval_env(environment* env, sym_tab_node* bound_args) {
+environment* make_eval_env(environment* env, Symbol_Node* bound_args) {
     environment* eval_env = copy_environment(env);
-    sym_tab_node* curr_arg = bound_args;
+    Symbol_Node* curr_arg = bound_args;
     while (curr_arg != NULL) {
-        sym_tab_node* found = symbol_lookup_string(eval_env, curr_arg->symbol);
+        Symbol_Node* found = symbol_lookup_string(eval_env, curr_arg->symbol);
         if (found == NULL) {
             fprintf(stderr, "parameter name not found - something is wrong\n");
             exit(-1);
