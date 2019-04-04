@@ -14,14 +14,14 @@ typedef struct SYMBOL_TABLE_NODE {
     unsigned int symbol_number;
     char* symbol;
     type type;
-    union_idx_se value;
+    tp_value value;
     struct SYMBOL_TABLE_NODE* next;
 } sym_tab_node;
 
 sym_tab_node* create_st_node(unsigned int symbol_number, \
                              char* name, \
                              type type, \
-                             union_idx_se value);
+                             tp_value value);
 sym_tab_node* create_error_stn(interpreter_error err_code);
 
 typedef struct SYMBOL_TABLE {
@@ -75,7 +75,7 @@ void delete_env_full(environment* env);
 typed_ptr* install_symbol(environment* env, \
                           char* name, \
                           type type, \
-                          union_idx_se value);
+                          tp_value value);
 void blind_install_symbol_atom(environment* env, \
                                char* symbol, \
                                type type, \

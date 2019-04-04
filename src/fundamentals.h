@@ -79,14 +79,14 @@ typedef enum {PARSE_ERROR_NONE, \
 
 struct S_EXPR_NODE;
 
-typedef union TP_PTR {
+typedef union TP_VALUE {
     long idx;
     struct S_EXPR_NODE* se_ptr;
-} union_idx_se;
+} tp_value;
 
 typedef struct TYPED_PTR {
     type type;
-    union_idx_se ptr;
+    tp_value ptr;
 } typed_ptr;
 
 typedef struct S_EXPR_NODE {
@@ -94,7 +94,7 @@ typedef struct S_EXPR_NODE {
     typed_ptr* cdr;
 } s_expr;
 
-typed_ptr* create_typed_ptr(type type, union_idx_se ptr);
+typed_ptr* create_typed_ptr(type type, tp_value ptr);
 typed_ptr* create_atom_tp(type type, long idx);
 typed_ptr* create_sexpr_tp(s_expr* se_ptr);
 typed_ptr* create_error(interpreter_error err_code);

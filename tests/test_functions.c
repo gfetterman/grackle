@@ -19,7 +19,7 @@ void e2e_autofail_test(char cmd[], test_env* te) {
     return;
 }
 
-bool check_tp(typed_ptr* tp, type t, union_idx_se ptr) {
+bool check_tp(typed_ptr* tp, type t, tp_value ptr) {
     if (tp == NULL) {
         return false;
     } else if (tp->type == TYPE_SEXPR) {
@@ -32,7 +32,7 @@ bool check_tp(typed_ptr* tp, type t, union_idx_se ptr) {
 void e2e_atom_test(char cmd[], type t, long val, test_env* te) {
     printf("test command: %-40s", cmd);
     typed_ptr* output = parse_and_eval(cmd, te->env);
-    bool pass = check_tp(output, t, (union_idx_se){.idx=val});
+    bool pass = check_tp(output, t, (tp_value){.idx=val});
     if (output->type == TYPE_SEXPR) {
         delete_se_recursive(output->ptr.se_ptr, true);
     }
@@ -150,7 +150,7 @@ void e2e_multiline_atom_test(char* cmds[], \
         printf("              %-40s", cmds[i]);
         output = parse_and_eval(cmds[i], te->env);
     }
-    bool pass = check_tp(output, t, (union_idx_se){.idx=val});
+    bool pass = check_tp(output, t, (tp_value){.idx=val});
     free(output);
     printf("%s\n", (pass) ? "PASSED" : "FAILED <=");
     te->passed += (pass) ? 1 : 0;

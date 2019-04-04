@@ -2,7 +2,7 @@
 
 // The returned typed_ptr is the caller's responsibility to free; it can be
 //   safely (shallow) freed without harm to any other object.
-typed_ptr* create_typed_ptr(type type, union_idx_se ptr) {
+typed_ptr* create_typed_ptr(type type, tp_value ptr) {
     typed_ptr* new_tp = malloc(sizeof(typed_ptr));
     if (new_tp == NULL) {
         fprintf(stderr, "malloc failed in create_typed_ptr()\n");
@@ -16,13 +16,13 @@ typed_ptr* create_typed_ptr(type type, union_idx_se ptr) {
 // The returned typed_ptr is the caller's responsibility to free; it can be
 //   safely (shallow) freed without harm to any other object.
 typed_ptr* create_atom_tp(type type, long idx) {
-    return create_typed_ptr(type, (union_idx_se){.idx=idx});
+    return create_typed_ptr(type, (tp_value){.idx=idx});
 }
 
 // The returned typed_ptr is the caller's responsibility to free; it can be
 //   safely (shallow) freed without harm to any other object.
 typed_ptr* create_sexpr_tp(s_expr* se_ptr) {
-    return create_typed_ptr(TYPE_SEXPR, (union_idx_se){.se_ptr=se_ptr});
+    return create_typed_ptr(TYPE_SEXPR, (tp_value){.se_ptr=se_ptr});
 }
 
 // The returned typed_ptr is the caller's responsibility to free; it can be

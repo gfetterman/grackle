@@ -326,7 +326,7 @@ typed_ptr* eval_define(const s_expr* se, environment* env) {
                                                   fn->ptr.idx);
                         free(fn);
                         result = create_typed_ptr(TYPE_VOID, \
-                                                  (union_idx_se){.idx=0});
+                                                  (tp_value){.idx=0});
                     }
                 }
             }
@@ -592,7 +592,7 @@ typed_ptr* eval_cond(const s_expr* se, environment* env) {
         return args_tp;
     } else {
         typed_ptr* eval_interm = create_typed_ptr(TYPE_VOID, \
-                                                  (union_idx_se){.idx=0});
+                                                  (tp_value){.idx=0});
         s_expr* arg_se = sexpr_next(se);
         if (is_empty_list(arg_se)) {
             delete_se_recursive(args_tp->ptr.se_ptr, false);
@@ -647,7 +647,7 @@ typed_ptr* eval_cond(const s_expr* se, environment* env) {
                 result = eval_interm;
             } else {
                 free(eval_interm);
-                result = create_typed_ptr(TYPE_VOID, (union_idx_se){.idx=0});
+                result = create_typed_ptr(TYPE_VOID, (tp_value){.idx=0});
             }
         } else {
             while (!is_empty_list(then_bodies)) {
@@ -728,7 +728,7 @@ sym_tab_node* collect_parameters(typed_ptr* tp, environment* env) {
         params = create_st_node(0, \
                                 strdup(name), \
                                 TYPE_UNDEF, \
-                                (union_idx_se){.idx=0});
+                                (tp_value){.idx=0});
         sym_tab_node* curr = params;
         se = sexpr_next(se);
         while (!is_empty_list(se)) {
@@ -746,7 +746,7 @@ sym_tab_node* collect_parameters(typed_ptr* tp, environment* env) {
             curr->next = create_st_node(0, \
                                         strdup(name), \
                                         TYPE_UNDEF, \
-                                        (union_idx_se){.idx=0});
+                                        (tp_value){.idx=0});
             curr = curr->next;
             se = sexpr_next(se);
         }

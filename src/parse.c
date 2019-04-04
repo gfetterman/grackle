@@ -182,7 +182,7 @@ void register_symbol(s_expr_storage** stack, \
         sym_tab_node* found = symbol_lookup_string(env, sym);
         found = (found == NULL) ? symbol_lookup_string(temp, sym) : found;
         if (found == NULL) {
-            car = install_symbol(temp, sym, TYPE_UNDEF, (union_idx_se){.idx=0});
+            car = install_symbol(temp, sym, TYPE_UNDEF, (tp_value){.idx=0});
         } else {
             free(sym);
             car = create_atom_tp(TYPE_SYMBOL, found->symbol_number);

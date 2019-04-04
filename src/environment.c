@@ -10,7 +10,7 @@
 sym_tab_node* create_st_node(unsigned int symbol_number, \
                              char* name, \
                              type type, \
-                             union_idx_se value) {
+                             tp_value value) {
     sym_tab_node* new_node = malloc(sizeof(sym_tab_node));
     if (new_node == NULL) {
         fprintf(stderr, "fatal error: malloc failed in create_st_node()\n");
@@ -25,7 +25,7 @@ sym_tab_node* create_st_node(unsigned int symbol_number, \
 }
 
 sym_tab_node* create_error_stn(interpreter_error err_code) {
-    return create_st_node(0, NULL, TYPE_ERROR, (union_idx_se){.idx=err_code});
+    return create_st_node(0, NULL, TYPE_ERROR, (tp_value){.idx=err_code});
 }
 
 // The offset allows a temporary symbol table (used while parsing for easy
@@ -214,7 +214,7 @@ void delete_env_full(environment* env) {
 typed_ptr* install_symbol(environment* env, \
                           char* name, \
                           type type, \
-                          union_idx_se value) {
+                          tp_value value) {
     unsigned int sym_num = env->symbol_table->length + \
                            env->symbol_table->symbol_number_offset;
     sym_tab_node* found = symbol_lookup_string(env, name);
@@ -242,7 +242,7 @@ void blind_install_symbol_atom(environment* env, \
     typed_ptr* tp = install_symbol(env, \
                                    symbol, \
                                    type, \
-                                   (union_idx_se){.idx=value});
+                                   (tp_value){.idx=value});
     free(tp);
     return;
 }
@@ -257,7 +257,7 @@ void blind_install_symbol_sexpr(environment* env, \
     typed_ptr* tp = install_symbol(env, \
                                    symbol, \
                                    type, \
-                                   (union_idx_se){.se_ptr=value});
+                                   (tp_value){.se_ptr=value});
     free(tp);
     return;
 }
