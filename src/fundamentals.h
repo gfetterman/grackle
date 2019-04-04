@@ -77,7 +77,6 @@ typedef enum {PARSE_ERROR_NONE, \
 
 // s-expressions & typed pointers
 
-// forward declaration
 struct S_EXPR_NODE;
 
 typedef union TP_PTR {
@@ -102,10 +101,11 @@ typed_ptr* create_error(interpreter_error err_code);
 typed_ptr* copy_typed_ptr(const typed_ptr* tp);
 
 s_expr* create_s_expr(typed_ptr* car, typed_ptr* cdr);
-s_expr* sexpr_next(const s_expr* se);
 s_expr* create_empty_s_expr();
 s_expr* copy_s_expr(const s_expr* se);
 void delete_se_recursive(s_expr* se, bool delete_sexpr_cars);
+
+s_expr* sexpr_next(const s_expr* se);
 
 bool is_empty_list(const s_expr* se);
 
