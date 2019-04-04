@@ -185,7 +185,7 @@ void register_symbol(s_expr_storage** stack, \
             car = install_symbol(temp, sym, TYPE_UNDEF, (union_idx_se){.idx=0});
         } else {
             free(sym);
-            car = create_atom_tp(TYPE_SYM, found->symbol_number);
+            car = create_atom_tp(TYPE_SYMBOL, found->symbol_number);
         }
     }
     (*stack)->se->car = car;

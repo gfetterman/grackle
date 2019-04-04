@@ -229,7 +229,7 @@ typed_ptr* install_symbol(environment* env, \
         found->value = value;
         sym_num = found->symbol_number;
     }
-    return create_atom_tp(TYPE_SYM, sym_num);
+    return create_atom_tp(TYPE_SYMBOL, sym_num);
 }
 
 // All considerations attendant upon the function "install_symbol()" above apply
@@ -340,7 +340,7 @@ sym_tab_node* symbol_lookup_string(environment* env, const char* name) {
 // The returned sym_tab_node should (usually) not be freed.
 // If the given index does not match any symbol table entry, NULL is returned.
 sym_tab_node* symbol_lookup_index(environment* env, const typed_ptr* tp) {
-    if (tp == NULL || tp->type != TYPE_SYM) {
+    if (tp == NULL || tp->type != TYPE_SYMBOL) {
         return NULL;
     }
     sym_tab_node* curr = env->symbol_table->head;
@@ -373,7 +373,7 @@ sym_tab_node* builtin_lookup_index(environment* env, const typed_ptr* tp) {
 // If the given typed_ptr does not point to a valid symbol table entry, or if
 //   it is NULL, NULL is returned.
 typed_ptr* value_lookup_index(environment* env, const typed_ptr* tp) {
-    if (tp == NULL || tp->type != TYPE_SYM) {
+    if (tp == NULL || tp->type != TYPE_SYMBOL) {
         return NULL;
     }
     sym_tab_node* curr = env->symbol_table->head;

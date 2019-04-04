@@ -32,7 +32,7 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
             case TYPE_USER_FN:
                 result = eval_user_function(se, env);
                 break;
-            case TYPE_SYM:
+            case TYPE_SYMBOL:
                 result = value_lookup_index(env, se->car);
                 break;
             case TYPE_NUM:  // fall-through
@@ -269,7 +269,7 @@ typed_ptr* eval_define(const s_expr* se, environment* env) {
         result = args_tp;
     } else {
         typed_ptr* arg = args_tp->ptr.se_ptr->car;
-        if (arg->type == TYPE_SYM) {
+        if (arg->type == TYPE_SYMBOL) {
             sym_tab_node* sym_entry = symbol_lookup_index(env, arg);
             if (sym_entry == NULL) {
                 result = create_error(EVAL_ERROR_UNDEF_SYM);
@@ -288,7 +288,7 @@ typed_ptr* eval_define(const s_expr* se, environment* env) {
         } else if (arg->type == TYPE_SEXPR) {
             if (is_empty_list(arg->ptr.se_ptr)) {
                 result = create_error(EVAL_ERROR_BAD_SYNTAX);
-            } else if (arg->ptr.se_ptr->car->type != TYPE_SYM) {
+            } else if (arg->ptr.se_ptr->car->type != TYPE_SYMBOL) {
                 result = create_error(EVAL_ERROR_NOT_ID);
             } else {
                 typed_ptr* fn_sym = arg->ptr.se_ptr->car;
@@ -303,7 +303,7 @@ typed_ptr* eval_define(const s_expr* se, environment* env) {
                     typed_ptr* fn_body = sexpr_next(args_tp->ptr.se_ptr)->car;
                     sexpr_next(args_tp->ptr.se_ptr)->car = NULL;
                     sym_tab_node* lam_stn = symbol_lookup_string(env, "lambda");
-                    typed_ptr* lam = create_atom_tp(TYPE_SYM, \
+                    typed_ptr* lam = create_atom_tp(TYPE_SYMBOL, \
                                                     lam_stn->symbol_number);
                     empty = create_empty_s_expr();
                     s_expr* fn_body_se = create_s_expr(fn_body, \
@@ -359,7 +359,7 @@ typed_ptr* eval_set_variable(const s_expr* se, environment* env) {
         result = args_tp;
     } else {
         typed_ptr* arg = args_tp->ptr.se_ptr->car;
-        if (arg->type != TYPE_SYM) {
+        if (arg->type != TYPE_SYMBOL) {
             result = create_error(EVAL_ERROR_NOT_ID);
         } else {
             sym_tab_node* sym_entry = symbol_lookup_index(env, arg);
@@ -614,7 +614,7 @@ typed_ptr* eval_cond(const s_expr* se, environment* env) {
                 break;
             }
             sym_tab_node* else_stn = symbol_lookup_string(env, "else");
-            if (cond_clause->car->type == TYPE_SYM && \
+            if (cond_clause->car->type == TYPE_SYMBOL && \
                 cond_clause->car->ptr.idx == else_stn->symbol_number) {
                 s_expr* next_clause = sexpr_next(arg_se);
                 if (!is_empty_list(next_clause)) {
@@ -721,7 +721,7 @@ sym_tab_node* collect_parameters(typed_ptr* tp, environment* env) {
     if (is_empty_list(se)) {
         return params;
     }
-    if (se->car->type != TYPE_SYM) {
+    if (se->car->type != TYPE_SYMBOL) {
         params = create_error_stn(EVAL_ERROR_NOT_ID);
     } else {
         char* name = symbol_lookup_index(env, se->car)->symbol;
@@ -737,7 +737,7 @@ sym_tab_node* collect_parameters(typed_ptr* tp, environment* env) {
                 params = create_error_stn(EVAL_ERROR_BAD_ARG_TYPE);
                 break;
             }
-            if (se->car == NULL || se->car->type != TYPE_SYM) {
+            if (se->car == NULL || se->car->type != TYPE_SYMBOL) {
                 delete_st_node_list(params);
                 params = create_error_stn(EVAL_ERROR_NOT_ID);
                 break;
