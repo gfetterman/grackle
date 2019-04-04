@@ -382,7 +382,7 @@ typed_ptr* value_lookup_index(environment* env, const typed_ptr* tp) {
             if (curr->type == TYPE_UNDEF) {
                 return create_error(EVAL_ERROR_UNDEF_SYM);
             } else if (curr->type == TYPE_SEXPR) {
-                return create_sexpr_tp(copy_s_expr(curr->value.se_ptr));
+                return create_s_expr_tp(copy_s_expr(curr->value.se_ptr));
             } else {
                 return create_typed_ptr(curr->type, curr->value);
             }

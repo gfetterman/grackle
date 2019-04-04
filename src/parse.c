@@ -138,18 +138,19 @@ typed_ptr* parse(char str[], environment* env) {
         delete_se_recursive(head, true);
     }
     delete_env_full(temp_env);
-    return (state == PARSE_ERROR) ? create_error(error) : create_sexpr_tp(head);
+    return (state == PARSE_ERROR) ? create_error(error) : \
+                                    create_s_expr_tp(head);
 }
 
 void init_new_s_expr(s_expr_storage** stack) {
     se_stack_push(stack, create_empty_s_expr());
-    (*stack)->next->se->car = create_sexpr_tp((*stack)->se);
+    (*stack)->next->se->car = create_s_expr_tp((*stack)->se);
     return;
 }
 
 void extend_s_expr(s_expr_storage** stack) {
     se_stack_push(stack, create_empty_s_expr());
-    (*stack)->next->se->cdr = create_sexpr_tp((*stack)->se);
+    (*stack)->next->se->cdr = create_s_expr_tp((*stack)->se);
     return;
 }
 
@@ -159,7 +160,7 @@ Parse_State terminate_s_expr(s_expr_storage** stack, interpreter_error* error) {
         return PARSE_ERROR;
     } else {
         if (!is_empty_list((*stack)->se)) {
-            (*stack)->se->cdr = create_sexpr_tp(create_empty_s_expr());
+            (*stack)->se->cdr = create_s_expr_tp(create_empty_s_expr());
         }
         se_stack_pop(stack);
         while (*stack != NULL && (*stack)->se->cdr != NULL) {

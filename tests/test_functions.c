@@ -4,7 +4,7 @@ typed_ptr* parse_and_eval(char command[], environment* env) {
     typed_ptr* output = parse(command, env);
     if (output->type != TYPE_ERROR) {
         s_expr* empty = create_empty_s_expr();
-        s_expr* super_se = create_s_expr(output, create_sexpr_tp(empty));
+        s_expr* super_se = create_s_expr(output, create_s_expr_tp(empty));
         output = evaluate(super_se, env);
         delete_se_recursive(super_se, true);
     }

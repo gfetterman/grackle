@@ -299,7 +299,7 @@ typed_ptr* eval_define(const s_expr* se, environment* env) {
                     // create a dummy (lambda arg-list body) s-expression
                     typed_ptr* arg_list = arg->ptr.se_ptr->cdr;
                     s_expr* empty = create_empty_s_expr();
-                    arg->ptr.se_ptr->cdr = create_sexpr_tp(empty);
+                    arg->ptr.se_ptr->cdr = create_s_expr_tp(empty);
                     typed_ptr* fn_body = sexpr_next(args_tp->ptr.se_ptr)->car;
                     sexpr_next(args_tp->ptr.se_ptr)->car = NULL;
                     sym_tab_node* lam_stn = symbol_lookup_string(env, "lambda");
@@ -307,10 +307,10 @@ typed_ptr* eval_define(const s_expr* se, environment* env) {
                                                     lam_stn->symbol_number);
                     empty = create_empty_s_expr();
                     s_expr* fn_body_se = create_s_expr(fn_body, \
-                                                       create_sexpr_tp(empty));
-                    typed_ptr* fn_body_tp = create_sexpr_tp(fn_body_se);
+                                                       create_s_expr_tp(empty));
+                    typed_ptr* fn_body_tp = create_s_expr_tp(fn_body_se);
                     s_expr* arg_list_se = create_s_expr(arg_list, fn_body_tp);
-                    typed_ptr* arg_list_tp = create_sexpr_tp(arg_list_se);
+                    typed_ptr* arg_list_tp = create_s_expr_tp(arg_list_se);
                     s_expr* dummy_lam = create_s_expr(lam, arg_list_tp);
                     typed_ptr* fn = eval_lambda(dummy_lam, env);
                     if (fn->type == TYPE_ERROR) {
@@ -406,7 +406,7 @@ typed_ptr* eval_cons(const s_expr* se, environment* env) {
         s_expr* args = args_tp->ptr.se_ptr;
         s_expr* rest = sexpr_next(args);
         s_expr* result_se = create_s_expr(args->car, rest->car);
-        result = create_sexpr_tp(result_se);
+        result = create_s_expr_tp(result_se);
         args->car = NULL;
         rest->car = NULL;
         delete_se_recursive(args, true);
@@ -762,7 +762,7 @@ typed_ptr* eval_sexpr(const s_expr* se, environment* env) {
     } else {
         s_expr* empty = create_empty_s_expr();
         s_expr* dummy_se = create_s_expr(se_to_eval->car, \
-                                         create_sexpr_tp(empty));
+                                         create_s_expr_tp(empty));
         typed_ptr* fn = evaluate(dummy_se, env);
         free(sexpr_next(dummy_se));
         free(dummy_se->cdr);
@@ -811,7 +811,7 @@ typed_ptr* eval_user_function(const s_expr* se, environment* env) {
             environment* bound_env = make_eval_env(ftn->closure_env, arg_vals);
             s_expr* empty = create_empty_s_expr();
             s_expr* super_se = create_s_expr(copy_typed_ptr(ftn->body), \
-                                             create_sexpr_tp(empty));
+                                             create_s_expr_tp(empty));
             result = evaluate(super_se, bound_env);
             delete_se_recursive(super_se, false);
             delete_env_shared_ft(bound_env);
@@ -919,7 +919,7 @@ typed_ptr* collect_args(const s_expr* se, \
             break;
         }
         arg_tail->car = copy_typed_ptr(curr->car);
-        arg_tail->cdr = create_sexpr_tp(create_empty_s_expr());
+        arg_tail->cdr = create_s_expr_tp(create_empty_s_expr());
         if (evaluate_all_args && \
             arg_tail->car->type != TYPE_BUILTIN && \
             arg_tail->car->type != TYPE_FUNCTION) {
@@ -941,6 +941,6 @@ typed_ptr* collect_args(const s_expr* se, \
         delete_se_recursive(arg_head, evaluate_all_args);
         return err;
     } else {
-        return create_sexpr_tp(arg_head);
+        return create_s_expr_tp(arg_head);
     }
 }

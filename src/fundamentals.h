@@ -77,11 +77,11 @@ typedef enum {PARSE_ERROR_NONE, \
 
 // s-expressions & typed pointers
 
-struct S_EXPR_NODE;
+struct S_EXPR;
 
 typedef union TP_VALUE {
     long idx;
-    struct S_EXPR_NODE* se_ptr;
+    struct S_EXPR* se_ptr;
 } tp_value;
 
 typedef struct TYPED_PTR {
@@ -89,14 +89,14 @@ typedef struct TYPED_PTR {
     tp_value ptr;
 } typed_ptr;
 
-typedef struct S_EXPR_NODE {
+typedef struct S_EXPR {
     typed_ptr* car;
     typed_ptr* cdr;
 } s_expr;
 
 typed_ptr* create_typed_ptr(type type, tp_value ptr);
 typed_ptr* create_atom_tp(type type, long idx);
-typed_ptr* create_sexpr_tp(s_expr* se_ptr);
+typed_ptr* create_s_expr_tp(s_expr* se);
 typed_ptr* create_error(interpreter_error err_code);
 typed_ptr* copy_typed_ptr(const typed_ptr* tp);
 

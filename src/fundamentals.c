@@ -21,8 +21,8 @@ typed_ptr* create_atom_tp(type type, long idx) {
 
 // The returned typed_ptr is the caller's responsibility to free; it can be
 //   safely (shallow) freed without harm to any other object.
-typed_ptr* create_sexpr_tp(s_expr* se_ptr) {
-    return create_typed_ptr(TYPE_SEXPR, (tp_value){.se_ptr=se_ptr});
+typed_ptr* create_s_expr_tp(s_expr* se) {
+    return create_typed_ptr(TYPE_SEXPR, (tp_value){.se_ptr=se});
 }
 
 // The returned typed_ptr is the caller's responsibility to free; it can be
