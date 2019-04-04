@@ -2,7 +2,7 @@
 #include "environment.h"
 #include "test_functions.h"
 
-void end_to_end_tests() {
+bool end_to_end_tests() {
     printf("end-to-end tests\n");
     printf("----------------\n");
     // setup
@@ -440,14 +440,15 @@ void end_to_end_tests() {
     // reporting
     printf("-----\n");
     printf("tests passed/run: %u/%u\n", t_env->passed, t_env->run);
+    bool ok = (t_env->passed == t_env->run);
     delete_env_full(t_env->env);
     free(t_env);
-    return;
+    return ok;
 }
 
 int main() {
-    end_to_end_tests();
+    bool ok = end_to_end_tests();
     printf("\n----------------\n");
     printf("testing complete\n");
-    return 64;
+    return (ok) ? 0 : 64; // 64 is a generic "failure" exit code in sysexits.h
 }
