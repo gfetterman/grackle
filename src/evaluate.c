@@ -29,7 +29,7 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
             case TYPE_SEXPR: 
                 result = eval_sexpr(se, env);
                 break;
-            case TYPE_USER_FN:
+            case TYPE_FUNCTION:
                 result = eval_user_function(se, env);
                 break;
             case TYPE_SYMBOL:
@@ -771,7 +771,7 @@ typed_ptr* eval_sexpr(const s_expr* se, environment* env) {
             result = fn;
         } else {
             if (fn->type == TYPE_BUILTIN || \
-                fn->type == TYPE_USER_FN) {
+                fn->type == TYPE_FUNCTION) {
                 dummy_se = create_s_expr(fn, se_to_eval->cdr);
                 result = evaluate(dummy_se, env);
                 free(dummy_se);
@@ -784,7 +784,7 @@ typed_ptr* eval_sexpr(const s_expr* se, environment* env) {
     return result;
 }
 
-// Evaluates an s-expression whose car has type TYPE_USER_FN.
+// Evaluates an s-expression whose car has type TYPE_FUNCTION.
 // The s-expression's cdr must contain the proper number of arguments for the
 //   user function being invoked. Any mismatch, or error arising during
 //   evaluation of any of the members of the cdr, returns an error.
@@ -922,7 +922,7 @@ typed_ptr* collect_args(const s_expr* se, \
         arg_tail->cdr = create_sexpr_tp(create_empty_s_expr());
         if (evaluate_all_args && \
             arg_tail->car->type != TYPE_BUILTIN && \
-            arg_tail->car->type != TYPE_USER_FN) {
+            arg_tail->car->type != TYPE_FUNCTION) {
             typed_ptr* temp = arg_tail->car;
             arg_tail->car = evaluate(arg_tail, env);
             free(temp);

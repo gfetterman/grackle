@@ -277,7 +277,7 @@ typed_ptr* install_function(environment* env, \
     env->function_table->length++;
     // and it's now also in closure_env, because the two environments share
     // list areas and function pointers
-    return create_atom_tp(TYPE_USER_FN, num);
+    return create_atom_tp(TYPE_FUNCTION, num);
 }
 
 void setup_symbol_table(environment* env) {
@@ -395,7 +395,7 @@ typed_ptr* value_lookup_index(environment* env, const typed_ptr* tp) {
 // The fun_tab_node returned shouldn't (usually) be freed.
 // tp is assumed to be an atomic typed_ptr.
 fun_tab_node* function_lookup_index(environment* env, const typed_ptr* tp) {
-    if (tp == NULL || tp->type != TYPE_USER_FN) {
+    if (tp == NULL || tp->type != TYPE_FUNCTION) {
         return NULL;
     }
     fun_tab_node* curr = env->function_table->head;

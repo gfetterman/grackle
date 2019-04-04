@@ -15,7 +15,7 @@ typedef enum {TYPE_UNDEF, \
               TYPE_BOOL, \
               TYPE_SEXPR, \
               TYPE_SYMBOL, \
-              TYPE_USER_FN} type;
+              TYPE_FUNCTION} type;
 
 // built-in functions and special forms
 
