@@ -138,10 +138,10 @@ void print_result(const typed_ptr* tp, environment* env) {
             print_s_expression(tp->ptr.se_ptr, env);
             break;
         case TYPE_SYMBOL:
-            printf("'%s", symbol_lookup_index(env, tp)->symbol);
+            printf("'%s", symbol_lookup_index(env, tp)->name);
             break;
         case TYPE_BUILTIN:
-            printf("#<procedure:%s>", builtin_lookup_index(env, tp)->symbol);
+            printf("#<procedure:%s>", builtin_lookup_index(env, tp)->name);
             break;
         case TYPE_BOOL:
             printf("%s", (tp->ptr.idx == 0) ? "#f" : "#t");

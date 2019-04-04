@@ -173,20 +173,20 @@ Parse_State terminate_s_expr(s_expr_storage** stack, interpreter_error* error) {
 void register_symbol(s_expr_storage** stack, \
                      environment* env, \
                      environment* temp, \
-                     char* sym) {
+                     char* name) {
     typed_ptr* car = NULL;
-    if (string_is_number(sym)) {
-        long value = atol(sym);
-        free(sym);
+    if (string_is_number(name)) {
+        long value = atol(name);
+        free(name);
         car = create_atom_tp(TYPE_NUM, value);
     } else {
-        Symbol_Node* found = symbol_lookup_string(env, sym);
-        found = (found == NULL) ? symbol_lookup_string(temp, sym) : found;
+        Symbol_Node* found = symbol_lookup_string(env, name);
+        found = (found == NULL) ? symbol_lookup_string(temp, name) : found;
         if (found == NULL) {
-            car = install_symbol(temp, sym, TYPE_UNDEF, (tp_value){.idx=0});
+            car = install_symbol(temp, name, TYPE_UNDEF, (tp_value){.idx=0});
         } else {
-            free(sym);
-            car = create_atom_tp(TYPE_SYMBOL, found->symbol_number);
+            free(name);
+            car = create_atom_tp(TYPE_SYMBOL, found->symbol_idx);
         }
     }
     (*stack)->se->car = car;

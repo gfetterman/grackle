@@ -7,7 +7,7 @@
 //   and nobody else should free it.
 // The returned Symbol_Node is the caller's (i.e., the symbol table's)
 //   responsibility to free.
-Symbol_Node* create_st_node(unsigned int symbol_number, \
+Symbol_Node* create_st_node(unsigned int symbol_idx, \
                             char* name, \
                             type type, \
                             tp_value value) {
@@ -16,8 +16,8 @@ Symbol_Node* create_st_node(unsigned int symbol_number, \
         fprintf(stderr, "fatal error: malloc failed in create_st_node()\n");
         exit(-1);
     }
-    new_node->symbol_number = symbol_number;
-    new_node->symbol = name;
+    new_node->symbol_idx = symbol_idx;
+    new_node->name = name;
     new_node->type = type;
     new_node->value = value;
     new_node->next = NULL;
@@ -65,7 +65,7 @@ void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second) {
 void delete_st_node_list(Symbol_Node* stn) {
     while (stn != NULL) {
         Symbol_Node* next = stn->next;
-        free(stn->symbol);
+        free(stn->name);
         free(stn);
         stn = next;
     }
@@ -126,8 +126,8 @@ environment* copy_environment(environment* env) {
     environment* new_env = create_environment(0, 0);
     Symbol_Node* curr_stn = env->symbol_table->head;
     while (curr_stn != NULL) {
-        Symbol_Node* new_stn = create_st_node(curr_stn->symbol_number, \
-                                              strdup(curr_stn->symbol), \
+        Symbol_Node* new_stn = create_st_node(curr_stn->symbol_idx, \
+                                              strdup(curr_stn->name), \
                                               curr_stn->type, \
                                               curr_stn->value);
         if (new_stn->type == TYPE_SEXPR) {
@@ -150,7 +150,7 @@ void delete_env_shared_ft(environment* env) {
     Symbol_Node* curr = env->symbol_table->head;
     while (curr != NULL) {
         Symbol_Node* next = curr->next;
-        free(curr->symbol);
+        free(curr->name);
         if (curr->type == TYPE_SEXPR) {
             delete_s_expr_recursive(curr->value.se_ptr, true);
         }
@@ -167,7 +167,7 @@ void delete_env_full(environment* env) {
     Symbol_Node* curr_stn = env->symbol_table->head;
     while (curr_stn != NULL) {
         Symbol_Node* next_stn = curr_stn->next;
-        free(curr_stn->symbol);
+        free(curr_stn->name);
         if (curr_stn->type == TYPE_SEXPR) {
             delete_s_expr_recursive(curr_stn->value.se_ptr, true);
         }
@@ -182,7 +182,7 @@ void delete_env_full(environment* env) {
         Symbol_Node* curr_arg_stn = curr_ftn->arg_list;
         while (curr_arg_stn != NULL) {
             Symbol_Node* next_arg_stn = curr_arg_stn->next;
-            free(curr_arg_stn->symbol);
+            free(curr_arg_stn->name);
             free(curr_arg_stn);
             curr_arg_stn = next_arg_stn;
         }
@@ -215,11 +215,11 @@ typed_ptr* install_symbol(environment* env, \
                           char* name, \
                           type type, \
                           tp_value value) {
-    unsigned int sym_num = env->symbol_table->length + \
-                           env->symbol_table->symbol_number_offset;
+    unsigned int symbol_idx = env->symbol_table->length + \
+                              env->symbol_table->symbol_number_offset;
     Symbol_Node* found = symbol_lookup_string(env, name);
     if (found == NULL) {
-        Symbol_Node* new_node = create_st_node(sym_num, name, type, value);
+        Symbol_Node* new_node = create_st_node(symbol_idx, name, type, value);
         new_node->next = env->symbol_table->head;
         env->symbol_table->head = new_node;
         env->symbol_table->length++;
@@ -227,20 +227,20 @@ typed_ptr* install_symbol(environment* env, \
         free(name);
         found->type = type;
         found->value = value;
-        sym_num = found->symbol_number;
+        symbol_idx = found->symbol_idx;
     }
-    return create_atom_tp(TYPE_SYMBOL, sym_num);
+    return create_atom_tp(TYPE_SYMBOL, symbol_idx);
 }
 
 // All considerations attendant upon the function "install_symbol()" above apply
 //   here.
 // This is a convenience function for use in initial symbol table setup.
 void blind_install_symbol_atom(environment* env, \
-                               char* symbol, \
+                               char* name, \
                                type type, \
                                long value) {
     typed_ptr* tp = install_symbol(env, \
-                                   symbol, \
+                                   name, \
                                    type, \
                                    (tp_value){.idx=value});
     free(tp);
@@ -251,11 +251,11 @@ void blind_install_symbol_atom(environment* env, \
 //   here.
 // This is a convenience function for use in initial symbol table setup.
 void blind_install_symbol_sexpr(environment* env, \
-                                char* symbol, \
+                                char* name, \
                                 type type, \
                                 s_expr* value) {
     typed_ptr* tp = install_symbol(env, \
-                                   symbol, \
+                                   name, \
                                    type, \
                                    (tp_value){.se_ptr=value});
     free(tp);
@@ -329,7 +329,7 @@ void setup_environment(environment* env) {
 Symbol_Node* symbol_lookup_string(environment* env, const char* name) {
     Symbol_Node* curr = env->symbol_table->head;
     while (curr != NULL) {
-        if (!strcmp(curr->symbol, name)) {
+        if (!strcmp(curr->name, name)) {
             return curr;
         }
         curr = curr->next;
@@ -345,7 +345,7 @@ Symbol_Node* symbol_lookup_index(environment* env, const typed_ptr* tp) {
     }
     Symbol_Node* curr = env->symbol_table->head;
     while (curr != NULL) {
-        if (curr->symbol_number == tp->ptr.idx) {
+        if (curr->symbol_idx == tp->ptr.idx) {
             break;
         }
         curr = curr->next;
@@ -378,7 +378,7 @@ typed_ptr* value_lookup_index(environment* env, const typed_ptr* tp) {
     }
     Symbol_Node* curr = env->symbol_table->head;
     while (curr != NULL) {
-        if (curr->symbol_number == tp->ptr.idx) {
+        if (curr->symbol_idx == tp->ptr.idx) {
             if (curr->type == TYPE_UNDEF) {
                 return create_error_tp(EVAL_ERROR_UNDEF_SYM);
             } else if (curr->type == TYPE_SEXPR) {

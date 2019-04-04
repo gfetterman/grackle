@@ -11,14 +11,14 @@
 // symbol table and symbol table nodes
 
 typedef struct SYMBOL_NODE {
-    unsigned int symbol_number;
-    char* symbol;
+    unsigned int symbol_idx;
+    char* name;
     type type;
     tp_value value;
     struct SYMBOL_NODE* next;
 } Symbol_Node;
 
-Symbol_Node* create_st_node(unsigned int symbol_number, \
+Symbol_Node* create_st_node(unsigned int symbol_idx, \
                             char* name, \
                             type type, \
                             tp_value value);

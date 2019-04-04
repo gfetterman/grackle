@@ -278,7 +278,7 @@ typed_ptr* eval_define(const s_expr* se, environment* env) {
                 if (arg->type == TYPE_ERROR) {
                     result = arg;
                 } else {
-                    char* name = strdup(sym_entry->symbol);
+                    char* name = strdup(sym_entry->name);
                     result = install_symbol(env, name, arg->type, arg->ptr);
                     free(arg);
                     free(result);
@@ -304,7 +304,7 @@ typed_ptr* eval_define(const s_expr* se, environment* env) {
                     s_expr_next(args_tp->ptr.se_ptr)->car = NULL;
                     Symbol_Node* lam_stn = symbol_lookup_string(env, "lambda");
                     typed_ptr* lam = create_atom_tp(TYPE_SYMBOL, \
-                                                    lam_stn->symbol_number);
+                                                    lam_stn->symbol_idx);
                     empty = create_empty_s_expr();
                     s_expr* fn_body_se = create_s_expr(fn_body, \
                                                        create_s_expr_tp(empty));
@@ -319,7 +319,7 @@ typed_ptr* eval_define(const s_expr* se, environment* env) {
                     } else {
                         delete_s_expr_recursive(arg_list->ptr.se_ptr, true);
                         delete_s_expr_recursive(dummy_lam, false);
-                        char* name = strdup(sym_entry->symbol);
+                        char* name = strdup(sym_entry->name);
                         blind_install_symbol_atom(env, \
                                                   name, \
                                                   fn->type, \
@@ -370,7 +370,7 @@ typed_ptr* eval_set_variable(const s_expr* se, environment* env) {
                 if (arg->type == TYPE_ERROR) {
                     result = arg;
                 } else {
-                    char* name = strdup(sym_entry->symbol);
+                    char* name = strdup(sym_entry->name);
                     result = install_symbol(env, name, arg->type, arg->ptr);
                     free(arg);
                     free(result);
@@ -615,7 +615,7 @@ typed_ptr* eval_cond(const s_expr* se, environment* env) {
             }
             Symbol_Node* else_stn = symbol_lookup_string(env, "else");
             if (cond_clause->car->type == TYPE_SYMBOL && \
-                cond_clause->car->ptr.idx == else_stn->symbol_number) {
+                cond_clause->car->ptr.idx == else_stn->symbol_idx) {
                 s_expr* next_clause = s_expr_next(arg_se);
                 if (!is_empty_list(next_clause)) {
                     free(eval_interm);
@@ -724,7 +724,7 @@ Symbol_Node* collect_parameters(typed_ptr* tp, environment* env) {
     if (se->car->type != TYPE_SYMBOL) {
         params = create_error_stn(EVAL_ERROR_NOT_ID);
     } else {
-        char* name = symbol_lookup_index(env, se->car)->symbol;
+        char* name = symbol_lookup_index(env, se->car)->name;
         params = create_st_node(0, \
                                 strdup(name), \
                                 TYPE_UNDEF, \
@@ -742,7 +742,7 @@ Symbol_Node* collect_parameters(typed_ptr* tp, environment* env) {
                 params = create_error_stn(EVAL_ERROR_NOT_ID);
                 break;
             }
-            name = symbol_lookup_index(env, se->car)->symbol;
+            name = symbol_lookup_index(env, se->car)->name;
             curr->next = create_st_node(0, \
                                         strdup(name), \
                                         TYPE_UNDEF, \
@@ -846,7 +846,7 @@ Symbol_Node* bind_args(environment* env, fun_tab_node* ftn, typed_ptr* args) {
         s_expr* arg_se = args->ptr.se_ptr;
         Symbol_Node* bound_args = NULL;
         bound_args = create_st_node(0, \
-                                    strdup(curr_param->symbol), \
+                                    strdup(curr_param->name), \
                                     arg_se->car->type, \
                                     arg_se->car->ptr);
         curr_param = curr_param->next;
@@ -858,7 +858,7 @@ Symbol_Node* bind_args(environment* env, fun_tab_node* ftn, typed_ptr* args) {
                 break;
             }
             Symbol_Node* new_arg = create_st_node(0, \
-                                                   strdup(curr_param->symbol), \
+                                                   strdup(curr_param->name), \
                                                    arg_se->car->type, \
                                                    arg_se->car->ptr);
             new_arg->next = bound_args;
@@ -882,7 +882,7 @@ environment* make_eval_env(environment* env, Symbol_Node* bound_args) {
     environment* eval_env = copy_environment(env);
     Symbol_Node* curr_arg = bound_args;
     while (curr_arg != NULL) {
-        Symbol_Node* found = symbol_lookup_string(eval_env, curr_arg->symbol);
+        Symbol_Node* found = symbol_lookup_string(eval_env, curr_arg->name);
         if (found == NULL) {
             fprintf(stderr, "parameter name not found - something is wrong\n");
             exit(-1);
