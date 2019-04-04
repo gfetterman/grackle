@@ -61,19 +61,19 @@ typedef enum {PARSE_ERROR_NONE, \
               EVAL_ERROR_UNDEF_SYM, \
               EVAL_ERROR_UNDEF_TYPE, \
               EVAL_ERROR_UNDEF_BUILTIN, \
+              EVAL_ERROR_UNDEF_FUNCTION, \
+              EVAL_ERROR_ILLEGAL_PAIR, \
               EVAL_ERROR_FEW_ARGS, \
               EVAL_ERROR_MANY_ARGS, \
               EVAL_ERROR_BAD_ARG_TYPE, \
               EVAL_ERROR_NEED_NUM, \
+              EVAL_ERROR_NOT_ID, \
               EVAL_ERROR_DIV_ZERO, \
+              EVAL_ERROR_EMPTY_ELSE, \
               EVAL_ERROR_NONTERMINAL_ELSE, \
               EVAL_ERROR_CAR_NOT_CALLABLE, \
-              EVAL_ERROR_NOT_ID, \
               EVAL_ERROR_MISSING_PROCEDURE, \
-              EVAL_ERROR_BAD_SYNTAX, \
-              EVAL_ERROR_EMPTY_ELSE, \
-              EVAL_ERROR_ILLEGAL_PAIR, \
-              EVAL_ERROR_UNDEF_FUNCTION} interpreter_error;
+              EVAL_ERROR_BAD_SYNTAX} interpreter_error;
 
 // s-expressions & typed pointers
 
