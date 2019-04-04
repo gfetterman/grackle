@@ -138,7 +138,7 @@ typed_ptr* parse(char str[], environment* env) {
         delete_se_recursive(head, true);
     }
     delete_env_full(temp_env);
-    return (state == PARSE_ERROR) ? create_error(error) : \
+    return (state == PARSE_ERROR) ? create_error_tp(error) : \
                                     create_s_expr_tp(head);
 }
 

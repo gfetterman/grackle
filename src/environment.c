@@ -380,7 +380,7 @@ typed_ptr* value_lookup_index(environment* env, const typed_ptr* tp) {
     while (curr != NULL) {
         if (curr->symbol_number == tp->ptr.idx) {
             if (curr->type == TYPE_UNDEF) {
-                return create_error(EVAL_ERROR_UNDEF_SYM);
+                return create_error_tp(EVAL_ERROR_UNDEF_SYM);
             } else if (curr->type == TYPE_SEXPR) {
                 return create_s_expr_tp(copy_s_expr(curr->value.se_ptr));
             } else {

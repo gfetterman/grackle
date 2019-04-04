@@ -109,7 +109,7 @@ bool check_sexpr(typed_ptr* tp, \
                     return false;
             }
             curr_check_idx++;
-            curr_se = sexpr_next(curr_se);
+            curr_se = s_expr_next(curr_se);
         }
         if (curr_check_idx < len) {
             // the output we're checking is too short

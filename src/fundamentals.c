@@ -27,7 +27,7 @@ typed_ptr* create_s_expr_tp(s_expr* se) {
 
 // The returned typed_ptr is the caller's responsibility to free; it can be
 //   safely (shallow) freed without harm to any other object.
-typed_ptr* create_error(interpreter_error err_code) {
+typed_ptr* create_error_tp(interpreter_error err_code) {
     return create_atom_tp(TYPE_ERROR, err_code);
 }
 
@@ -49,10 +49,6 @@ s_expr* create_s_expr(typed_ptr* car, typed_ptr* cdr) {
     return new_se;
 }
 
-s_expr* sexpr_next(const s_expr* se) {
-    return se->cdr->ptr.se_ptr;
-}
-
 // The s-expression returned is the caller's responsibility to free.
 s_expr* create_empty_s_expr() {
     return create_s_expr(NULL, NULL);
@@ -72,8 +68,8 @@ s_expr* copy_s_expr(const s_expr* se) {
         curr_se->cdr = copy_typed_ptr(se->cdr);
         if (curr_se->cdr->type == TYPE_SEXPR) {
             curr_se->cdr->ptr.se_ptr = create_empty_s_expr();
-            curr_se = sexpr_next(curr_se);
-            se = sexpr_next(se);
+            curr_se = s_expr_next(curr_se);
+            se = s_expr_next(se);
         } else { // se is a pair, so we're done
             break;
         }
@@ -91,7 +87,7 @@ void delete_se_recursive(s_expr* se, bool delete_sexpr_cars) {
         }
         free(curr->car);
         if (curr->cdr != NULL && curr->cdr->type == TYPE_SEXPR) {
-            se = sexpr_next(curr);
+            se = s_expr_next(curr);
             free(curr->cdr);
         } else {
             se = NULL;
@@ -101,6 +97,10 @@ void delete_se_recursive(s_expr* se, bool delete_sexpr_cars) {
         curr = se;
     }
     return;
+}
+
+s_expr* s_expr_next(const s_expr* se) {
+    return se->cdr->ptr.se_ptr;
 }
 
 bool is_empty_list(const s_expr* se) {
