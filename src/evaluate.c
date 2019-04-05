@@ -814,7 +814,7 @@ typed_ptr* eval_user_function(const s_expr* se, Environment* env) {
                                              create_s_expr_tp(empty));
             result = evaluate(super_se, bound_env);
             delete_s_expr_recursive(super_se, false);
-            delete_env_shared_ft(bound_env);
+            delete_environment_shared(bound_env);
         }
         delete_symbol_node_list(arg_vals);
         delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
@@ -877,7 +877,7 @@ Symbol_Node* bind_args(Environment* env, Function_Node* fn, typed_ptr* args) {
 // Reads a list of bound arguments into an environment, returning the result.
 // The input environment is not modified.
 // The returned environment is the caller's responsibility to delete, using
-//   delete_env_shared_ft() below.
+//   delete_environment_shared() below.
 Environment* make_eval_env(Environment* env, Symbol_Node* bound_args) {
     Environment* eval_env = copy_environment(env);
     Symbol_Node* curr_arg = bound_args;

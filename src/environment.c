@@ -147,7 +147,7 @@ Environment* copy_environment(Environment* env) {
 
 // Safely deletes an environment that shares a function table with other
 //   environments.
-void delete_env_shared_ft(Environment* env) {
+void delete_environment_shared(Environment* env) {
     Symbol_Node* curr = env->symbol_table->head;
     while (curr != NULL) {
         Symbol_Node* next = curr->next;
@@ -164,7 +164,7 @@ void delete_env_shared_ft(Environment* env) {
 }
 
 // Fully deletes an environment.
-void delete_env_full(Environment* env) {
+void delete_environment_full(Environment* env) {
     Symbol_Node* curr_sn = env->symbol_table->head;
     while (curr_sn != NULL) {
         Symbol_Node* next_sn = curr_sn->next;
@@ -188,7 +188,7 @@ void delete_env_full(Environment* env) {
             curr_arg_sn = next_arg_sn;
         }
         // free closure environment
-        delete_env_shared_ft(curr_fn->closure_env);
+        delete_environment_shared(curr_fn->closure_env);
         // free body s-expression
         if (curr_fn->body->type == TYPE_SEXPR) {
             delete_s_expr_recursive(curr_fn->body->ptr.se_ptr, true);

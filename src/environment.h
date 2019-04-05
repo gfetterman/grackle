@@ -8,7 +8,7 @@
 #include "fundamentals.h"
 #include "grackle_utils.h"
 
-// symbol table and symbol table nodes
+// symbol node
 
 typedef struct SYMBOL_NODE {
     unsigned int symbol_idx;
@@ -23,6 +23,9 @@ Symbol_Node* create_symbol_node(unsigned int symbol_idx, \
                                 type type, \
                                 tp_value value);
 Symbol_Node* create_error_symbol_node(interpreter_error err_code);
+void delete_symbol_node_list(Symbol_Node* sn);
+
+// symbol table
 
 typedef struct SYMBOL_TABLE {
     Symbol_Node* head;
@@ -33,11 +36,9 @@ typedef struct SYMBOL_TABLE {
 Symbol_Table* create_symbol_table(unsigned int offset);
 void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second);
 
-void delete_symbol_node_list(Symbol_Node* sn);
+// function node and function table
 
-// function table and function table nodes
-
-struct ENVIRONMENT; // forward declaration
+struct ENVIRONMENT;
 
 typedef struct FUNCTION_NODE {
     unsigned int function_idx;
@@ -60,7 +61,7 @@ typedef struct FUNCTION_TABLE {
 
 Function_Table* create_function_table(unsigned int offset);
 
-// the Environment structure
+// environment
 
 typedef struct ENVIRONMENT {
     Symbol_Table* symbol_table;
@@ -70,8 +71,10 @@ typedef struct ENVIRONMENT {
 Environment* create_environment(unsigned int symbol_start, \
                                 unsigned int function_start);
 Environment* copy_environment(Environment* env);
-void delete_env_shared_ft(Environment* env);
-void delete_env_full(Environment* env);
+void delete_environment_shared(Environment* env);
+void delete_environment_full(Environment* env);
+
+// adding things to an environment
 
 typed_ptr* install_symbol(Environment* env, \
                           char* name, \
@@ -90,8 +93,10 @@ typed_ptr* install_function(Environment* env, \
                             Environment* closure_env, \
                             typed_ptr* body);
 
-void setup_symbol_table(Environment* env);
 void setup_environment(Environment* env);
+void setup_symbol_table(Environment* env);
+
+// looking things up in an environment
 
 Symbol_Node* symbol_lookup_string(Environment* env, const char* name);
 Symbol_Node* symbol_lookup_index(Environment* env, const typed_ptr* tp);

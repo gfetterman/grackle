@@ -441,7 +441,7 @@ bool end_to_end_tests() {
     printf("-----\n");
     printf("tests passed/run: %u/%u\n", t_env->passed, t_env->run);
     bool ok = (t_env->passed == t_env->run);
-    delete_env_full(t_env->env);
+    delete_environment_full(t_env->env);
     free(t_env);
     return ok;
 }

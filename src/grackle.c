@@ -33,7 +33,7 @@ int main() {
         }
         free(output);
     }
-    delete_env_full(env);
+    delete_environment_full(env);
     printf("exiting...\n");
     return 0;
 }
