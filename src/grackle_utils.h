@@ -8,7 +8,7 @@
 
 #include "fundamentals.h"
 
-char* substring(char* str, unsigned int start, unsigned int end);
+char* substring(const char* str, unsigned int start, unsigned int end);
 bool string_is_number(const char str[]);
 bool is_false_literal(const typed_ptr* tp);
 bool is_pair(const s_expr* se);

@@ -2,7 +2,7 @@
 
 // The string returned is a valid null-terminated C string.
 // The string returned is the caller's responsibility to free.
-char* substring(char* str, unsigned int start, unsigned int end) {
+char* substring(const char* str, unsigned int start, unsigned int end) {
     unsigned int len = strlen(str);
     if (str == NULL || len < (end - start)) {
         fprintf(stderr, \
