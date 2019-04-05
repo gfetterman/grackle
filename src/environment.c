@@ -104,14 +104,15 @@ Function_Table* create_function_table(unsigned int offset) {
     return new_ft;
 }
 
-Environment* create_environment(unsigned int st_start, unsigned int ft_start) {
+Environment* create_environment(unsigned int symbol_start, \
+                                unsigned int function_start) {
     Environment* new_env = malloc(sizeof(Environment));
     if (new_env == NULL) {
         fprintf(stderr, "malloc failed in create_environment()\n");
         exit(-1);
     }
-    new_env->symbol_table = create_symbol_table(st_start);
-    new_env->function_table = create_function_table(ft_start);
+    new_env->symbol_table = create_symbol_table(symbol_start);
+    new_env->function_table = create_function_table(function_start);
     return new_env;
 }
 

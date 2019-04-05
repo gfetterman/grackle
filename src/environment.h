@@ -67,7 +67,8 @@ typedef struct ENVIRONMENT {
     Function_Table* function_table;
 } Environment;
 
-Environment* create_environment(unsigned int st_start, unsigned int ft_start);
+Environment* create_environment(unsigned int symbol_start, \
+                                unsigned int function_start);
 Environment* copy_environment(Environment* env);
 void delete_env_shared_ft(Environment* env);
 void delete_env_full(Environment* env);
