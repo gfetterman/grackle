@@ -32,7 +32,7 @@ void extend_s_expr(s_expr_stack** stack);
 Parse_State terminate_s_expr(s_expr_stack** stack, interpreter_error* error);
 void register_symbol(s_expr_stack** stack, \
                      Environment* env, \
-                     Environment* temp, \
+                     Environment* temp_env, \
                      char* name);
 
 #endif
