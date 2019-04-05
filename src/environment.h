@@ -18,11 +18,11 @@ typedef struct SYMBOL_NODE {
     struct SYMBOL_NODE* next;
 } Symbol_Node;
 
-Symbol_Node* create_st_node(unsigned int symbol_idx, \
-                            char* name, \
-                            type type, \
-                            tp_value value);
-Symbol_Node* create_error_stn(interpreter_error err_code);
+Symbol_Node* create_symbol_node(unsigned int symbol_idx, \
+                                char* name, \
+                                type type, \
+                                tp_value value);
+Symbol_Node* create_error_symbol_node(interpreter_error err_code);
 
 typedef struct SYMBOL_TABLE {
     Symbol_Node* head;
@@ -33,27 +33,27 @@ typedef struct SYMBOL_TABLE {
 Symbol_Table* create_symbol_table(unsigned int offset);
 void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second);
 
-void delete_st_node_list(Symbol_Node* stn);
+void delete_symbol_node_list(Symbol_Node* sn);
 
 // function table and function table nodes
 
 struct ENVIRONMENT; // forward declaration
 
-typedef struct FUN_TAB_NODE {
-    unsigned int function_number;
+typedef struct FUNCTION_NODE {
+    unsigned int function_idx;
     Symbol_Node* arg_list;
     struct ENVIRONMENT* closure_env;
     typed_ptr* body;
-    struct FUN_TAB_NODE* next;
-} fun_tab_node;
+    struct FUNCTION_NODE* next;
+} Function_Node;
 
-fun_tab_node* create_ft_node(unsigned int function_number, \
-                             Symbol_Node* arg_list, \
-                             struct ENVIRONMENT* closure_env, \
-                             typed_ptr* body);
+Function_Node* create_function_node(unsigned int function_idx, \
+                                    Symbol_Node* param_list, \
+                                    struct ENVIRONMENT* closure_env, \
+                                    typed_ptr* body);
 
 typedef struct FUNCTION_TABLE {
-    fun_tab_node* head;
+    Function_Node* head;
     unsigned int length;
     unsigned int offset;
 } Function_Table;
@@ -96,6 +96,6 @@ Symbol_Node* symbol_lookup_string(environment* env, const char* name);
 Symbol_Node* symbol_lookup_index(environment* env, const typed_ptr* tp);
 Symbol_Node* builtin_lookup_index(environment* env, const typed_ptr* tp);
 typed_ptr* value_lookup_index(environment* env, const typed_ptr* tp);
-fun_tab_node* function_lookup_index(environment* env, const typed_ptr* tp);
+Function_Node* function_lookup_index(environment* env, const typed_ptr* tp);
 
 #endif

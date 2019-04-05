@@ -7,13 +7,13 @@
 //   and nobody else should free it.
 // The returned Symbol_Node is the caller's (i.e., the symbol table's)
 //   responsibility to free.
-Symbol_Node* create_st_node(unsigned int symbol_idx, \
-                            char* name, \
-                            type type, \
-                            tp_value value) {
+Symbol_Node* create_symbol_node(unsigned int symbol_idx, \
+                                char* name, \
+                                type type, \
+                                tp_value value) {
     Symbol_Node* new_node = malloc(sizeof(Symbol_Node));
     if (new_node == NULL) {
-        fprintf(stderr, "fatal error: malloc failed in create_st_node()\n");
+        fprintf(stderr, "fatal error: malloc failed in create_symbol_node()\n");
         exit(-1);
     }
     new_node->symbol_idx = symbol_idx;
@@ -24,8 +24,8 @@ Symbol_Node* create_st_node(unsigned int symbol_idx, \
     return new_node;
 }
 
-Symbol_Node* create_error_stn(interpreter_error err_code) {
-    return create_st_node(0, NULL, TYPE_ERROR, (tp_value){.idx=err_code});
+Symbol_Node* create_error_symbol_node(interpreter_error err_code) {
+    return create_symbol_node(0, NULL, TYPE_ERROR, (tp_value){.idx=err_code});
 }
 
 // The offset allows a temporary symbol table (used while parsing for easy
@@ -62,12 +62,12 @@ void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second) {
     return;
 }
 
-void delete_st_node_list(Symbol_Node* stn) {
-    while (stn != NULL) {
-        Symbol_Node* next = stn->next;
-        free(stn->name);
-        free(stn);
-        stn = next;
+void delete_symbol_node_list(Symbol_Node* sn) {
+    while (sn != NULL) {
+        Symbol_Node* next = sn->next;
+        free(sn->name);
+        free(sn);
+        sn = next;
     }
     return;
 }
@@ -75,21 +75,21 @@ void delete_st_node_list(Symbol_Node* stn) {
 // The arg list and closure environment are presumed to be unique to this
 //   function table node, but the body points to an s-expression that is
 //   represented elsewhere (and so cannot be safely freed using this pointer).
-fun_tab_node* create_ft_node(unsigned int function_number, \
-                             Symbol_Node* arg_list, \
-                             environment* closure_env, \
-                             typed_ptr* body) {
-    fun_tab_node* new_ftn = malloc(sizeof(fun_tab_node));
-    if (new_ftn == NULL) {
-        fprintf(stderr, "malloc failed in create_ft_node()\n");
+Function_Node* create_function_node(unsigned int function_idx, \
+                                    Symbol_Node* arg_list, \
+                                    environment* closure_env, \
+                                    typed_ptr* body) {
+    Function_Node* new_fn = malloc(sizeof(Function_Node));
+    if (new_fn == NULL) {
+        fprintf(stderr, "malloc failed in create_function_node()\n");
         exit(-1);
     }
-    new_ftn->function_number = function_number;
-    new_ftn->arg_list = arg_list;
-    new_ftn->closure_env = closure_env;
-    new_ftn->body = body;
-    new_ftn->next = NULL;
-    return new_ftn;
+    new_fn->function_idx = function_idx;
+    new_fn->arg_list = arg_list;
+    new_fn->closure_env = closure_env;
+    new_fn->body = body;
+    new_fn->next = NULL;
+    return new_fn;
 }
 
 Function_Table* create_function_table(unsigned int offset) {
@@ -124,18 +124,18 @@ environment* create_environment(unsigned int st_start, unsigned int ft_start) {
 //   to ensure it's done safely.
 environment* copy_environment(environment* env) {
     environment* new_env = create_environment(0, 0);
-    Symbol_Node* curr_stn = env->symbol_table->head;
-    while (curr_stn != NULL) {
-        Symbol_Node* new_stn = create_st_node(curr_stn->symbol_idx, \
-                                              strdup(curr_stn->name), \
-                                              curr_stn->type, \
-                                              curr_stn->value);
-        if (new_stn->type == TYPE_SEXPR) {
-            new_stn->value.se_ptr = copy_s_expr(new_stn->value.se_ptr);
+    Symbol_Node* curr_sn = env->symbol_table->head;
+    while (curr_sn != NULL) {
+        Symbol_Node* new_sn = create_symbol_node(curr_sn->symbol_idx, \
+                                                 strdup(curr_sn->name), \
+                                                 curr_sn->type, \
+                                                 curr_sn->value);
+        if (new_sn->type == TYPE_SEXPR) {
+            new_sn->value.se_ptr = copy_s_expr(new_sn->value.se_ptr);
         }
-        new_stn->next = new_env->symbol_table->head;
-        new_env->symbol_table->head = new_stn;
-        curr_stn = curr_stn->next;
+        new_sn->next = new_env->symbol_table->head;
+        new_env->symbol_table->head = new_sn;
+        curr_sn = curr_sn->next;
     }
     // risky, but currently ok, because the function table is only added to,
     // not modified or deleted from
@@ -164,37 +164,37 @@ void delete_env_shared_ft(environment* env) {
 
 // Fully deletes an environment.
 void delete_env_full(environment* env) {
-    Symbol_Node* curr_stn = env->symbol_table->head;
-    while (curr_stn != NULL) {
-        Symbol_Node* next_stn = curr_stn->next;
-        free(curr_stn->name);
-        if (curr_stn->type == TYPE_SEXPR) {
-            delete_s_expr_recursive(curr_stn->value.se_ptr, true);
+    Symbol_Node* curr_sn = env->symbol_table->head;
+    while (curr_sn != NULL) {
+        Symbol_Node* next_sn = curr_sn->next;
+        free(curr_sn->name);
+        if (curr_sn->type == TYPE_SEXPR) {
+            delete_s_expr_recursive(curr_sn->value.se_ptr, true);
         }
-        free(curr_stn);
-        curr_stn = next_stn;
+        free(curr_sn);
+        curr_sn = next_sn;
     }
     free(env->symbol_table);
-    fun_tab_node* curr_ftn = env->function_table->head;
-    while (curr_ftn != NULL) {
-        fun_tab_node* next_ftn = curr_ftn->next;
+    Function_Node* curr_fn = env->function_table->head;
+    while (curr_fn != NULL) {
+        Function_Node* next_fn = curr_fn->next;
         // free argument list
-        Symbol_Node* curr_arg_stn = curr_ftn->arg_list;
-        while (curr_arg_stn != NULL) {
-            Symbol_Node* next_arg_stn = curr_arg_stn->next;
-            free(curr_arg_stn->name);
-            free(curr_arg_stn);
-            curr_arg_stn = next_arg_stn;
+        Symbol_Node* curr_arg_sn = curr_fn->arg_list;
+        while (curr_arg_sn != NULL) {
+            Symbol_Node* next_arg_sn = curr_arg_sn->next;
+            free(curr_arg_sn->name);
+            free(curr_arg_sn);
+            curr_arg_sn = next_arg_sn;
         }
         // free closure environment
-        delete_env_shared_ft(curr_ftn->closure_env);
+        delete_env_shared_ft(curr_fn->closure_env);
         // free body s-expression
-        if (curr_ftn->body->type == TYPE_SEXPR) {
-            delete_s_expr_recursive(curr_ftn->body->ptr.se_ptr, true);
+        if (curr_fn->body->type == TYPE_SEXPR) {
+            delete_s_expr_recursive(curr_fn->body->ptr.se_ptr, true);
         }
-        free(curr_ftn->body);
-        free(curr_ftn);
-        curr_ftn = next_ftn;
+        free(curr_fn->body);
+        free(curr_fn);
+        curr_fn = next_fn;
     }
     free(env->function_table);
     free(env);
@@ -219,9 +219,9 @@ typed_ptr* install_symbol(environment* env, \
                               env->symbol_table->symbol_number_offset;
     Symbol_Node* found = symbol_lookup_string(env, name);
     if (found == NULL) {
-        Symbol_Node* new_node = create_st_node(symbol_idx, name, type, value);
-        new_node->next = env->symbol_table->head;
-        env->symbol_table->head = new_node;
+        Symbol_Node* new_sn = create_symbol_node(symbol_idx, name, type, value);
+        new_sn->next = env->symbol_table->head;
+        env->symbol_table->head = new_sn;
         env->symbol_table->length++;
     } else {
         free(name);
@@ -267,17 +267,20 @@ void blind_install_symbol_sexpr(environment* env, \
 //   problem, and won't be freed by the environment.
 // The typed pointer returned is the caller's responsibility to free.
 typed_ptr* install_function(environment* env, \
-                            Symbol_Node* arg_list, \
+                            Symbol_Node* param_list, \
                             environment* closure_env, \
                             typed_ptr* body) {
-    unsigned int num = env->function_table->length;
-    fun_tab_node* new_ftn = create_ft_node(num, arg_list, closure_env, body);
-    new_ftn->next = env->function_table->head;
-    env->function_table->head = new_ftn;
+    unsigned int idx = env->function_table->length;
+    Function_Node* new_fn = create_function_node(idx, \
+                                                 param_list, \
+                                                 closure_env, \
+                                                 body);
+    new_fn->next = env->function_table->head;
+    env->function_table->head = new_fn;
     env->function_table->length++;
-    // and it's now also in closure_env, because the two environments share
-    // list areas and function pointers
-    return create_atom_tp(TYPE_FUNCTION, num);
+    // and it's now also in closure_env, because the two environments share a
+    //   function table
+    return create_atom_tp(TYPE_FUNCTION, idx);
 }
 
 void setup_symbol_table(environment* env) {
@@ -392,15 +395,15 @@ typed_ptr* value_lookup_index(environment* env, const typed_ptr* tp) {
     return NULL;
 }
 
-// The fun_tab_node returned shouldn't (usually) be freed.
+// The Function_Node returned shouldn't (usually) be freed.
 // tp is assumed to be an atomic typed_ptr.
-fun_tab_node* function_lookup_index(environment* env, const typed_ptr* tp) {
+Function_Node* function_lookup_index(environment* env, const typed_ptr* tp) {
     if (tp == NULL || tp->type != TYPE_FUNCTION) {
         return NULL;
     }
-    fun_tab_node* curr = env->function_table->head;
+    Function_Node* curr = env->function_table->head;
     while (curr != NULL) {
-        if (curr->function_number == tp->ptr.idx) {
+        if (curr->function_idx == tp->ptr.idx) {
             return curr;
         }
         curr = curr->next;

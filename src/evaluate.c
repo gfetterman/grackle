@@ -689,7 +689,7 @@ typed_ptr* eval_lambda(const s_expr* se, environment* env) {
             Symbol_Node* params = collect_parameters(first, env);
             if (params != NULL && params->type == TYPE_ERROR) {
                 result = create_error_tp(params->value.idx);
-                delete_st_node_list(params);
+                delete_symbol_node_list(params);
             } else {
                 environment* closure_env = copy_environment(env);
                 typed_ptr* body = copy_typed_ptr(second);
@@ -722,31 +722,31 @@ Symbol_Node* collect_parameters(typed_ptr* tp, environment* env) {
         return params;
     }
     if (se->car->type != TYPE_SYMBOL) {
-        params = create_error_stn(EVAL_ERROR_NOT_ID);
+        params = create_error_symbol_node(EVAL_ERROR_NOT_ID);
     } else {
         char* name = symbol_lookup_index(env, se->car)->name;
-        params = create_st_node(0, \
-                                strdup(name), \
-                                TYPE_UNDEF, \
-                                (tp_value){.idx=0});
+        params = create_symbol_node(0, \
+                                    strdup(name), \
+                                    TYPE_UNDEF, \
+                                    (tp_value){.idx=0});
         Symbol_Node* curr = params;
         se = s_expr_next(se);
         while (!is_empty_list(se)) {
             if (se->cdr == NULL || se->cdr->type != TYPE_SEXPR) {
-                delete_st_node_list(params);
-                params = create_error_stn(EVAL_ERROR_BAD_ARG_TYPE);
+                delete_symbol_node_list(params);
+                params = create_error_symbol_node(EVAL_ERROR_BAD_ARG_TYPE);
                 break;
             }
             if (se->car == NULL || se->car->type != TYPE_SYMBOL) {
-                delete_st_node_list(params);
-                params = create_error_stn(EVAL_ERROR_NOT_ID);
+                delete_symbol_node_list(params);
+                params = create_error_symbol_node(EVAL_ERROR_NOT_ID);
                 break;
             }
             name = symbol_lookup_index(env, se->car)->name;
-            curr->next = create_st_node(0, \
-                                        strdup(name), \
-                                        TYPE_UNDEF, \
-                                        (tp_value){.idx=0});
+            curr->next = create_symbol_node(0, \
+                                            strdup(name), \
+                                            TYPE_UNDEF, \
+                                            (tp_value){.idx=0});
             curr = curr->next;
             se = s_expr_next(se);
         }
@@ -796,34 +796,34 @@ typed_ptr* eval_sexpr(const s_expr* se, environment* env) {
 //   area, or any other object.
 typed_ptr* eval_user_function(const s_expr* se, environment* env) {
     typed_ptr* result = NULL;
-    fun_tab_node* ftn = function_lookup_index(env, se->car);
-    if (ftn == NULL) {
+    Function_Node* fn = function_lookup_index(env, se->car);
+    if (fn == NULL) {
         return create_error_tp(EVAL_ERROR_UNDEF_FUNCTION);
     }
     typed_ptr* args_tp = collect_args(se, env, 0, -1, true);
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
-        Symbol_Node* arg_vals = bind_args(env, ftn, args_tp);
+        Symbol_Node* arg_vals = bind_args(env, fn, args_tp);
         if (arg_vals != NULL && arg_vals->type == TYPE_ERROR) {
             result = create_error_tp(arg_vals->value.idx);
         } else {
-            environment* bound_env = make_eval_env(ftn->closure_env, arg_vals);
+            environment* bound_env = make_eval_env(fn->closure_env, arg_vals);
             s_expr* empty = create_empty_s_expr();
-            s_expr* super_se = create_s_expr(copy_typed_ptr(ftn->body), \
+            s_expr* super_se = create_s_expr(copy_typed_ptr(fn->body), \
                                              create_s_expr_tp(empty));
             result = evaluate(super_se, bound_env);
             delete_s_expr_recursive(super_se, false);
             delete_env_shared_ft(bound_env);
         }
-        delete_st_node_list(arg_vals);
+        delete_symbol_node_list(arg_vals);
         delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
         free(args_tp);
     }
     return result;
 }
 
-// If the fun_tab_node's arg list is of different length than the s-expression
+// If the Function_Node's arg list is of different length than the s-expression
 //   pointed to by the args typed pointer, an error is returned in the first
 //   Symbol_Node.
 // Otherwise, the parameters in the arg list are bound to the values produced
@@ -834,41 +834,41 @@ typed_ptr* eval_user_function(const s_expr* se, environment* env) {
 //   arguments.
 // In all cases, the Symbol_Node list returned is the caller's responsibility
 //   to free, and may be safely (shallow) freed.
-Symbol_Node* bind_args(environment* env, fun_tab_node* ftn, typed_ptr* args) {
-    if (ftn->arg_list == NULL && is_empty_list(args->ptr.se_ptr)) {
+Symbol_Node* bind_args(environment* env, Function_Node* fn, typed_ptr* args) {
+    if (fn->arg_list == NULL && is_empty_list(args->ptr.se_ptr)) {
         return NULL;
     } else if (is_empty_list(args->ptr.se_ptr)) {
-        return create_error_stn(EVAL_ERROR_FEW_ARGS);
-    } else if (ftn->arg_list == NULL) {
-        return create_error_stn(EVAL_ERROR_MANY_ARGS);
+        return create_error_symbol_node(EVAL_ERROR_FEW_ARGS);
+    } else if (fn->arg_list == NULL) {
+        return create_error_symbol_node(EVAL_ERROR_MANY_ARGS);
     } else {
-        Symbol_Node* curr_param = ftn->arg_list;
+        Symbol_Node* curr_param = fn->arg_list;
         s_expr* arg_se = args->ptr.se_ptr;
         Symbol_Node* bound_args = NULL;
-        bound_args = create_st_node(0, \
-                                    strdup(curr_param->name), \
-                                    arg_se->car->type, \
-                                    arg_se->car->ptr);
+        bound_args = create_symbol_node(0, \
+                                        strdup(curr_param->name), \
+                                        arg_se->car->type, \
+                                        arg_se->car->ptr);
         curr_param = curr_param->next;
         arg_se = s_expr_next(arg_se);
         while (!is_empty_list(arg_se)) {
             if (curr_param == NULL) {
-                delete_st_node_list(bound_args);
-                bound_args = create_error_stn(EVAL_ERROR_MANY_ARGS);
+                delete_symbol_node_list(bound_args);
+                bound_args = create_error_symbol_node(EVAL_ERROR_MANY_ARGS);
                 break;
             }
-            Symbol_Node* new_arg = create_st_node(0, \
-                                                   strdup(curr_param->name), \
-                                                   arg_se->car->type, \
-                                                   arg_se->car->ptr);
+            Symbol_Node* new_arg = create_symbol_node(0, \
+                                                      strdup(curr_param->name),\
+                                                      arg_se->car->type, \
+                                                      arg_se->car->ptr);
             new_arg->next = bound_args;
             bound_args = new_arg;
             curr_param = curr_param->next;
             arg_se = s_expr_next(arg_se);
         }
         if (curr_param != NULL) {
-            delete_st_node_list(bound_args);
-            bound_args = create_error_stn(EVAL_ERROR_FEW_ARGS);
+            delete_symbol_node_list(bound_args);
+            bound_args = create_error_symbol_node(EVAL_ERROR_FEW_ARGS);
         }
         return bound_args;
     }

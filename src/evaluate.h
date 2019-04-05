@@ -34,7 +34,7 @@ Symbol_Node* collect_parameters(typed_ptr* tp, environment* env);
 typed_ptr* eval_sexpr(const s_expr* se, environment* env);
 
 typed_ptr* eval_user_function(const s_expr* se, environment* env);
-Symbol_Node* bind_args(environment* env, fun_tab_node* ftn, typed_ptr* args);
+Symbol_Node* bind_args(environment* env, Function_Node* fn, typed_ptr* args);
 environment* make_eval_env(environment* env, Symbol_Node* bound_args);
 
 typed_ptr* collect_args(const s_expr* se, \
