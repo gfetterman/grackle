@@ -11,7 +11,7 @@
 int main() {
     bool exit = 0;
     char input[BUF_SIZE];
-    environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0);
     setup_environment(env);
     while (!exit) {
         get_input(PROMPT, input, BUF_SIZE);

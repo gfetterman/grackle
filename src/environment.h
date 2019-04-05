@@ -60,42 +60,42 @@ typedef struct FUNCTION_TABLE {
 
 Function_Table* create_function_table(unsigned int offset);
 
-// the environment structure
+// the Environment structure
 
 typedef struct ENVIRONMENT {
     Symbol_Table* symbol_table;
     Function_Table* function_table;
-} environment;
+} Environment;
 
-environment* create_environment(unsigned int st_start, unsigned int ft_start);
-environment* copy_environment(environment* env);
-void delete_env_shared_ft(environment* env);
-void delete_env_full(environment* env);
+Environment* create_environment(unsigned int st_start, unsigned int ft_start);
+Environment* copy_environment(Environment* env);
+void delete_env_shared_ft(Environment* env);
+void delete_env_full(Environment* env);
 
-typed_ptr* install_symbol(environment* env, \
+typed_ptr* install_symbol(Environment* env, \
                           char* name, \
                           type type, \
                           tp_value value);
-void blind_install_symbol_atom(environment* env, \
+void blind_install_symbol_atom(Environment* env, \
                                char* symbol, \
                                type type, \
                                long value);
-void blind_install_symbol_sexpr(environment* env, \
+void blind_install_symbol_sexpr(Environment* env, \
                                 char* symbol, \
                                 type type, \
                                 s_expr* value);
-typed_ptr* install_function(environment* env, \
+typed_ptr* install_function(Environment* env, \
                             Symbol_Node* arg_list, \
-                            environment* closure_env, \
+                            Environment* closure_env, \
                             typed_ptr* body);
 
-void setup_symbol_table(environment* env);
-void setup_environment(environment* env);
+void setup_symbol_table(Environment* env);
+void setup_environment(Environment* env);
 
-Symbol_Node* symbol_lookup_string(environment* env, const char* name);
-Symbol_Node* symbol_lookup_index(environment* env, const typed_ptr* tp);
-Symbol_Node* builtin_lookup_index(environment* env, const typed_ptr* tp);
-typed_ptr* value_lookup_index(environment* env, const typed_ptr* tp);
-Function_Node* function_lookup_index(environment* env, const typed_ptr* tp);
+Symbol_Node* symbol_lookup_string(Environment* env, const char* name);
+Symbol_Node* symbol_lookup_index(Environment* env, const typed_ptr* tp);
+Symbol_Node* builtin_lookup_index(Environment* env, const typed_ptr* tp);
+typed_ptr* value_lookup_index(Environment* env, const typed_ptr* tp);
+Function_Node* function_lookup_index(Environment* env, const typed_ptr* tp);
 
 #endif

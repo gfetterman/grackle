@@ -1,6 +1,6 @@
 #include "test_functions.h"
 
-typed_ptr* parse_and_eval(char command[], environment* env) {
+typed_ptr* parse_and_eval(char command[], Environment* env) {
     typed_ptr* output = parse(command, env);
     if (output->type != TYPE_ERROR) {
         s_expr* empty = create_empty_s_expr();
@@ -46,7 +46,7 @@ void e2e_atom_test(char cmd[], type t, long val, test_env* te) {
 bool check_pair(typed_ptr* tp, \
                 typed_ptr** tplist, \
                 unsigned int len, \
-                environment* env) {
+                Environment* env) {
     if (tp == NULL || tp->type != TYPE_SEXPR || len != 2) {
         return false;
     }
@@ -81,7 +81,7 @@ void e2e_pair_test(char cmd[], \
 bool check_sexpr(typed_ptr* tp, \
                  typed_ptr** tplist, \
                  unsigned int len, \
-                 environment* env) {
+                 Environment* env) {
     // doesn't currently handle nested lists, but that's ok for now
     if (tp == NULL || tp->type != TYPE_SEXPR) {
         return false;

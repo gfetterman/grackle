@@ -12,22 +12,22 @@
 #include "grackle_utils.h"
 
 typedef struct TEST_ENV {
-    environment* env;
+    Environment* env;
     unsigned int passed;
     unsigned int run;
 } test_env;
 
-typed_ptr* parse_and_eval(char command[], environment* env);
+typed_ptr* parse_and_eval(char command[], Environment* env);
 
 bool check_tp(typed_ptr* tp, type t, tp_value ptr);
 bool check_pair(typed_ptr* tp, \
                 typed_ptr** tplist, \
                 unsigned int len, \
-                environment* env);
+                Environment* env);
 bool check_sexpr(typed_ptr* tp, \
                  typed_ptr** tplist, \
                  unsigned int len, \
-                 environment* env);
+                 Environment* env);
 
 void e2e_autofail_test(char cmd[], test_env* te);
 void e2e_atom_test(char cmd[], type t, long val, test_env* te);

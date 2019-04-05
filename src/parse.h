@@ -22,14 +22,14 @@ typedef struct S_EXPR_STORAGE_NODE {
     struct S_EXPR_STORAGE_NODE* next;
 } s_expr_storage;
 
-typed_ptr* parse(char str[], environment* env);
+typed_ptr* parse(char str[], Environment* env);
 
 void init_new_s_expr(s_expr_storage** stack);
 void extend_s_expr(s_expr_storage** stack);
 Parse_State terminate_s_expr(s_expr_storage** stack, interpreter_error* error);
 void register_symbol(s_expr_storage** stack, \
-                     environment* env, \
-                     environment* temp, \
+                     Environment* env, \
+                     Environment* temp, \
                      char* name);
 
 s_expr_storage* create_s_expr_storage(unsigned int list_number, s_expr* se);

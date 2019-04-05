@@ -98,7 +98,7 @@ void print_error(const typed_ptr* tp) {
     return;
 }
 
-void print_s_expression(const s_expr* se, environment* env) {
+void print_s_expression(const s_expr* se, Environment* env) {
     if (se == NULL) {
         typed_ptr* err = create_error_tp(EVAL_ERROR_NULL_SEXPR);
         print_error(err);
@@ -123,7 +123,7 @@ void print_s_expression(const s_expr* se, environment* env) {
     return;
 }
 
-void print_result(const typed_ptr* tp, environment* env) {
+void print_result(const typed_ptr* tp, Environment* env) {
     switch (tp->type) {
         case TYPE_UNDEF:
             printf("undefined symbol");

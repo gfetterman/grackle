@@ -77,7 +77,7 @@ void delete_symbol_node_list(Symbol_Node* sn) {
 //   represented elsewhere (and so cannot be safely freed using this pointer).
 Function_Node* create_function_node(unsigned int function_idx, \
                                     Symbol_Node* arg_list, \
-                                    environment* closure_env, \
+                                    Environment* closure_env, \
                                     typed_ptr* body) {
     Function_Node* new_fn = malloc(sizeof(Function_Node));
     if (new_fn == NULL) {
@@ -104,8 +104,8 @@ Function_Table* create_function_table(unsigned int offset) {
     return new_ft;
 }
 
-environment* create_environment(unsigned int st_start, unsigned int ft_start) {
-    environment* new_env = malloc(sizeof(environment));
+Environment* create_environment(unsigned int st_start, unsigned int ft_start) {
+    Environment* new_env = malloc(sizeof(Environment));
     if (new_env == NULL) {
         fprintf(stderr, "malloc failed in create_environment()\n");
         exit(-1);
@@ -122,8 +122,8 @@ environment* create_environment(unsigned int st_start, unsigned int ft_start) {
 //   or deleted from), its pointer is simply copied over).
 // To destroy this new environment, delete_env_shared_ft() below should be used,
 //   to ensure it's done safely.
-environment* copy_environment(environment* env) {
-    environment* new_env = create_environment(0, 0);
+Environment* copy_environment(Environment* env) {
+    Environment* new_env = create_environment(0, 0);
     Symbol_Node* curr_sn = env->symbol_table->head;
     while (curr_sn != NULL) {
         Symbol_Node* new_sn = create_symbol_node(curr_sn->symbol_idx, \
@@ -146,7 +146,7 @@ environment* copy_environment(environment* env) {
 
 // Safely deletes an environment that shares a function table with other
 //   environments.
-void delete_env_shared_ft(environment* env) {
+void delete_env_shared_ft(Environment* env) {
     Symbol_Node* curr = env->symbol_table->head;
     while (curr != NULL) {
         Symbol_Node* next = curr->next;
@@ -163,7 +163,7 @@ void delete_env_shared_ft(environment* env) {
 }
 
 // Fully deletes an environment.
-void delete_env_full(environment* env) {
+void delete_env_full(Environment* env) {
     Symbol_Node* curr_sn = env->symbol_table->head;
     while (curr_sn != NULL) {
         Symbol_Node* next_sn = curr_sn->next;
@@ -211,7 +211,7 @@ void delete_env_full(environment* env) {
 // The returned typed_ptr is the caller's responsibility to free; it can be
 //   safely (shallow) freed without harm to the symbol table or any other
 //   object.
-typed_ptr* install_symbol(environment* env, \
+typed_ptr* install_symbol(Environment* env, \
                           char* name, \
                           type type, \
                           tp_value value) {
@@ -235,7 +235,7 @@ typed_ptr* install_symbol(environment* env, \
 // All considerations attendant upon the function "install_symbol()" above apply
 //   here.
 // This is a convenience function for use in initial symbol table setup.
-void blind_install_symbol_atom(environment* env, \
+void blind_install_symbol_atom(Environment* env, \
                                char* name, \
                                type type, \
                                long value) {
@@ -250,7 +250,7 @@ void blind_install_symbol_atom(environment* env, \
 // All considerations attendant upon the function "install_symbol()" above apply
 //   here.
 // This is a convenience function for use in initial symbol table setup.
-void blind_install_symbol_sexpr(environment* env, \
+void blind_install_symbol_sexpr(Environment* env, \
                                 char* name, \
                                 type type, \
                                 s_expr* value) {
@@ -266,9 +266,9 @@ void blind_install_symbol_sexpr(environment* env, \
 //   concern. The body pointed to by the typed pointer remains someone else's
 //   problem, and won't be freed by the environment.
 // The typed pointer returned is the caller's responsibility to free.
-typed_ptr* install_function(environment* env, \
+typed_ptr* install_function(Environment* env, \
                             Symbol_Node* param_list, \
-                            environment* closure_env, \
+                            Environment* closure_env, \
                             typed_ptr* body) {
     unsigned int idx = env->function_table->length;
     Function_Node* new_fn = create_function_node(idx, \
@@ -283,7 +283,7 @@ typed_ptr* install_function(environment* env, \
     return create_atom_tp(TYPE_FUNCTION, idx);
 }
 
-void setup_symbol_table(environment* env) {
+void setup_symbol_table(Environment* env) {
     builtin_code tbi = TYPE_BUILTIN;
     blind_install_symbol_atom(env, strdup("NULL_SENTINEL"), TYPE_UNDEF, 0);
     blind_install_symbol_atom(env, strdup("+"), tbi, BUILTIN_ADD);
@@ -322,14 +322,14 @@ void setup_symbol_table(environment* env) {
     return;
 }
 
-void setup_environment(environment* env) {
+void setup_environment(Environment* env) {
     setup_symbol_table(env);
     return;
 }
 
 // The returned Symbol_Node should (usually) not be freed.
 // If the given name does not match any symbol table entry, NULL is returned.
-Symbol_Node* symbol_lookup_string(environment* env, const char* name) {
+Symbol_Node* symbol_lookup_string(Environment* env, const char* name) {
     Symbol_Node* curr = env->symbol_table->head;
     while (curr != NULL) {
         if (!strcmp(curr->name, name)) {
@@ -342,7 +342,7 @@ Symbol_Node* symbol_lookup_string(environment* env, const char* name) {
 
 // The returned Symbol_Node should (usually) not be freed.
 // If the given index does not match any symbol table entry, NULL is returned.
-Symbol_Node* symbol_lookup_index(environment* env, const typed_ptr* tp) {
+Symbol_Node* symbol_lookup_index(Environment* env, const typed_ptr* tp) {
     if (tp == NULL || tp->type != TYPE_SYMBOL) {
         return NULL;
     }
@@ -356,7 +356,7 @@ Symbol_Node* symbol_lookup_index(environment* env, const typed_ptr* tp) {
     return curr;
 }
 
-Symbol_Node* builtin_lookup_index(environment* env, const typed_ptr* tp) {
+Symbol_Node* builtin_lookup_index(Environment* env, const typed_ptr* tp) {
     if (tp == NULL || tp->type != TYPE_BUILTIN) {
         return NULL;
     }
@@ -375,7 +375,7 @@ Symbol_Node* builtin_lookup_index(environment* env, const typed_ptr* tp) {
 //   (shallow) freed without harm to the symbol table or any other object.
 // If the given typed_ptr does not point to a valid symbol table entry, or if
 //   it is NULL, NULL is returned.
-typed_ptr* value_lookup_index(environment* env, const typed_ptr* tp) {
+typed_ptr* value_lookup_index(Environment* env, const typed_ptr* tp) {
     if (tp == NULL || tp->type != TYPE_SYMBOL) {
         return NULL;
     }
@@ -397,7 +397,7 @@ typed_ptr* value_lookup_index(environment* env, const typed_ptr* tp) {
 
 // The Function_Node returned shouldn't (usually) be freed.
 // tp is assumed to be an atomic typed_ptr.
-Function_Node* function_lookup_index(environment* env, const typed_ptr* tp) {
+Function_Node* function_lookup_index(Environment* env, const typed_ptr* tp) {
     if (tp == NULL || tp->type != TYPE_FUNCTION) {
         return NULL;
     }

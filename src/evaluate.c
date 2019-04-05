@@ -7,7 +7,7 @@
 // In either case, the returned typed_ptr is the caller's responsibility to
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
-typed_ptr* evaluate(const s_expr* se, environment* env) {
+typed_ptr* evaluate(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
     if (se == NULL) {
         result = create_error_tp(EVAL_ERROR_NULL_SEXPR);
@@ -48,7 +48,7 @@ typed_ptr* evaluate(const s_expr* se, environment* env) {
     return result;
 }
 
-typed_ptr* eval_builtin(const s_expr* se, environment* env) {
+typed_ptr* eval_builtin(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
     switch (se->car->ptr.idx) {
         case BUILTIN_ADD: // fall-through
@@ -129,7 +129,7 @@ typed_ptr* eval_builtin(const s_expr* se, environment* env) {
 // In either case, the returned typed_ptr is the caller's responsibility to
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
-typed_ptr* eval_arithmetic(const s_expr* se, environment* env) {
+typed_ptr* eval_arithmetic(const s_expr* se, Environment* env) {
     builtin_code op = se->car->ptr.idx;
     typed_ptr* result = NULL;
     int min_args = (op == BUILTIN_ADD || op == BUILTIN_MUL) ? 0 : 1;
@@ -195,7 +195,7 @@ typed_ptr* eval_arithmetic(const s_expr* se, environment* env) {
 // In either case, the returned typed_ptr is the caller's responsibility to
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
-typed_ptr* eval_comparison(const s_expr* se, environment* env) {
+typed_ptr* eval_comparison(const s_expr* se, Environment* env) {
     builtin_code op = se->car->ptr.idx;
     typed_ptr* result = NULL;
     typed_ptr* args_tp = collect_args(se, env, 2, -1, true);
@@ -262,7 +262,7 @@ typed_ptr* eval_comparison(const s_expr* se, environment* env) {
 // In either case, the returned typed_ptr is the caller's responsibility to
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
-typed_ptr* eval_define(const s_expr* se, environment* env) {
+typed_ptr* eval_define(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
     typed_ptr* args_tp = collect_args(se, env, 2, 2, false);
     if (args_tp->type == TYPE_ERROR) {
@@ -352,7 +352,7 @@ typed_ptr* eval_define(const s_expr* se, environment* env) {
 // In either case, the returned typed_ptr is the caller's responsibility to
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
-typed_ptr* eval_set_variable(const s_expr* se, environment* env) {
+typed_ptr* eval_set_variable(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
     typed_ptr* args_tp = collect_args(se, env, 2, 2, false);
     if (args_tp->type == TYPE_ERROR) {
@@ -384,7 +384,7 @@ typed_ptr* eval_set_variable(const s_expr* se, environment* env) {
     return result;
 }
 
-typed_ptr* eval_exit(const s_expr* se, environment* env) {
+typed_ptr* eval_exit(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
     typed_ptr* args_tp = collect_args(se, env, 0, 0, false);
     if (args_tp->type == TYPE_ERROR) {
@@ -397,7 +397,7 @@ typed_ptr* eval_exit(const s_expr* se, environment* env) {
     return result;
 }
 
-typed_ptr* eval_cons(const s_expr* se, environment* env) {
+typed_ptr* eval_cons(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
     typed_ptr* args_tp = collect_args(se, env, 2, 2, true);
     if (args_tp->type == TYPE_ERROR) {
@@ -424,7 +424,7 @@ typed_ptr* eval_cons(const s_expr* se, environment* env) {
 // In either case, the returned typed_ptr is the caller's responsibility to
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
-typed_ptr* eval_car_cdr(const s_expr* se, environment* env) {
+typed_ptr* eval_car_cdr(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
     typed_ptr* args_tp = collect_args(se, env, 1, 1, true);
     if (args_tp->type == TYPE_ERROR) {
@@ -455,7 +455,7 @@ typed_ptr* eval_car_cdr(const s_expr* se, environment* env) {
 // In either case, the returned typed_ptr is the caller's responsibility to
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
-typed_ptr* eval_list_pred(const s_expr* se, environment* env) {
+typed_ptr* eval_list_pred(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
     typed_ptr* args_tp = collect_args(se, env, 1, 1, true);
     if (args_tp->type == TYPE_ERROR) {
@@ -492,7 +492,7 @@ typed_ptr* eval_list_pred(const s_expr* se, environment* env) {
 // In either case, the returned typed_ptr is the caller's responsibility to
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
-typed_ptr* eval_atom_pred(const s_expr* se, environment* env, type t) {
+typed_ptr* eval_atom_pred(const s_expr* se, Environment* env, type t) {
     typed_ptr* result = NULL;
     typed_ptr* args_tp = collect_args(se, env, 1, 1, true);
     if (args_tp->type == TYPE_ERROR) {
@@ -519,11 +519,11 @@ typed_ptr* eval_atom_pred(const s_expr* se, environment* env, type t) {
 // In either case, the returned typed_ptr is the caller's responsibility to
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
-typed_ptr* eval_list_construction(const s_expr* se, environment* env) {
+typed_ptr* eval_list_construction(const s_expr* se, Environment* env) {
     return collect_args(se, env, 0, -1, true);
 }
 
-typed_ptr* eval_and_or(const s_expr* se, environment* env) {
+typed_ptr* eval_and_or(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
     typed_ptr* args_tp = collect_args(se, env, 0, -1, true);
     if (args_tp->type == TYPE_ERROR) {
@@ -550,7 +550,7 @@ typed_ptr* eval_and_or(const s_expr* se, environment* env) {
     return result;
 }
 
-typed_ptr* eval_not(const s_expr* se, environment* env) {
+typed_ptr* eval_not(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
     typed_ptr* args_tp = collect_args(se, env, 1, 1, true);
     if (args_tp->type == TYPE_ERROR) {
@@ -586,7 +586,7 @@ typed_ptr* eval_not(const s_expr* se, environment* env) {
 // In either case, the returned typed_ptr is the caller's responsibility to
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
-typed_ptr* eval_cond(const s_expr* se, environment* env) {
+typed_ptr* eval_cond(const s_expr* se, Environment* env) {
     typed_ptr* args_tp = collect_args(se, env, 0, -1, false);
     if (args_tp->type == TYPE_ERROR) {
         return args_tp;
@@ -675,7 +675,7 @@ typed_ptr* eval_cond(const s_expr* se, environment* env) {
 //   the environment's responsibility.
 // The typed pointer returned is the caller's responsibility to free, and can
 //   safely be (shallow) freed.
-typed_ptr* eval_lambda(const s_expr* se, environment* env) {
+typed_ptr* eval_lambda(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
     typed_ptr* args_tp = collect_args(se, env, 2, 2, false);
     if (args_tp->type == TYPE_ERROR) {
@@ -691,7 +691,7 @@ typed_ptr* eval_lambda(const s_expr* se, environment* env) {
                 result = create_error_tp(params->value.idx);
                 delete_symbol_node_list(params);
             } else {
-                environment* closure_env = copy_environment(env);
+                Environment* closure_env = copy_environment(env);
                 typed_ptr* body = copy_typed_ptr(second);
                 if (body->type == TYPE_SEXPR) {
                     body->ptr.se_ptr = copy_s_expr(body->ptr.se_ptr);
@@ -715,7 +715,7 @@ typed_ptr* eval_lambda(const s_expr* se, environment* env) {
 //   symbol discovered.
 // In either case, these Symbol_Nodes are safe to free (and they are the
 //   caller's responsibility to free).
-Symbol_Node* collect_parameters(typed_ptr* tp, environment* env) {
+Symbol_Node* collect_parameters(typed_ptr* tp, Environment* env) {
     Symbol_Node* params = NULL;
     s_expr* se = tp->ptr.se_ptr;
     if (is_empty_list(se)) {
@@ -754,7 +754,7 @@ Symbol_Node* collect_parameters(typed_ptr* tp, environment* env) {
     return params;
 }
 
-typed_ptr* eval_sexpr(const s_expr* se, environment* env) {
+typed_ptr* eval_sexpr(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
     s_expr* se_to_eval = se->car->ptr.se_ptr;
     if (is_empty_list(se_to_eval)) {
@@ -794,7 +794,7 @@ typed_ptr* eval_sexpr(const s_expr* se, environment* env) {
 // In either case, the returned typed_ptr is the caller's responsibility to
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
-typed_ptr* eval_user_function(const s_expr* se, environment* env) {
+typed_ptr* eval_user_function(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
     Function_Node* fn = function_lookup_index(env, se->car);
     if (fn == NULL) {
@@ -808,7 +808,7 @@ typed_ptr* eval_user_function(const s_expr* se, environment* env) {
         if (arg_vals != NULL && arg_vals->type == TYPE_ERROR) {
             result = create_error_tp(arg_vals->value.idx);
         } else {
-            environment* bound_env = make_eval_env(fn->closure_env, arg_vals);
+            Environment* bound_env = make_eval_env(fn->closure_env, arg_vals);
             s_expr* empty = create_empty_s_expr();
             s_expr* super_se = create_s_expr(copy_typed_ptr(fn->body), \
                                              create_s_expr_tp(empty));
@@ -834,7 +834,7 @@ typed_ptr* eval_user_function(const s_expr* se, environment* env) {
 //   arguments.
 // In all cases, the Symbol_Node list returned is the caller's responsibility
 //   to free, and may be safely (shallow) freed.
-Symbol_Node* bind_args(environment* env, Function_Node* fn, typed_ptr* args) {
+Symbol_Node* bind_args(Environment* env, Function_Node* fn, typed_ptr* args) {
     if (fn->arg_list == NULL && is_empty_list(args->ptr.se_ptr)) {
         return NULL;
     } else if (is_empty_list(args->ptr.se_ptr)) {
@@ -878,8 +878,8 @@ Symbol_Node* bind_args(environment* env, Function_Node* fn, typed_ptr* args) {
 // The input environment is not modified.
 // The returned environment is the caller's responsibility to delete, using
 //   delete_env_shared_ft() below.
-environment* make_eval_env(environment* env, Symbol_Node* bound_args) {
-    environment* eval_env = copy_environment(env);
+Environment* make_eval_env(Environment* env, Symbol_Node* bound_args) {
+    Environment* eval_env = copy_environment(env);
     Symbol_Node* curr_arg = bound_args;
     while (curr_arg != NULL) {
         Symbol_Node* found = symbol_lookup_string(eval_env, curr_arg->name);
@@ -896,7 +896,7 @@ environment* make_eval_env(environment* env, Symbol_Node* bound_args) {
 }
 
 typed_ptr* collect_args(const s_expr* se, \
-                        environment* env, \
+                        Environment* env, \
                         int min_args, \
                         int max_args, \
                         bool evaluate_all_args) {

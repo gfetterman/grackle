@@ -11,14 +11,14 @@
 // In either case, the s-expression returned is the caller's responsibility to
 //   free; it may be (shallow) freed without harm to the list area, symbol
 //   table, or any other object.
-typed_ptr* parse(char str[], environment* env) {
+typed_ptr* parse(char str[], Environment* env) {
     Parse_State state = PARSE_START;
     interpreter_error error = PARSE_ERROR_NONE;
     s_expr_storage* stack = NULL;
     unsigned int curr = 0;
     unsigned int symbol_start = 0;
     char* new_symbol = NULL;
-    environment* temp_env = create_environment(env->symbol_table->length, \
+    Environment* temp_env = create_environment(env->symbol_table->length, \
                                                env->function_table->length);
     s_expr* head = create_empty_s_expr();
     while (str[curr] && state != PARSE_ERROR) {
@@ -171,8 +171,8 @@ Parse_State terminate_s_expr(s_expr_storage** stack, interpreter_error* error) {
 }
 
 void register_symbol(s_expr_storage** stack, \
-                     environment* env, \
-                     environment* temp, \
+                     Environment* env, \
+                     Environment* temp, \
                      char* name) {
     typed_ptr* car = NULL;
     if (string_is_number(name)) {

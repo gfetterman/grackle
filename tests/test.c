@@ -6,7 +6,7 @@ bool end_to_end_tests() {
     printf("end-to-end tests\n");
     printf("----------------\n");
     // setup
-    environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0);
     setup_environment(env);
     test_env* t_env = malloc(sizeof(test_env));
     if (t_env == NULL) {
