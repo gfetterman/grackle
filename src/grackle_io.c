@@ -1,11 +1,46 @@
 #include "grackle_io.h"
 
-void get_input(char* prompt, char buffer[], unsigned int buffer_size) {
+void get_input(const char* prompt, char buffer[], unsigned int buffer_size) {
     printf("%s ", prompt);
     fgets(buffer, buffer_size, stdin); // yes, this is unsafe
     // drop newline at end of input
     if ((strlen(buffer) > 0) && (buffer[strlen(buffer) - 1] == '\n')) {
         buffer[strlen(buffer) - 1] = '\0';
+    }
+    return;
+}
+
+void print_typed_ptr(const typed_ptr* tp, const Environment* env) {
+    switch (tp->type) {
+        case TYPE_UNDEF:
+            printf("undefined symbol");
+            break;
+        case TYPE_ERROR:
+            print_error(tp);
+            break;
+        case TYPE_NUM:
+            printf("%ld", tp->ptr.idx);
+            break;
+        case TYPE_SEXPR:
+            print_s_expr(tp->ptr.se_ptr, env);
+            break;
+        case TYPE_SYMBOL:
+            printf("'%s", symbol_lookup_index(env, tp)->name);
+            break;
+        case TYPE_BUILTIN:
+            printf("#<procedure:%s>", builtin_lookup_index(env, tp)->name);
+            break;
+        case TYPE_BOOL:
+            printf("%s", (tp->ptr.idx == 0) ? "#f" : "#t");
+            break;
+        case TYPE_VOID:
+            break; // print nothing
+        case TYPE_FUNCTION:
+            printf("#<procedure>");
+            break;
+        default:
+            printf("unrecognized type: %d", tp->type);
+            break;
     }
     return;
 }
@@ -98,16 +133,16 @@ void print_error(const typed_ptr* tp) {
     return;
 }
 
-void print_s_expression(const s_expr* se, environment* env) {
+void print_s_expr(const s_expr* se, const Environment* env) {
     if (se == NULL) {
-        typed_ptr* err = create_error(EVAL_ERROR_NULL_SEXPR);
+        typed_ptr* err = create_error_tp(EVAL_ERROR_NULL_SEXPR);
         print_error(err);
         free(err);
         return;
     }
     printf("'(");
     while (!is_empty_list(se)) {
-        print_result(se->car, env);
+        print_typed_ptr(se->car, env);
         if (se->cdr->type == TYPE_SEXPR) { // list
             se = se->cdr->ptr.se_ptr;
             if (!is_empty_list(se)) {
@@ -115,45 +150,10 @@ void print_s_expression(const s_expr* se, environment* env) {
             }
         } else { // pair
             printf(" . ");
-            print_result(se->cdr, env);
+            print_typed_ptr(se->cdr, env);
             break;
         }
     }
     printf(")");
-    return;
-}
-
-void print_result(const typed_ptr* tp, environment* env) {
-    switch (tp->type) {
-        case TYPE_UNDEF:
-            printf("undefined symbol");
-            break;
-        case TYPE_ERROR:
-            print_error(tp);
-            break;
-        case TYPE_NUM:
-            printf("%ld", tp->ptr.idx);
-            break;
-        case TYPE_SEXPR:
-            print_s_expression(tp->ptr.se_ptr, env);
-            break;
-        case TYPE_SYM:
-            printf("'%s", symbol_lookup_index(env, tp)->symbol);
-            break;
-        case TYPE_BUILTIN:
-            printf("#<procedure:%s>", builtin_lookup_index(env, tp)->symbol);
-            break;
-        case TYPE_BOOL:
-            printf("%s", (tp->ptr.idx == 0) ? "#f" : "#t");
-            break;
-        case TYPE_VOID:
-            break; // print nothing
-        case TYPE_USER_FN:
-            printf("#<procedure>");
-            break;
-        default:
-            printf("unrecognized type: %d", tp->type);
-            break;
-    }
     return;
 }

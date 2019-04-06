@@ -1,12 +1,12 @@
 #include "test_functions.h"
 
-typed_ptr* parse_and_eval(char command[], environment* env) {
+typed_ptr* parse_and_evaluate(char command[], Environment* env) {
     typed_ptr* output = parse(command, env);
     if (output->type != TYPE_ERROR) {
         s_expr* empty = create_empty_s_expr();
-        s_expr* super_se = create_s_expr(output, create_sexpr_tp(empty));
+        s_expr* super_se = create_s_expr(output, create_s_expr_tp(empty));
         output = evaluate(super_se, env);
-        delete_se_recursive(super_se, true);
+        delete_s_expr_recursive(super_se, true);
     }
     return output;
 }
@@ -19,7 +19,7 @@ void e2e_autofail_test(char cmd[], test_env* te) {
     return;
 }
 
-bool check_tp(typed_ptr* tp, type t, union_idx_se ptr) {
+bool check_typed_ptr(typed_ptr* tp, type t, tp_value ptr) {
     if (tp == NULL) {
         return false;
     } else if (tp->type == TYPE_SEXPR) {
@@ -31,10 +31,10 @@ bool check_tp(typed_ptr* tp, type t, union_idx_se ptr) {
 
 void e2e_atom_test(char cmd[], type t, long val, test_env* te) {
     printf("test command: %-40s", cmd);
-    typed_ptr* output = parse_and_eval(cmd, te->env);
-    bool pass = check_tp(output, t, (union_idx_se){.idx=val});
+    typed_ptr* output = parse_and_evaluate(cmd, te->env);
+    bool pass = check_typed_ptr(output, t, (tp_value){.idx=val});
     if (output->type == TYPE_SEXPR) {
-        delete_se_recursive(output->ptr.se_ptr, true);
+        delete_s_expr_recursive(output->ptr.se_ptr, true);
     }
     free(output);
     printf("%s\n", (pass) ? "PASSED" : "FAILED <=");
@@ -44,17 +44,17 @@ void e2e_atom_test(char cmd[], type t, long val, test_env* te) {
 }
 
 bool check_pair(typed_ptr* tp, \
-                typed_ptr** tplist, \
-                unsigned int len, \
-                environment* env) {
-    if (tp == NULL || tp->type != TYPE_SEXPR || len != 2) {
+                typed_ptr** tp_list, \
+                unsigned int tp_list_len, \
+                Environment* env) {
+    if (tp == NULL || tp->type != TYPE_SEXPR || tp_list_len != 2) {
         return false;
     }
     s_expr* se = tp->ptr.se_ptr;
-    if (se->car->type == tplist[0]->type && \
-        se->car->ptr.idx == tplist[0]->ptr.idx && \
-        se->cdr->type == tplist[1]->type && \
-        se->cdr->ptr.idx == tplist[1]->ptr.idx) {
+    if (se->car->type == tp_list[0]->type && \
+        se->car->ptr.idx == tp_list[0]->ptr.idx && \
+        se->cdr->type == tp_list[1]->type && \
+        se->cdr->ptr.idx == tp_list[1]->ptr.idx) {
         return true;
     } else {
         return false;
@@ -62,14 +62,14 @@ bool check_pair(typed_ptr* tp, \
 }
 
 void e2e_pair_test(char cmd[], \
-                   typed_ptr** tplist, \
-                   unsigned int len, \
+                   typed_ptr** tp_list, \
+                   unsigned int tp_list_len, \
                    test_env* te) {
     printf("test command: %-40s", cmd);
-    typed_ptr* output = parse_and_eval(cmd, te->env);
-    bool pass = check_pair(output, tplist, len, te->env);
+    typed_ptr* output = parse_and_evaluate(cmd, te->env);
+    bool pass = check_pair(output, tp_list, tp_list_len, te->env);
     if (output->type == TYPE_SEXPR) {
-        delete_se_recursive(output->ptr.se_ptr, true);
+        delete_s_expr_recursive(output->ptr.se_ptr, true);
     }
     free(output);
     printf("%s\n", (pass) ? "PASSED" : "FAILED <=");
@@ -79,15 +79,15 @@ void e2e_pair_test(char cmd[], \
 }
 
 bool check_sexpr(typed_ptr* tp, \
-                 typed_ptr** tplist, \
-                 unsigned int len, \
-                 environment* env) {
+                 typed_ptr** tp_list, \
+                 unsigned int tp_list_len, \
+                 Environment* env) {
     // doesn't currently handle nested lists, but that's ok for now
     if (tp == NULL || tp->type != TYPE_SEXPR) {
         return false;
     }
     s_expr* curr_se = tp->ptr.se_ptr;
-    if (len == 0) {
+    if (tp_list_len == 0) {
         if (is_empty_list(curr_se)) {
             return true;
         } else {
@@ -96,11 +96,11 @@ bool check_sexpr(typed_ptr* tp, \
     } else {
         unsigned int curr_check_idx = 0;
         while (!is_empty_list(curr_se)) {
-            if (curr_check_idx >= len) {
+            if (curr_check_idx >= tp_list_len) {
                 // the output we're checking is too long
                 return false;
             }
-            typed_ptr* curr_check = tplist[curr_check_idx];
+            typed_ptr* curr_check = tp_list[curr_check_idx];
             if (curr_se->car->type != curr_check->type || \
                 (curr_check->type == TYPE_SEXPR && \
                  curr_se->car->ptr.se_ptr != curr_check->ptr.se_ptr) || \
@@ -109,9 +109,9 @@ bool check_sexpr(typed_ptr* tp, \
                     return false;
             }
             curr_check_idx++;
-            curr_se = sexpr_next(curr_se);
+            curr_se = s_expr_next(curr_se);
         }
-        if (curr_check_idx < len) {
+        if (curr_check_idx < tp_list_len) {
             // the output we're checking is too short
             return false;
         } else {
@@ -121,14 +121,14 @@ bool check_sexpr(typed_ptr* tp, \
 }
 
 void e2e_sexpr_test(char cmd[], \
-                    typed_ptr** tplist, \
-                    unsigned int len, \
+                    typed_ptr** tp_list, \
+                    unsigned int tp_list_len, \
                     test_env* te) {
     printf("test command: %-40s", cmd);
-    typed_ptr* output = parse_and_eval(cmd, te->env);
-    bool pass = check_sexpr(output, tplist, len, te->env);
+    typed_ptr* output = parse_and_evaluate(cmd, te->env);
+    bool pass = check_sexpr(output, tp_list, tp_list_len, te->env);
     if (output->type == TYPE_SEXPR) {
-        delete_se_recursive(output->ptr.se_ptr, true);
+        delete_s_expr_recursive(output->ptr.se_ptr, true);
     }
     free(output);
     printf("%s\n", (pass) ? "PASSED" : "FAILED <=");
@@ -138,19 +138,19 @@ void e2e_sexpr_test(char cmd[], \
 }
 
 void e2e_multiline_atom_test(char* cmds[], \
-                             unsigned int cmd_num, \
+                             unsigned int num_cmds, \
                              type t, \
                              long val, \
                              test_env* te) {
     printf("test command: %-40s", cmds[0]);
-    typed_ptr* output = parse_and_eval(cmds[0], te->env);
-    for (unsigned int i = 1; i < cmd_num; i++) {
+    typed_ptr* output = parse_and_evaluate(cmds[0], te->env);
+    for (unsigned int i = 1; i < num_cmds; i++) {
         printf("\n");
         free(output);
         printf("              %-40s", cmds[i]);
-        output = parse_and_eval(cmds[i], te->env);
+        output = parse_and_evaluate(cmds[i], te->env);
     }
-    bool pass = check_tp(output, t, (union_idx_se){.idx=val});
+    bool pass = check_typed_ptr(output, t, (tp_value){.idx=val});
     free(output);
     printf("%s\n", (pass) ? "PASSED" : "FAILED <=");
     te->passed += (pass) ? 1 : 0;

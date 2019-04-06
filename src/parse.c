@@ -11,14 +11,14 @@
 // In either case, the s-expression returned is the caller's responsibility to
 //   free; it may be (shallow) freed without harm to the list area, symbol
 //   table, or any other object.
-typed_ptr* parse(char str[], environment* env) {
+typed_ptr* parse(const char str[], Environment* env) {
     Parse_State state = PARSE_START;
     interpreter_error error = PARSE_ERROR_NONE;
-    s_expr_storage* stack = NULL;
+    s_expr_stack* stack = NULL;
     unsigned int curr = 0;
     unsigned int symbol_start = 0;
     char* new_symbol = NULL;
-    environment* temp_env = create_environment(env->symbol_table->length, \
+    Environment* temp_env = create_environment(env->symbol_table->length, \
                                                env->function_table->length);
     s_expr* head = create_empty_s_expr();
     while (str[curr] && state != PARSE_ERROR) {
@@ -28,7 +28,7 @@ typed_ptr* parse(char str[], environment* env) {
                     case ' ': // ignore leading whitespace
                         break;
                     case '(':
-                        se_stack_push(&stack, head);
+                        s_expr_stack_push(&stack, head);
                         state = PARSE_NEW_SEXPR;
                         break;
                     case ')':
@@ -130,111 +130,151 @@ typed_ptr* parse(char str[], environment* env) {
         merge_symbol_tables(env->symbol_table, temp_env->symbol_table);
     } else {
         while (stack != NULL) {
-            s_expr_storage* stack_temp = stack;
+            s_expr_stack* stack_temp = stack;
             stack = stack->next;
             // s-expressions pointed to on the stack are accessible from head
             free(stack_temp);
         }
-        delete_se_recursive(head, true);
+        delete_s_expr_recursive(head, true);
     }
-    delete_env_full(temp_env);
-    return (state == PARSE_ERROR) ? create_error(error) : create_sexpr_tp(head);
+    delete_environment_full(temp_env);
+    return (state == PARSE_ERROR) ? create_error_tp(error) : \
+                                    create_s_expr_tp(head);
 }
 
-void init_new_s_expr(s_expr_storage** stack) {
-    se_stack_push(stack, create_empty_s_expr());
-    (*stack)->next->se->car = create_sexpr_tp((*stack)->se);
+void init_new_s_expr(s_expr_stack** stack) {
+    s_expr_stack_push(stack, create_empty_s_expr());
+    (*stack)->next->se->car = create_s_expr_tp((*stack)->se);
     return;
 }
 
-void extend_s_expr(s_expr_storage** stack) {
-    se_stack_push(stack, create_empty_s_expr());
-    (*stack)->next->se->cdr = create_sexpr_tp((*stack)->se);
+void extend_s_expr(s_expr_stack** stack) {
+    s_expr_stack_push(stack, create_empty_s_expr());
+    (*stack)->next->se->cdr = create_s_expr_tp((*stack)->se);
     return;
 }
 
-Parse_State terminate_s_expr(s_expr_storage** stack, interpreter_error* error) {
+Parse_State terminate_s_expr(s_expr_stack** stack, interpreter_error* error) {
     if (*stack == NULL || (*stack)->se->cdr != NULL) {
         *error = PARSE_ERROR_UNBAL_PAREN;
         return PARSE_ERROR;
     } else {
         if (!is_empty_list((*stack)->se)) {
-            (*stack)->se->cdr = create_sexpr_tp(create_empty_s_expr());
+            (*stack)->se->cdr = create_s_expr_tp(create_empty_s_expr());
         }
-        se_stack_pop(stack);
+        s_expr_stack_pop(stack);
         while (*stack != NULL && (*stack)->se->cdr != NULL) {
-            se_stack_pop(stack);
+            s_expr_stack_pop(stack);
         }
         return (*stack == NULL) ? PARSE_FINISH : PARSE_READY;
     }
 }
 
-void register_symbol(s_expr_storage** stack, \
-                     environment* env, \
-                     environment* temp, \
-                     char* sym) {
-    typed_ptr* car = NULL;
-    if (string_is_number(sym)) {
-        long value = atol(sym);
-        free(sym);
-        car = create_atom_tp(TYPE_NUM, value);
+void register_symbol(s_expr_stack** stack, \
+                     Environment* env, \
+                     Environment* temp_env, \
+                     char* name) {
+    typed_ptr* tp = NULL;
+    if (string_is_number(name)) {
+        long value = atol(name);
+        free(name);
+        tp = create_atom_tp(TYPE_NUM, value);
     } else {
-        sym_tab_node* found = symbol_lookup_string(env, sym);
-        found = (found == NULL) ? symbol_lookup_string(temp, sym) : found;
+        Symbol_Node* found = symbol_lookup_string(env, name);
+        found = (found == NULL) ? symbol_lookup_string(temp_env, name) : found;
         if (found == NULL) {
-            car = install_symbol(temp, sym, TYPE_UNDEF, (union_idx_se){.idx=0});
+            tp = install_symbol(temp_env, name, TYPE_UNDEF, (tp_value){.idx=0});
         } else {
-            free(sym);
-            car = create_atom_tp(TYPE_SYM, found->symbol_number);
+            free(name);
+            tp = create_atom_tp(TYPE_SYMBOL, found->symbol_idx);
         }
     }
-    (*stack)->se->car = car;
+    (*stack)->se->car = tp;
     return;
 }
 
 // The s-expression storage node is the caller's responsibility to free.
-s_expr_storage* create_s_expr_storage(unsigned int list_number, s_expr* se) {
-    s_expr_storage* new_ses = malloc(sizeof(s_expr_storage));
+s_expr_stack* create_s_expr_stack(s_expr* se) {
+    s_expr_stack* new_ses = malloc(sizeof(s_expr_stack));
     if (new_ses == NULL) {
-        fprintf(stderr, "malloc failed in create_s_expr_storage()\n");
+        fprintf(stderr, "malloc failed in create_s_expr_stack()\n");
         exit(-1);
     }
-    new_ses->list_number = list_number;
     new_ses->se = se;
     new_ses->next = NULL;
     return new_ses;
 }
 
 // This stack is used to keep track of open s-expressions during parsing.
-// It doesn't use the list_number member of s_expr_storage, so this function
-//   should not be used to install s-expressions into the list area.
-void se_stack_push(s_expr_storage** stack, s_expr* new_se) {
+void s_expr_stack_push(s_expr_stack** stack, s_expr* new_se) {
     if (stack == NULL) {
-        fprintf(stderr, "stack double pointer NULL in se_stack_push()\n");
+        fprintf(stderr, "stack double pointer NULL in s_expr_stack_push()\n");
         exit(-1);
     }
-    s_expr_storage* new_node = create_s_expr_storage(0, new_se);
+    s_expr_stack* new_node = create_s_expr_stack(new_se);
     new_node->next = *stack;
     *stack = new_node;
     return;
 }
 
 // This stack is used to keep track of open s-expressions during parsing.
-// This function should not be used to remove s-expressions from the list area.
-// While it pops the top item off of the stack and frees the s_expr_storage, it
+// While it pops the top item off of the stack and frees the s_expr_stack, it
 //   does not free the s-expressions stored therein.
 // If the stack is empty, this will fail and exit the interpreter.
-void se_stack_pop(s_expr_storage** stack) {
+void s_expr_stack_pop(s_expr_stack** stack) {
     if (stack == NULL) {
-        fprintf(stderr, "stack double pointer NULL in se_stack_pop()\n");
+        fprintf(stderr, "stack double pointer NULL in s_expr_stack_pop()\n");
         exit(-1);
     }
     if (*stack == NULL) {
         fprintf(stderr, "cannot pop() from empty se_stack\n");
         exit(-1);
     }
-    s_expr_storage* old_head = *stack;
+    s_expr_stack* old_head = *stack;
     *stack = old_head->next;
     free(old_head);
     return;
+}
+
+// The string returned is a valid null-terminated C string.
+// The string returned is the caller's responsibility to free.
+char* substring(const char* str, unsigned int start, unsigned int end) {
+    unsigned int len = strlen(str);
+    if (str == NULL || len < (end - start)) {
+        fprintf(stderr, \
+                "fatal error: bad substring from %u to %u, for str len %u\n", \
+                start, \
+                end, \
+                len);
+        exit(-1);
+    }
+    char* ss = malloc(sizeof(char) * (end - start + 1));
+    if (ss == NULL) {
+        fprintf(stderr, "fatal error: malloc failed in substring()\n");
+        exit(-1);
+    }
+    memcpy(ss, (str + start), (sizeof(char) * (end - start)));
+    ss[end - start] = '\0';
+    return ss;
+}
+
+// Determines whether a string represents a number (rather than a symbol).
+// Currently only recognizes nonnegative integers.
+bool string_is_number(const char str[]) {
+    char c;
+    bool ok = true;
+    if (*str == '-') {
+        str++;
+    }
+    if (*str == '\0') {
+        ok = false;
+    } else {
+        while ((c = *str++)) {
+            if (c < 48 || c > 57) {
+                ok = false;
+                break;
+            }
+        }
+    }
+    return ok;
 }

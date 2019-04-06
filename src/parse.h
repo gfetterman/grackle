@@ -16,24 +16,25 @@ typedef enum PARSE_STATE {PARSE_START, \
 
 // s-expression storage nodes (used during parsing)
 
-typedef struct S_EXPR_STORAGE_NODE {
-    unsigned int list_number;
+typedef struct S_EXPR_STACK_NODE {
     s_expr* se;
-    struct S_EXPR_STORAGE_NODE* next;
-} s_expr_storage;
+    struct S_EXPR_STACK_NODE* next;
+} s_expr_stack;
 
-typed_ptr* parse(char str[], environment* env);
+s_expr_stack* create_s_expr_stack(s_expr* se);
+void s_expr_stack_push(s_expr_stack** stack, s_expr* new_se);
+void s_expr_stack_pop(s_expr_stack** stack);
 
-void init_new_s_expr(s_expr_storage** stack);
-void extend_s_expr(s_expr_storage** stack);
-Parse_State terminate_s_expr(s_expr_storage** stack, interpreter_error* error);
-void register_symbol(s_expr_storage** stack, \
-                     environment* env, \
-                     environment* temp, \
-                     char* sym);
+typed_ptr* parse(const char str[], Environment* env);
 
-s_expr_storage* create_s_expr_storage(unsigned int list_number, s_expr* se);
-void se_stack_push(s_expr_storage** stack, s_expr* new_se);
-void se_stack_pop(s_expr_storage** stack);
+void init_new_s_expr(s_expr_stack** stack);
+void extend_s_expr(s_expr_stack** stack);
+Parse_State terminate_s_expr(s_expr_stack** stack, interpreter_error* error);
+void register_symbol(s_expr_stack** stack, \
+                     Environment* env, \
+                     Environment* temp_env, \
+                     char* name);
+char* substring(const char* str, unsigned int start, unsigned int end);
+bool string_is_number(const char str[]);
 
 #endif

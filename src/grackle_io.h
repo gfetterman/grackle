@@ -7,11 +7,12 @@
 
 #include "fundamentals.h"
 #include "environment.h"
-#include "grackle_utils.h"
 
-void get_input(char* prompt, char buffer[], unsigned int buffer_size);
+void get_input(const char* prompt, char buffer[], unsigned int buffer_size);
+
+void print_typed_ptr(const typed_ptr* tp, const Environment* env);
+
 void print_error(const typed_ptr* tp);
-void print_s_expression(const s_expr* se, environment* env);
-void print_result(const typed_ptr* tp, environment* env);
+void print_s_expr(const s_expr* se, const Environment* env);
 
 #endif
