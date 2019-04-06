@@ -330,7 +330,7 @@ void setup_environment(Environment* env) {
 
 // The returned Symbol_Node should (usually) not be freed.
 // If the given name does not match any symbol table entry, NULL is returned.
-Symbol_Node* symbol_lookup_string(Environment* env, const char* name) {
+Symbol_Node* symbol_lookup_string(const Environment* env, const char* name) {
     Symbol_Node* curr = env->symbol_table->head;
     while (curr != NULL) {
         if (!strcmp(curr->name, name)) {
@@ -343,7 +343,7 @@ Symbol_Node* symbol_lookup_string(Environment* env, const char* name) {
 
 // The returned Symbol_Node should (usually) not be freed.
 // If the given index does not match any symbol table entry, NULL is returned.
-Symbol_Node* symbol_lookup_index(Environment* env, const typed_ptr* tp) {
+Symbol_Node* symbol_lookup_index(const Environment* env, const typed_ptr* tp) {
     if (tp == NULL || tp->type != TYPE_SYMBOL) {
         return NULL;
     }
@@ -357,7 +357,7 @@ Symbol_Node* symbol_lookup_index(Environment* env, const typed_ptr* tp) {
     return curr;
 }
 
-Symbol_Node* builtin_lookup_index(Environment* env, const typed_ptr* tp) {
+Symbol_Node* builtin_lookup_index(const Environment* env, const typed_ptr* tp) {
     if (tp == NULL || tp->type != TYPE_BUILTIN) {
         return NULL;
     }
@@ -376,7 +376,7 @@ Symbol_Node* builtin_lookup_index(Environment* env, const typed_ptr* tp) {
 //   (shallow) freed without harm to the symbol table or any other object.
 // If the given typed_ptr does not point to a valid symbol table entry, or if
 //   it is NULL, NULL is returned.
-typed_ptr* value_lookup_index(Environment* env, const typed_ptr* tp) {
+typed_ptr* value_lookup_index(const Environment* env, const typed_ptr* tp) {
     if (tp == NULL || tp->type != TYPE_SYMBOL) {
         return NULL;
     }
@@ -398,7 +398,8 @@ typed_ptr* value_lookup_index(Environment* env, const typed_ptr* tp) {
 
 // The Function_Node returned shouldn't (usually) be freed.
 // tp is assumed to be an atomic typed_ptr.
-Function_Node* function_lookup_index(Environment* env, const typed_ptr* tp) {
+Function_Node* function_lookup_index(const Environment* env, \
+                                     const typed_ptr* tp) {
     if (tp == NULL || tp->type != TYPE_FUNCTION) {
         return NULL;
     }

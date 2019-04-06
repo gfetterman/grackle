@@ -23,7 +23,7 @@ int main() {
             s_expr* empty = create_empty_s_expr();
             s_expr* super_se = create_s_expr(output, create_s_expr_tp(empty));
             output = evaluate(super_se, env);
-            print_result(output, env);
+            print_typed_ptr(output, env);
             printf("\n");
             if (output->type == TYPE_ERROR && \
                 output->ptr.idx == EVAL_ERROR_EXIT) {
