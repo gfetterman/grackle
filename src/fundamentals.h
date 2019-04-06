@@ -10,9 +10,9 @@
 typedef enum {TYPE_UNDEF, \
               TYPE_ERROR, \
               TYPE_VOID, \
-              TYPE_BUILTIN, \
               TYPE_NUM, \
               TYPE_BOOL, \
+              TYPE_BUILTIN, \
               TYPE_SEXPR, \
               TYPE_SYMBOL, \
               TYPE_FUNCTION} type;
@@ -23,6 +23,11 @@ typedef enum {BUILTIN_ADD, \
               BUILTIN_MUL, \
               BUILTIN_SUB, \
               BUILTIN_DIV, \
+              BUILTIN_NUMBEREQ, \
+              BUILTIN_NUMBERGT, \
+              BUILTIN_NUMBERLT, \
+              BUILTIN_NUMBERGE, \
+              BUILTIN_NUMBERLE, \
               BUILTIN_DEFINE, \
               BUILTIN_SETVAR, \
               BUILTIN_EXIT, \
@@ -34,16 +39,11 @@ typedef enum {BUILTIN_ADD, \
               BUILTIN_OR, \
               BUILTIN_NOT, \
               BUILTIN_COND, \
-              BUILTIN_PAIRPRED, \
               BUILTIN_LISTPRED, \
+              BUILTIN_PAIRPRED, \
               BUILTIN_NUMBERPRED, \
               BUILTIN_BOOLPRED, \
               BUILTIN_VOIDPRED, \
-              BUILTIN_NUMBEREQ, \
-              BUILTIN_NUMBERGT, \
-              BUILTIN_NUMBERLT, \
-              BUILTIN_NUMBERGE, \
-              BUILTIN_NUMBERLE, \
               BUILTIN_LAMBDA} builtin_code;
 
 // error codes

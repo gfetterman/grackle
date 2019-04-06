@@ -23,22 +23,22 @@ typed_ptr* evaluate(const s_expr* se, Environment* env) {
             case TYPE_ERROR:
                 result = se->car;
                 break;
+            case TYPE_VOID: // fall-through
+            case TYPE_NUM:  // fall-through
+            case TYPE_BOOL:
+                result = copy_typed_ptr(se->car);
+                break;
             case TYPE_BUILTIN: 
                 result = eval_builtin(se, env);
                 break;
             case TYPE_SEXPR: 
                 result = eval_sexpr(se, env);
                 break;
-            case TYPE_FUNCTION:
-                result = eval_user_function(se, env);
-                break;
             case TYPE_SYMBOL:
                 result = value_lookup_index(env, se->car);
                 break;
-            case TYPE_NUM:  // fall-through
-            case TYPE_BOOL: // fall-through
-            case TYPE_VOID:
-                result = copy_typed_ptr(se->car);
+            case TYPE_FUNCTION:
+                result = eval_user_function(se, env);
                 break;
             default:
                 result = create_error_tp(EVAL_ERROR_UNDEF_TYPE);
@@ -56,6 +56,13 @@ typed_ptr* eval_builtin(const s_expr* se, Environment* env) {
         case BUILTIN_SUB: // fall-through
         case BUILTIN_DIV:
             result = eval_arithmetic(se, env);
+            break;
+        case BUILTIN_NUMBEREQ: // fall-through
+        case BUILTIN_NUMBERGT: // fall-through
+        case BUILTIN_NUMBERLT: // fall-through
+        case BUILTIN_NUMBERGE: // fall-through
+        case BUILTIN_NUMBERLE:
+            result = eval_comparison(se, env);
             break;
         case BUILTIN_DEFINE:
             result = eval_define(se, env);
@@ -100,13 +107,6 @@ typed_ptr* eval_builtin(const s_expr* se, Environment* env) {
             break;
         case BUILTIN_VOIDPRED:
             result = eval_atom_pred(se, env, TYPE_VOID);
-            break;
-        case BUILTIN_NUMBEREQ: // fall-through
-        case BUILTIN_NUMBERGT: // fall-through
-        case BUILTIN_NUMBERLT: // fall-through
-        case BUILTIN_NUMBERGE: // fall-through
-        case BUILTIN_NUMBERLE:
-            result = eval_comparison(se, env);
             break;
         case BUILTIN_LAMBDA:
             result = eval_lambda(se, env);
@@ -446,69 +446,6 @@ typed_ptr* eval_car_cdr(const s_expr* se, Environment* env) {
     return result;
 }
 
-// Evaluates an s-expression whose car is the built-in function 
-//   BUILTIN_LISTPRED.
-// This function takes one argument, which is evaluated.
-// There is no restriction on the type of the argument.
-// Returns a typed_ptr containing an error code (if the evaluation failed) or
-//   the (boolean) truth value of the predicate (if it succeeded).
-// In either case, the returned typed_ptr is the caller's responsibility to
-//   free, and is safe to (shallow) free without harm to the symbol table, list
-//   area, or any other object.
-typed_ptr* eval_list_pred(const s_expr* se, Environment* env) {
-    typed_ptr* result = NULL;
-    typed_ptr* args_tp = collect_args(se, env, 1, 1, true);
-    if (args_tp->type == TYPE_ERROR) {
-        result = args_tp;
-    } else {
-        typed_ptr* arg = args_tp->ptr.se_ptr->car;
-        result = create_atom_tp(TYPE_BOOL, 1);
-        if (arg->type != TYPE_SEXPR) {
-            result->ptr.idx = 0;
-        } else {
-            s_expr* arg_se = arg->ptr.se_ptr;
-            while (!is_empty_list(arg_se)) {
-                if (arg_se->cdr->type != TYPE_SEXPR) {
-                    result->ptr.idx = 0;
-                    break;
-                }
-                arg_se = s_expr_next(arg_se);
-            }
-        }
-        delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
-        free(args_tp);
-    }
-    return result;
-}
-
-// Evaluates an s-expression whose car is a built-in function in the set
-//   {BUILTIN_xxxxPRED | xxxx in {PAIR, BOOL, NUM, VOID}}.
-// For convenience, the (C, not Lisp) function takes the type to be tested
-//   against as an additional parameter.
-// This function takes one argument, which is evaluated.
-// There is no restriction on the type of the argument.
-// Returns a typed_ptr containing an error code (if the evaluation failed) or
-//   the (boolean) truth value of the predicate (if it succeeded).
-// In either case, the returned typed_ptr is the caller's responsibility to
-//   free, and is safe to (shallow) free without harm to the symbol table, list
-//   area, or any other object.
-typed_ptr* eval_atom_pred(const s_expr* se, Environment* env, type t) {
-    typed_ptr* result = NULL;
-    typed_ptr* args_tp = collect_args(se, env, 1, 1, true);
-    if (args_tp->type == TYPE_ERROR) {
-        result = args_tp;
-    } else {
-        typed_ptr* arg = args_tp->ptr.se_ptr->car;
-        result = create_atom_tp(TYPE_BOOL, (arg->type == t) ? 1 : 0);
-        if (arg->type == TYPE_SEXPR && is_empty_list(arg->ptr.se_ptr)) {
-            result->ptr.idx = 0;
-        }
-        delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
-        free(args_tp);
-    }
-    return result;
-}
-
 // Evaluates an s-expression whose car is the built-in function BUILTIN_LIST.
 // This function takes any number of arguments, which are all evaluated.
 // There is no restriction on the type of the arguments.
@@ -661,6 +598,69 @@ typed_ptr* eval_cond(const s_expr* se, Environment* env) {
         free(args_tp);
         return result;
     }
+}
+
+// Evaluates an s-expression whose car is the built-in function 
+//   BUILTIN_LISTPRED.
+// This function takes one argument, which is evaluated.
+// There is no restriction on the type of the argument.
+// Returns a typed_ptr containing an error code (if the evaluation failed) or
+//   the (boolean) truth value of the predicate (if it succeeded).
+// In either case, the returned typed_ptr is the caller's responsibility to
+//   free, and is safe to (shallow) free without harm to the symbol table, list
+//   area, or any other object.
+typed_ptr* eval_list_pred(const s_expr* se, Environment* env) {
+    typed_ptr* result = NULL;
+    typed_ptr* args_tp = collect_args(se, env, 1, 1, true);
+    if (args_tp->type == TYPE_ERROR) {
+        result = args_tp;
+    } else {
+        typed_ptr* arg = args_tp->ptr.se_ptr->car;
+        result = create_atom_tp(TYPE_BOOL, 1);
+        if (arg->type != TYPE_SEXPR) {
+            result->ptr.idx = 0;
+        } else {
+            s_expr* arg_se = arg->ptr.se_ptr;
+            while (!is_empty_list(arg_se)) {
+                if (arg_se->cdr->type != TYPE_SEXPR) {
+                    result->ptr.idx = 0;
+                    break;
+                }
+                arg_se = s_expr_next(arg_se);
+            }
+        }
+        delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
+        free(args_tp);
+    }
+    return result;
+}
+
+// Evaluates an s-expression whose car is a built-in function in the set
+//   {BUILTIN_xxxxPRED | xxxx in {PAIR, BOOL, NUM, VOID}}.
+// For convenience, the (C, not Lisp) function takes the type to be tested
+//   against as an additional parameter.
+// This function takes one argument, which is evaluated.
+// There is no restriction on the type of the argument.
+// Returns a typed_ptr containing an error code (if the evaluation failed) or
+//   the (boolean) truth value of the predicate (if it succeeded).
+// In either case, the returned typed_ptr is the caller's responsibility to
+//   free, and is safe to (shallow) free without harm to the symbol table, list
+//   area, or any other object.
+typed_ptr* eval_atom_pred(const s_expr* se, Environment* env, type t) {
+    typed_ptr* result = NULL;
+    typed_ptr* args_tp = collect_args(se, env, 1, 1, true);
+    if (args_tp->type == TYPE_ERROR) {
+        result = args_tp;
+    } else {
+        typed_ptr* arg = args_tp->ptr.se_ptr->car;
+        result = create_atom_tp(TYPE_BOOL, (arg->type == t) ? 1 : 0);
+        if (arg->type == TYPE_SEXPR && is_empty_list(arg->ptr.se_ptr)) {
+            result->ptr.idx = 0;
+        }
+        delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
+        free(args_tp);
+    }
+    return result;
 }
 
 // Evaluates an s-expression whose car is the built-in special form
