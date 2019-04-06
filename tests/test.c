@@ -2,20 +2,7 @@
 #include "environment.h"
 #include "test_functions.h"
 
-bool end_to_end_tests() {
-    printf("end-to-end tests\n");
-    printf("----------------\n");
-    // setup
-    Environment* env = create_environment(0, 0);
-    setup_environment(env);
-    test_env* t_env = malloc(sizeof(test_env));
-    if (t_env == NULL) {
-        printf("malloc failed - aborting\n");
-    }
-    t_env->env = env;
-    t_env->passed = 0;
-    t_env->run = 0;
-    // parsing
+void end_to_end_parse_tests(test_env* t_env) {
     printf("# parsing #\n");
     e2e_atom_test("", TYPE_ERROR, EVAL_ERROR_MISSING_PROCEDURE, t_env);
     e2e_atom_test("(", TYPE_ERROR, PARSE_ERROR_UNBAL_PAREN, t_env);
@@ -23,9 +10,11 @@ bool end_to_end_tests() {
     e2e_atom_test("a", TYPE_ERROR, PARSE_ERROR_BARE_SYM, t_env);
     e2e_atom_test("()", TYPE_ERROR, EVAL_ERROR_MISSING_PROCEDURE, t_env);
     e2e_atom_test("(+ 1 1) (+ 1 1)", TYPE_ERROR, PARSE_ERROR_TOO_MANY, t_env);
-    // arithmetic
+    return;
+}
+
+void end_to_end_arithmetic_tests(test_env* t_env) {
     printf("# arithmetic #\n");
-    //     addition
     printf("## + ##\n");
     e2e_atom_test("(+ 1 2 3 4)", TYPE_NUM, 10, t_env);
     e2e_atom_test("(+ 1 1)", TYPE_NUM, 2, t_env);
@@ -33,7 +22,6 @@ bool end_to_end_tests() {
     e2e_atom_test("(+)", TYPE_NUM, 0, t_env);
     e2e_atom_test("(+ 1 #t)", TYPE_ERROR, EVAL_ERROR_NEED_NUM, t_env);
     e2e_atom_test("(+ 1 (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    //     subtraction
     printf("## - ##\n");
     e2e_atom_test("(- 10 1 2 3)", TYPE_NUM, 4, t_env);
     e2e_atom_test("(- 10 1)", TYPE_NUM, 9, t_env);
@@ -41,7 +29,6 @@ bool end_to_end_tests() {
     e2e_atom_test("(-)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(- 1 #t)", TYPE_ERROR, EVAL_ERROR_NEED_NUM, t_env);
     e2e_atom_test("(- 1 (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    //     multiplication
     printf("## * ##\n");
     e2e_atom_test("(* 2 3 4)", TYPE_NUM, 24, t_env);
     e2e_atom_test("(* 2 3)", TYPE_NUM, 6, t_env);
@@ -49,7 +36,6 @@ bool end_to_end_tests() {
     e2e_atom_test("(*)", TYPE_NUM, 1, t_env);
     e2e_atom_test("(* 1 #t)", TYPE_ERROR, EVAL_ERROR_NEED_NUM, t_env);
     e2e_atom_test("(* 1 (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    //     division
     printf("## / ##\n");
     e2e_atom_test("(/ 100 4 5)", TYPE_NUM, 5, t_env);
     e2e_atom_test("(/ 100 4)", TYPE_NUM, 25, t_env);
@@ -58,9 +44,11 @@ bool end_to_end_tests() {
     e2e_atom_test("(/ 100 0)", TYPE_ERROR, EVAL_ERROR_DIV_ZERO, t_env);
     e2e_atom_test("(/ 1 #t)", TYPE_ERROR, EVAL_ERROR_NEED_NUM, t_env);
     e2e_atom_test("(/ 1 (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    // numerical comparisons
+    return;
+}
+
+void end_to_end_numerical_comparison_tests(test_env* t_env) {
     printf("# comparisons #\n");
-    //     =
     printf("## = ##\n");
     e2e_atom_test("(= 1 1 (- 2 1))", TYPE_BOOL, 1, t_env);
     e2e_atom_test("(= 1 1)", TYPE_BOOL, 1, t_env);
@@ -69,7 +57,6 @@ bool end_to_end_tests() {
     e2e_atom_test("(=)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(= 1 #t)", TYPE_ERROR, EVAL_ERROR_NEED_NUM, t_env);
     e2e_atom_test("(= 1 (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    //     <
     printf("## < ##\n");
     e2e_atom_test("(< 1 2)", TYPE_BOOL, 1, t_env);
     e2e_atom_test("(< 1 2 3)", TYPE_BOOL, 1, t_env);
@@ -79,7 +66,6 @@ bool end_to_end_tests() {
     e2e_atom_test("(<)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(< 1 #t)", TYPE_ERROR, EVAL_ERROR_NEED_NUM, t_env);
     e2e_atom_test("(< 1 (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    //     >
     printf("## > ##\n");
     e2e_atom_test("(> 2 1)", TYPE_BOOL, 1, t_env);
     e2e_atom_test("(> 3 2 1)", TYPE_BOOL, 1, t_env);
@@ -89,7 +75,6 @@ bool end_to_end_tests() {
     e2e_atom_test("(>)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(> 1 #t)", TYPE_ERROR, EVAL_ERROR_NEED_NUM, t_env);
     e2e_atom_test("(> 1 (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    //     <=
     printf("## <= ##\n");
     e2e_atom_test("(<= 1 2)", TYPE_BOOL, 1, t_env);
     e2e_atom_test("(<= 1 1)", TYPE_BOOL, 1, t_env);
@@ -101,7 +86,6 @@ bool end_to_end_tests() {
     e2e_atom_test("(<=)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(<= 1 #t)", TYPE_ERROR, EVAL_ERROR_NEED_NUM, t_env);
     e2e_atom_test("(<= 1 (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    //     >=
     printf("## >= ##\n");
     e2e_atom_test("(>= 2 1)", TYPE_BOOL, 1, t_env);
     e2e_atom_test("(>= 2 2)", TYPE_BOOL, 1, t_env);
@@ -113,13 +97,18 @@ bool end_to_end_tests() {
     e2e_atom_test("(>=)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(>= 1 #t)", TYPE_ERROR, EVAL_ERROR_NEED_NUM, t_env);
     e2e_atom_test("(>= 1 (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    // exit
+    return;
+}
+
+void end_to_end_exit_tests(test_env* t_env) {
     printf("# exit #\n");
     e2e_atom_test("(exit)", TYPE_ERROR, EVAL_ERROR_EXIT, t_env);
     e2e_atom_test("(exit 1)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
-    // predicates
+    return;
+}
+
+void end_to_end_predicate_tests(test_env* t_env) {
     printf("# predicates #\n");
-    //     pair?
     printf("## pair? ##\n");
     e2e_atom_test("(pair? 1)", TYPE_BOOL, 0, t_env);
     e2e_atom_test("(pair? #t)", TYPE_BOOL, 0, t_env);
@@ -130,7 +119,6 @@ bool end_to_end_tests() {
     e2e_atom_test("(pair?)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(pair? 1 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("(pair? (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    //     list?
     printf("## list? ##\n");
     e2e_atom_test("(list? 1)", TYPE_BOOL, 0, t_env);
     e2e_atom_test("(list? #t)", TYPE_BOOL, 0, t_env);
@@ -141,7 +129,6 @@ bool end_to_end_tests() {
     e2e_atom_test("(list?)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(list? 1 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("(list? (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    //     number?
     printf("## number? ##\n");
     e2e_atom_test("(number? 1)", TYPE_BOOL, 1, t_env);
     e2e_atom_test("(number? #t)", TYPE_BOOL, 0, t_env);
@@ -152,7 +139,6 @@ bool end_to_end_tests() {
     e2e_atom_test("(number?)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(number? 1 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("(number? (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    //     boolean?
     printf("## boolean? ##\n");
     e2e_atom_test("(boolean? 1)", TYPE_BOOL, 0, t_env);
     e2e_atom_test("(boolean? #t)", TYPE_BOOL, 1, t_env);
@@ -163,7 +149,6 @@ bool end_to_end_tests() {
     e2e_atom_test("(boolean?)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(boolean? 1 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("(boolean? (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    //     void?
     printf("## void? ##\n");
     e2e_atom_test("(void? 1)", TYPE_BOOL, 0, t_env);
     e2e_atom_test("(void? #t)", TYPE_BOOL, 0, t_env);
@@ -174,9 +159,11 @@ bool end_to_end_tests() {
     e2e_atom_test("(void?)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(void? 1 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("(void? (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    // boolean operators
+    return;
+}
+
+void end_to_end_boolean_operation_tests(test_env* t_env) {
     printf("# boolean operators #\n");
-    //     and
     printf("## and ##\n");
     e2e_atom_test("(and)", TYPE_BOOL, 1, t_env);
     e2e_atom_test("(and 1)", TYPE_NUM, 1, t_env);
@@ -192,7 +179,6 @@ bool end_to_end_tests() {
     e2e_atom_test("(and #f #t #t)", TYPE_BOOL, 0, t_env);
     e2e_atom_test("(and (-) #t #t)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(and #t (-) #t)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    //     or
     printf("## or ##\n");
     e2e_atom_test("(or)", TYPE_BOOL, 0, t_env);
     e2e_atom_test("(or 1)", TYPE_NUM, 1, t_env);
@@ -209,7 +195,6 @@ bool end_to_end_tests() {
     e2e_atom_test("(or #f #f #f)", TYPE_BOOL, 0, t_env);
     e2e_atom_test("(or (-) #t #t)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(or #f (-) #t)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    //     not
     printf("## not ##\n");
     e2e_atom_test("(not 1)", TYPE_BOOL, 0, t_env);
     e2e_atom_test("(not 0)", TYPE_BOOL, 0, t_env);
@@ -221,7 +206,10 @@ bool end_to_end_tests() {
     e2e_atom_test("(not)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(not #t #t)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("(not (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    // car/cdr
+    return;
+}
+
+void end_to_end_car_cdr_tests(test_env* t_env) {
     printf("# car & cdr #\n");
     e2e_atom_test("(car (cons 1 2))", TYPE_NUM, 1, t_env);
     e2e_atom_test("(cdr (cons 1 2))", TYPE_NUM, 2, t_env);
@@ -240,7 +228,10 @@ bool end_to_end_tests() {
     e2e_atom_test("(cdr null)", TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE, t_env);
     e2e_atom_test("(car (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(cdr (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    // cond
+    return;
+}
+
+void end_to_end_cond_tests(test_env* t_env) {
     printf("# cond #\n");
     e2e_atom_test("(cond)", TYPE_VOID, 0, t_env);
     e2e_atom_test("(cond #t)", TYPE_ERROR, EVAL_ERROR_BAD_SYNTAX, t_env);
@@ -256,29 +247,43 @@ bool end_to_end_tests() {
     e2e_atom_test("(cond (#t (+ 1 1) (+ 2 2)))", TYPE_NUM, 4, t_env);
     e2e_atom_test("(cond ((-) 1))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(cond (#t (-)))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    // cons
-    printf("# cons #\n");
-    e2e_atom_test("(cons)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    e2e_atom_test("(cons 1)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
+    return;
+}
+
+void end_to_end_cons_tests(test_env* t_env) {
     typed_ptr* num_1 = create_atom_tp(TYPE_NUM, 1);
     typed_ptr* num_2 = create_atom_tp(TYPE_NUM, 2);
     typed_ptr* cons_test_num_pair[] = {num_1, num_2};
+    printf("# cons #\n");
+    e2e_atom_test("(cons)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
+    e2e_atom_test("(cons 1)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_pair_test("(cons 1 2)", cons_test_num_pair, 2, t_env);
     e2e_sexpr_test("(cons 1 null)", cons_test_num_pair, 1, t_env);
     e2e_sexpr_test("(cons 1 (cons 2 null))", cons_test_num_pair, 2, t_env);
     e2e_atom_test("(cons 1 2 3)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("(cons (-) 2)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(cons 1 (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    // list
+    free(num_1);
+    free(num_2);
+    return;
+}
+
+void end_to_end_list_tests(test_env* t_env) {
+    typed_ptr* num_1 = create_atom_tp(TYPE_NUM, 1);
+    typed_ptr* num_2 = create_atom_tp(TYPE_NUM, 2);
+    typed_ptr* list_test_num_pair[] = {num_1, num_2};
     printf("# list #\n");
-    e2e_sexpr_test("(list)", cons_test_num_pair, 0, t_env);
-    e2e_sexpr_test("(list 1)", cons_test_num_pair, 1, t_env);
-    e2e_sexpr_test("(list (- 3 2) (+ 1 1))", cons_test_num_pair, 2, t_env);
+    e2e_sexpr_test("(list)", list_test_num_pair, 0, t_env);
+    e2e_sexpr_test("(list 1)", list_test_num_pair, 1, t_env);
+    e2e_sexpr_test("(list (- 3 2) (+ 1 1))", list_test_num_pair, 2, t_env);
     e2e_atom_test("(list (-) 2 3)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(list 1 (-) 3)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     free(num_1);
     free(num_2);
-    // lambda
+    return;
+}
+
+void end_to_end_lambda_tests(test_env* t_env) {
     printf("# lambda #\n");
     e2e_atom_test("(lambda)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(lambda 1)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
@@ -304,7 +309,10 @@ bool end_to_end_tests() {
     e2e_atom_test(lam_1_few, TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     char* lam_1_many = "((lambda (x y) (* x y)) 3 4 5)";
     e2e_atom_test(lam_1_many, TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
-    // set!
+    return;
+}
+
+void end_to_end_setvar_tests(test_env* t_env) {
     printf("# set! #\n");
     e2e_atom_test("(set!)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(set! x)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
@@ -322,7 +330,10 @@ bool end_to_end_tests() {
                             EVAL_ERROR_FEW_ARGS, t_env);
     e2e_multiline_atom_test(set_lines, 2, TYPE_VOID, 0, t_env);
     e2e_multiline_atom_test(set_lines, 3, TYPE_NUM, 3, t_env);
-    // define
+    return;
+}
+
+void end_to_end_define_tests(test_env* t_env) {
     printf("# define #\n");
     e2e_atom_test("(define)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(define x)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
@@ -437,6 +448,37 @@ bool end_to_end_tests() {
                             TYPE_ERROR, \
                             EVAL_ERROR_NEED_NUM, \
                             t_env);
+    return;
+}
+
+bool end_to_end_tests() {
+    printf("end-to-end tests\n");
+    printf("----------------\n");
+    // setup
+    Environment* env = create_environment(0, 0);
+    setup_environment(env);
+    test_env* t_env = malloc(sizeof(test_env));
+    if (t_env == NULL) {
+        printf("malloc failed - aborting\n");
+        exit(-1);
+    }
+    t_env->env = env;
+    t_env->passed = 0;
+    t_env->run = 0;
+    // tests
+    end_to_end_parse_tests(t_env);
+    end_to_end_arithmetic_tests(t_env);
+    end_to_end_numerical_comparison_tests(t_env);
+    end_to_end_exit_tests(t_env);
+    end_to_end_predicate_tests(t_env);
+    end_to_end_boolean_operation_tests(t_env);
+    end_to_end_car_cdr_tests(t_env);
+    end_to_end_cond_tests(t_env);
+    end_to_end_cons_tests(t_env);
+    end_to_end_list_tests(t_env);
+    end_to_end_lambda_tests(t_env);
+    end_to_end_setvar_tests(t_env);
+    end_to_end_define_tests(t_env);
     // reporting
     printf("-----\n");
     printf("tests passed/run: %u/%u\n", t_env->passed, t_env->run);
@@ -450,5 +492,7 @@ int main() {
     bool ok = end_to_end_tests();
     printf("\n----------------\n");
     printf("testing complete\n");
-    return (ok) ? 0 : 64; // 64 is a generic "failure" exit code in sysexits.h
+    int PASS = 0;
+    int FAIL = 64; // 64 is a generic "failure" exit code in sysexits.h
+    return (ok) ? PASS : FAIL;
 }
