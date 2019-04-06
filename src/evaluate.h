@@ -39,10 +39,10 @@ typed_ptr* eval_lambda(const s_expr* se, Environment* env);
 Symbol_Node* collect_parameters(typed_ptr* tp, Environment* env);
 Symbol_Node* bind_args(Environment* env, Function_Node* fn, typed_ptr* args);
 Environment* make_eval_env(Environment* env, Symbol_Node* bound_args);
-typed_ptr* collect_args(const s_expr* se, \
-                        Environment* env, \
-                        int min_args, \
-                        int max_args, \
-                        bool evaluate_all_args);
+typed_ptr* collect_arguments(const s_expr* se, \
+                             Environment* env, \
+                             int min_args, \
+                             int max_args, \
+                             bool evaluate_all_args);
 
 #endif

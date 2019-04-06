@@ -164,7 +164,7 @@ typed_ptr* eval_function(const s_expr* se, Environment* env) {
     if (fn == NULL) {
         return create_error_tp(EVAL_ERROR_UNDEF_FUNCTION);
     }
-    typed_ptr* args_tp = collect_args(se, env, 0, -1, true);
+    typed_ptr* args_tp = collect_arguments(se, env, 0, -1, true);
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
@@ -202,7 +202,7 @@ typed_ptr* eval_arithmetic(const s_expr* se, Environment* env) {
     builtin_code op = se->car->ptr.idx;
     typed_ptr* result = NULL;
     int min_args = (op == BUILTIN_ADD || op == BUILTIN_MUL) ? 0 : 1;
-    typed_ptr* args_tp = collect_args(se, env, min_args, -1, true);
+    typed_ptr* args_tp = collect_arguments(se, env, min_args, -1, true);
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
@@ -267,7 +267,7 @@ typed_ptr* eval_arithmetic(const s_expr* se, Environment* env) {
 typed_ptr* eval_comparison(const s_expr* se, Environment* env) {
     builtin_code op = se->car->ptr.idx;
     typed_ptr* result = NULL;
-    typed_ptr* args_tp = collect_args(se, env, 2, -1, true);
+    typed_ptr* args_tp = collect_arguments(se, env, 2, -1, true);
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
@@ -333,7 +333,7 @@ typed_ptr* eval_comparison(const s_expr* se, Environment* env) {
 //   area, or any other object.
 typed_ptr* eval_define(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
-    typed_ptr* args_tp = collect_args(se, env, 2, 2, false);
+    typed_ptr* args_tp = collect_arguments(se, env, 2, 2, false);
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
@@ -423,7 +423,7 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
 //   area, or any other object.
 typed_ptr* eval_set_variable(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
-    typed_ptr* args_tp = collect_args(se, env, 2, 2, false);
+    typed_ptr* args_tp = collect_arguments(se, env, 2, 2, false);
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
@@ -455,7 +455,7 @@ typed_ptr* eval_set_variable(const s_expr* se, Environment* env) {
 
 typed_ptr* eval_exit(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
-    typed_ptr* args_tp = collect_args(se, env, 0, 0, false);
+    typed_ptr* args_tp = collect_arguments(se, env, 0, 0, false);
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
@@ -468,7 +468,7 @@ typed_ptr* eval_exit(const s_expr* se, Environment* env) {
 
 typed_ptr* eval_cons(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
-    typed_ptr* args_tp = collect_args(se, env, 2, 2, true);
+    typed_ptr* args_tp = collect_arguments(se, env, 2, 2, true);
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
@@ -495,7 +495,7 @@ typed_ptr* eval_cons(const s_expr* se, Environment* env) {
 //   area, or any other object.
 typed_ptr* eval_car_cdr(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
-    typed_ptr* args_tp = collect_args(se, env, 1, 1, true);
+    typed_ptr* args_tp = collect_arguments(se, env, 1, 1, true);
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
@@ -526,12 +526,12 @@ typed_ptr* eval_car_cdr(const s_expr* se, Environment* env) {
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
 typed_ptr* eval_list_construction(const s_expr* se, Environment* env) {
-    return collect_args(se, env, 0, -1, true);
+    return collect_arguments(se, env, 0, -1, true);
 }
 
 typed_ptr* eval_and_or(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
-    typed_ptr* args_tp = collect_args(se, env, 0, -1, true);
+    typed_ptr* args_tp = collect_arguments(se, env, 0, -1, true);
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
@@ -558,7 +558,7 @@ typed_ptr* eval_and_or(const s_expr* se, Environment* env) {
 
 typed_ptr* eval_not(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
-    typed_ptr* args_tp = collect_args(se, env, 1, 1, true);
+    typed_ptr* args_tp = collect_arguments(se, env, 1, 1, true);
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
@@ -593,7 +593,7 @@ typed_ptr* eval_not(const s_expr* se, Environment* env) {
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
 typed_ptr* eval_cond(const s_expr* se, Environment* env) {
-    typed_ptr* args_tp = collect_args(se, env, 0, -1, false);
+    typed_ptr* args_tp = collect_arguments(se, env, 0, -1, false);
     if (args_tp->type == TYPE_ERROR) {
         return args_tp;
     } else {
@@ -680,7 +680,7 @@ typed_ptr* eval_cond(const s_expr* se, Environment* env) {
 //   area, or any other object.
 typed_ptr* eval_list_pred(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
-    typed_ptr* args_tp = collect_args(se, env, 1, 1, true);
+    typed_ptr* args_tp = collect_arguments(se, env, 1, 1, true);
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
@@ -717,7 +717,7 @@ typed_ptr* eval_list_pred(const s_expr* se, Environment* env) {
 //   area, or any other object.
 typed_ptr* eval_atom_pred(const s_expr* se, Environment* env, type t) {
     typed_ptr* result = NULL;
-    typed_ptr* args_tp = collect_args(se, env, 1, 1, true);
+    typed_ptr* args_tp = collect_arguments(se, env, 1, 1, true);
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
@@ -746,7 +746,7 @@ typed_ptr* eval_atom_pred(const s_expr* se, Environment* env, type t) {
 //   safely be (shallow) freed.
 typed_ptr* eval_lambda(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
-    typed_ptr* args_tp = collect_args(se, env, 2, 2, false);
+    typed_ptr* args_tp = collect_arguments(se, env, 2, 2, false);
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
@@ -895,11 +895,11 @@ Environment* make_eval_env(Environment* env, Symbol_Node* bound_args) {
     return eval_env;
 }
 
-typed_ptr* collect_args(const s_expr* se, \
-                        Environment* env, \
-                        int min_args, \
-                        int max_args, \
-                        bool evaluate_all_args) {
+typed_ptr* collect_arguments(const s_expr* se, \
+                             Environment* env, \
+                             int min_args, \
+                             int max_args, \
+                             bool evaluate_all_args) {
     int seen = 0;
     if (is_pair(se)) {
         return create_error_tp(EVAL_ERROR_ILLEGAL_PAIR);
