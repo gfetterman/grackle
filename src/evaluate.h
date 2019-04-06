@@ -15,7 +15,7 @@ typed_ptr* evaluate(const s_expr* se, Environment* env);
 
 typed_ptr* eval_builtin(const s_expr* se, Environment* env);
 typed_ptr* eval_sexpr(const s_expr* se, Environment* env);
-typed_ptr* eval_user_function(const s_expr* se, Environment* env);
+typed_ptr* eval_function(const s_expr* se, Environment* env);
 
 // evaluating built-in functions and special forms
 

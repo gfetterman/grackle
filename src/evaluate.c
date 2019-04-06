@@ -38,7 +38,7 @@ typed_ptr* evaluate(const s_expr* se, Environment* env) {
                 result = value_lookup_index(env, se->car);
                 break;
             case TYPE_FUNCTION:
-                result = eval_user_function(se, env);
+                result = eval_function(se, env);
                 break;
             default:
                 result = create_error_tp(EVAL_ERROR_UNDEF_TYPE);
@@ -114,6 +114,75 @@ typed_ptr* eval_builtin(const s_expr* se, Environment* env) {
         default:
             result = create_error_tp(EVAL_ERROR_UNDEF_BUILTIN);
             break;
+    }
+    return result;
+}
+
+typed_ptr* eval_sexpr(const s_expr* se, Environment* env) {
+    typed_ptr* result = NULL;
+    s_expr* se_to_eval = se->car->ptr.se_ptr;
+    if (is_empty_list(se_to_eval)) {
+        result = create_error_tp(EVAL_ERROR_MISSING_PROCEDURE);
+    } else {
+        s_expr* empty = create_empty_s_expr();
+        s_expr* dummy_se = create_s_expr(se_to_eval->car, \
+                                         create_s_expr_tp(empty));
+        typed_ptr* fn = evaluate(dummy_se, env);
+        free(s_expr_next(dummy_se));
+        free(dummy_se->cdr);
+        free(dummy_se);
+        if (fn->type == TYPE_ERROR) {
+            result = fn;
+        } else {
+            if (fn->type == TYPE_BUILTIN || \
+                fn->type == TYPE_FUNCTION) {
+                dummy_se = create_s_expr(fn, se_to_eval->cdr);
+                result = evaluate(dummy_se, env);
+                free(dummy_se);
+            } else {
+                result = create_error_tp(EVAL_ERROR_CAR_NOT_CALLABLE);
+            }
+            free(fn);
+        }
+    }
+    return result;
+}
+
+// Evaluates an s-expression whose car has type TYPE_FUNCTION.
+// The s-expression's cdr must contain the proper number of arguments for the
+//   user function being invoked. Any mismatch, or error arising during
+//   evaluation of any of the members of the cdr, returns an error.
+// Returns a typed_ptr containing an error code (if any argument evaluation
+//   failed, or if an error arising during evaluation of the function body) or
+//   the result of evaluating the function body using the provided arguments.
+// In either case, the returned typed_ptr is the caller's responsibility to
+//   free, and is safe to (shallow) free without harm to the symbol table, list
+//   area, or any other object.
+typed_ptr* eval_function(const s_expr* se, Environment* env) {
+    typed_ptr* result = NULL;
+    Function_Node* fn = function_lookup_index(env, se->car);
+    if (fn == NULL) {
+        return create_error_tp(EVAL_ERROR_UNDEF_FUNCTION);
+    }
+    typed_ptr* args_tp = collect_args(se, env, 0, -1, true);
+    if (args_tp->type == TYPE_ERROR) {
+        result = args_tp;
+    } else {
+        Symbol_Node* arg_vals = bind_args(env, fn, args_tp);
+        if (arg_vals != NULL && arg_vals->type == TYPE_ERROR) {
+            result = create_error_tp(arg_vals->value.idx);
+        } else {
+            Environment* bound_env = make_eval_env(fn->closure_env, arg_vals);
+            s_expr* empty = create_empty_s_expr();
+            s_expr* super_se = create_s_expr(copy_typed_ptr(fn->body), \
+                                             create_s_expr_tp(empty));
+            result = evaluate(super_se, bound_env);
+            delete_s_expr_recursive(super_se, false);
+            delete_environment_shared(bound_env);
+        }
+        delete_symbol_node_list(arg_vals);
+        delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
+        free(args_tp);
     }
     return result;
 }
@@ -752,75 +821,6 @@ Symbol_Node* collect_parameters(typed_ptr* tp, Environment* env) {
         }
     }
     return params;
-}
-
-typed_ptr* eval_sexpr(const s_expr* se, Environment* env) {
-    typed_ptr* result = NULL;
-    s_expr* se_to_eval = se->car->ptr.se_ptr;
-    if (is_empty_list(se_to_eval)) {
-        result = create_error_tp(EVAL_ERROR_MISSING_PROCEDURE);
-    } else {
-        s_expr* empty = create_empty_s_expr();
-        s_expr* dummy_se = create_s_expr(se_to_eval->car, \
-                                         create_s_expr_tp(empty));
-        typed_ptr* fn = evaluate(dummy_se, env);
-        free(s_expr_next(dummy_se));
-        free(dummy_se->cdr);
-        free(dummy_se);
-        if (fn->type == TYPE_ERROR) {
-            result = fn;
-        } else {
-            if (fn->type == TYPE_BUILTIN || \
-                fn->type == TYPE_FUNCTION) {
-                dummy_se = create_s_expr(fn, se_to_eval->cdr);
-                result = evaluate(dummy_se, env);
-                free(dummy_se);
-            } else {
-                result = create_error_tp(EVAL_ERROR_CAR_NOT_CALLABLE);
-            }
-            free(fn);
-        }
-    }
-    return result;
-}
-
-// Evaluates an s-expression whose car has type TYPE_FUNCTION.
-// The s-expression's cdr must contain the proper number of arguments for the
-//   user function being invoked. Any mismatch, or error arising during
-//   evaluation of any of the members of the cdr, returns an error.
-// Returns a typed_ptr containing an error code (if any argument evaluation
-//   failed, or if an error arising during evaluation of the function body) or
-//   the result of evaluating the function body using the provided arguments.
-// In either case, the returned typed_ptr is the caller's responsibility to
-//   free, and is safe to (shallow) free without harm to the symbol table, list
-//   area, or any other object.
-typed_ptr* eval_user_function(const s_expr* se, Environment* env) {
-    typed_ptr* result = NULL;
-    Function_Node* fn = function_lookup_index(env, se->car);
-    if (fn == NULL) {
-        return create_error_tp(EVAL_ERROR_UNDEF_FUNCTION);
-    }
-    typed_ptr* args_tp = collect_args(se, env, 0, -1, true);
-    if (args_tp->type == TYPE_ERROR) {
-        result = args_tp;
-    } else {
-        Symbol_Node* arg_vals = bind_args(env, fn, args_tp);
-        if (arg_vals != NULL && arg_vals->type == TYPE_ERROR) {
-            result = create_error_tp(arg_vals->value.idx);
-        } else {
-            Environment* bound_env = make_eval_env(fn->closure_env, arg_vals);
-            s_expr* empty = create_empty_s_expr();
-            s_expr* super_se = create_s_expr(copy_typed_ptr(fn->body), \
-                                             create_s_expr_tp(empty));
-            result = evaluate(super_se, bound_env);
-            delete_s_expr_recursive(super_se, false);
-            delete_environment_shared(bound_env);
-        }
-        delete_symbol_node_list(arg_vals);
-        delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
-        free(args_tp);
-    }
-    return result;
 }
 
 // If the Function_Node's arg list is of different length than the s-expression
