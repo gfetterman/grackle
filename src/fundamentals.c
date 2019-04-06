@@ -111,3 +111,19 @@ bool is_empty_list(const s_expr* se) {
         return (se->car == NULL && se->cdr == NULL);
     }
 }
+
+bool is_false_literal(const typed_ptr* tp) {
+    return (tp->type == TYPE_BOOL && tp->ptr.idx == 0);
+}
+
+bool is_pair(const s_expr* se) {
+    if (se == NULL) {
+        printf("cannot determine pair-ness of NULL s-expression\n");
+        exit(-1);
+    }
+    if (se->cdr == NULL) {
+        printf("cannot determine pair-ness if cdr is NULL\n");
+        exit(-1);
+    }
+    return se->cdr->type != TYPE_SEXPR;
+}

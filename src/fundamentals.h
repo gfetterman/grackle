@@ -108,5 +108,7 @@ void delete_s_expr_recursive(s_expr* se, bool delete_s_expr_cars);
 s_expr* s_expr_next(const s_expr* se);
 
 bool is_empty_list(const s_expr* se);
+bool is_false_literal(const typed_ptr* tp);
+bool is_pair(const s_expr* se);
 
 #endif

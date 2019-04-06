@@ -6,7 +6,6 @@
 #include<string.h>
 
 #include "fundamentals.h"
-#include "grackle_utils.h"
 
 // symbol node
 

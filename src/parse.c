@@ -235,3 +235,46 @@ void s_expr_stack_pop(s_expr_stack** stack) {
     free(old_head);
     return;
 }
+
+// The string returned is a valid null-terminated C string.
+// The string returned is the caller's responsibility to free.
+char* substring(const char* str, unsigned int start, unsigned int end) {
+    unsigned int len = strlen(str);
+    if (str == NULL || len < (end - start)) {
+        fprintf(stderr, \
+                "fatal error: bad substring from %u to %u, for str len %u\n", \
+                start, \
+                end, \
+                len);
+        exit(-1);
+    }
+    char* ss = malloc(sizeof(char) * (end - start + 1));
+    if (ss == NULL) {
+        fprintf(stderr, "fatal error: malloc failed in substring()\n");
+        exit(-1);
+    }
+    memcpy(ss, (str + start), (sizeof(char) * (end - start)));
+    ss[end - start] = '\0';
+    return ss;
+}
+
+// Determines whether a string represents a number (rather than a symbol).
+// Currently only recognizes nonnegative integers.
+bool string_is_number(const char str[]) {
+    char c;
+    bool ok = true;
+    if (*str == '-') {
+        str++;
+    }
+    if (*str == '\0') {
+        ok = false;
+    } else {
+        while ((c = *str++)) {
+            if (c < 48 || c > 57) {
+                ok = false;
+                break;
+            }
+        }
+    }
+    return ok;
+}

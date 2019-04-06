@@ -34,5 +34,7 @@ void register_symbol(s_expr_stack** stack, \
                      Environment* env, \
                      Environment* temp_env, \
                      char* name);
+char* substring(const char* str, unsigned int start, unsigned int end);
+bool string_is_number(const char str[]);
 
 #endif

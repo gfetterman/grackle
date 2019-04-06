@@ -5,10 +5,10 @@ VPATH = src:tests
 
 all : grackle test
 
-grackle : grackle.o fundamentals.o environment.o parse.o evaluate.o grackle_io.o grackle_utils.o
+grackle : grackle.o fundamentals.o environment.o parse.o evaluate.o grackle_io.o
 	$(CC) $(CC_OPTS) $^ -o $@
 
-test : test.o fundamentals.o environment.o parse.o evaluate.o grackle_utils.o test_functions.c test_functions.h
+test : test.o fundamentals.o environment.o parse.o evaluate.o test_functions.c test_functions.h
 	$(CC) $(CC_OPTS) $^ -o $@
 
 grackle.o : grackle.c
@@ -33,7 +33,4 @@ evaluate.o : evaluate.c
 	$(CC) $(CC_OPTS) $^ -c -o $@
 
 grackle_io.o : grackle_io.c
-	$(CC) $(CC_OPTS) $^ -c -o $@
-
-grackle_utils.o : grackle_utils.c
 	$(CC) $(CC_OPTS) $^ -c -o $@

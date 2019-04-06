@@ -9,7 +9,6 @@
 #include "environment.h"
 #include "parse.h"
 #include "evaluate.h"
-#include "grackle_utils.h"
 
 typedef struct TEST_ENV {
     Environment* env;

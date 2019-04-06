@@ -7,7 +7,6 @@
 
 #include "fundamentals.h"
 #include "environment.h"
-#include "grackle_utils.h"
 
 void get_input(const char* prompt, char buffer[], unsigned int buffer_size);
 

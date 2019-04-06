@@ -7,7 +7,6 @@
 
 #include "fundamentals.h"
 #include "environment.h"
-#include "grackle_utils.h"
 
 typed_ptr* evaluate(const s_expr* se, Environment* env);
 
