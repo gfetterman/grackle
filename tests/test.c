@@ -1,6 +1,7 @@
 #include "fundamentals.h"
 #include "environment.h"
 #include "test_functions.h"
+#include "unit_tests.h"
 
 void end_to_end_parse_tests(test_env* t_env) {
     printf("# parsing #\n");
@@ -451,6 +452,47 @@ void end_to_end_define_tests(test_env* t_env) {
     return;
 }
 
+void unit_tests_fundamentals(test_env* t_env) {
+    test_create_typed_ptr(t_env);
+    test_create_atom_tp(t_env);
+    test_create_s_expr_tp(t_env);
+    test_create_error_tp(t_env);
+    test_copy_typed_ptr(t_env);
+    test_create_s_expr(t_env);
+    test_create_empty_s_expr(t_env);
+    test_s_expr_next(t_env);
+    test_is_empty_list(t_env);
+    test_is_false_literal(t_env);
+    test_is_pair(t_env);
+    test_copy_s_expr(t_env);
+    return;
+}
+
+bool unit_tests() {
+    printf("unit tests\n");
+    printf("----------------\n");
+    // setup
+    Environment* env = create_environment(0, 0);
+    setup_environment(env);
+    test_env* t_env = malloc(sizeof(test_env));
+    if (t_env == NULL) {
+        printf("malloc failed - aborting\n");
+        exit(-1);
+    }
+    t_env->env = env;
+    t_env->passed = 0;
+    t_env->run = 0;
+    // tests
+    unit_tests_fundamentals(t_env);
+    // reporting
+    printf("-----\n");
+    printf("unit tests passed/run: %u/%u\n", t_env->passed, t_env->run);
+    bool ok = (t_env->passed == t_env->run);
+    delete_environment_full(t_env->env);
+    free(t_env);
+    return ok;
+}
+
 bool end_to_end_tests() {
     printf("end-to-end tests\n");
     printf("----------------\n");
@@ -481,7 +523,7 @@ bool end_to_end_tests() {
     end_to_end_define_tests(t_env);
     // reporting
     printf("-----\n");
-    printf("tests passed/run: %u/%u\n", t_env->passed, t_env->run);
+    printf("end-to-end tests passed/run: %u/%u\n", t_env->passed, t_env->run);
     bool ok = (t_env->passed == t_env->run);
     delete_environment_full(t_env->env);
     free(t_env);
@@ -489,7 +531,9 @@ bool end_to_end_tests() {
 }
 
 int main() {
-    bool ok = end_to_end_tests();
+    bool ok = unit_tests();
+    printf("\n----------------\n");
+    ok = ok && end_to_end_tests();
     printf("\n----------------\n");
     printf("testing complete\n");
     int PASS = 0;
