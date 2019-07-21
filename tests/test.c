@@ -465,6 +465,7 @@ void unit_tests_fundamentals(test_env* t_env) {
     test_is_false_literal(t_env);
     test_is_pair(t_env);
     test_copy_s_expr(t_env);
+    test_delete_s_expr_recursive(t_env);
     return;
 }
 

@@ -261,8 +261,6 @@ void test_is_pair(test_env* te) {
     return;
 }
 
-// this function also serves as (incomplete) smoke tests for
-//   delete_s_expr_recursive(), as it's quite difficult to test by itself
 void test_copy_s_expr(test_env* te) {
     // copy(NULL) -> NULL
     s_expr* original = NULL;
@@ -343,6 +341,65 @@ void test_copy_s_expr(test_env* te) {
     delete_s_expr_recursive(original, true);
     delete_s_expr_recursive(copied, true);
     te->passed += (pass) ? 1 : 0;
+    te->run++;
+    return;
+}
+
+// these will have to remain smoke tests (plus valgrind checks)
+void test_delete_s_expr_recursive(test_env* te) {
+    // deleting a NULL se has no effect
+    s_expr* se = NULL;
+    delete_s_expr_recursive(se, true);
+    delete_s_expr_recursive(se, false);
+    // deleting a pair
+    se = create_s_expr(create_atom_tp(TYPE_NUM, 64), \
+                       create_atom_tp(TYPE_NUM, 128));
+    delete_s_expr_recursive(se, true);
+    // deleting a one-atomic-element list
+    se = create_s_expr(create_atom_tp(TYPE_NUM, 64), \
+                       create_s_expr_tp(create_empty_s_expr()));
+    delete_s_expr_recursive(se, true);
+    // deleting a multi-atomic-element list
+    se = create_empty_s_expr();
+    se = create_s_expr(create_atom_tp(TYPE_NUM, 256), create_s_expr_tp(se));
+    se = create_s_expr(create_atom_tp(TYPE_NUM, 128), create_s_expr_tp(se));
+    se = create_s_expr(create_atom_tp(TYPE_NUM, 64), create_s_expr_tp(se));
+    delete_s_expr_recursive(se, true);
+    // deleting a one-list-element list
+    s_expr* branch = create_empty_s_expr();
+    branch = create_s_expr(create_atom_tp(TYPE_NUM, 256), \
+                           create_s_expr_tp(branch));
+    branch = create_s_expr(create_atom_tp(TYPE_NUM, 128), \
+                           create_s_expr_tp(branch));
+    branch = create_s_expr(create_atom_tp(TYPE_NUM, 64), \
+                           create_s_expr_tp(branch));
+    se = create_empty_s_expr();
+    se = create_s_expr(create_atom_tp(TYPE_NUM, 1024), create_s_expr_tp(se));
+    se = create_s_expr(create_atom_tp(TYPE_NUM, 512), create_s_expr_tp(se));
+    se = create_s_expr(create_s_expr_tp(branch), create_s_expr_tp(se));
+    delete_s_expr_recursive(se, true);
+    // deleting a multi-list-element list
+    s_expr* branch_1 = create_empty_s_expr();
+    branch_1 = create_s_expr(create_atom_tp(TYPE_NUM, 256), \
+                             create_s_expr_tp(branch_1));
+    branch_1 = create_s_expr(create_atom_tp(TYPE_NUM, 128), \
+                             create_s_expr_tp(branch_1));
+    branch_1 = create_s_expr(create_atom_tp(TYPE_NUM, 64), \
+                             create_s_expr_tp(branch_1));
+    s_expr* branch_2 = create_empty_s_expr();
+    branch_2 = create_s_expr(create_atom_tp(TYPE_NUM, 2048), \
+                             create_s_expr_tp(branch_2));
+    branch_2 = create_s_expr(create_atom_tp(TYPE_NUM, 1024), \
+                             create_s_expr_tp(branch_2));
+    branch_2 = create_s_expr(create_atom_tp(TYPE_NUM, 512), \
+                             create_s_expr_tp(branch_2));
+    se = create_empty_s_expr();
+    se = create_s_expr(create_atom_tp(TYPE_NUM, 8192), create_s_expr_tp(se));
+    se = create_s_expr(create_atom_tp(TYPE_NUM, 4096), create_s_expr_tp(se));
+    se = create_s_expr(create_s_expr_tp(branch_2), create_s_expr_tp(se));
+    se = create_s_expr(create_s_expr_tp(branch_1), create_s_expr_tp(se));
+    delete_s_expr_recursive(se, true);
+    te->passed++; // if it runs (and returns no valgrind errors) it passes
     te->run++;
     return;
 }
