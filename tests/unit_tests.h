@@ -1,7 +1,12 @@
+#ifndef UNIT_TESTS_H
+#define UNIT_TESTS_H
+
 #include "fundamentals.h"
-#include "test_functions.h"
+#include "test_utils.h"
 
 // fundamentals.c
+
+void unit_tests_fundamentals(test_env* t_env);
 
 void test_create_typed_ptr(test_env* te);
 void test_create_atom_tp(test_env* te);
@@ -16,3 +21,5 @@ void test_is_false_literal(test_env* te);
 void test_is_pair(test_env* te);
 void test_copy_s_expr(test_env* te);
 void test_delete_s_expr_recursive(test_env* te);
+
+#endif

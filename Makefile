@@ -8,7 +8,7 @@ all : grackle test
 grackle : grackle.o fundamentals.o environment.o parse.o evaluate.o grackle_io.o
 	$(CC) $(CC_OPTS) $^ -o $@
 
-test : test.o fundamentals.o environment.o parse.o evaluate.o unit_tests.c unit_tests.h test_functions.c test_functions.h
+test : test.o fundamentals.o environment.o parse.o evaluate.o end_to_end_tests.o unit_tests.o test_utils.o
 	$(CC) $(CC_OPTS) $^ -o $@
 
 grackle.o : grackle.c
@@ -17,7 +17,13 @@ grackle.o : grackle.c
 test.o : test.c
 	$(CC) $(CC_OPTS) $^ -c -o $@
 
-test_functions.o : test_functions.c
+test_utils.o : test_utils.c
+	$(CC) $(CC_OPTS) $^ -c -o $@
+
+unit_tests.o : unit_tests.c
+	$(CC) $(CC_OPTS) $^ -c -o $@
+
+end_to_end_tests.o : end_to_end_tests.c
 	$(CC) $(CC_OPTS) $^ -c -o $@
 
 fundamentals.o : fundamentals.c

@@ -17,6 +17,23 @@ type type_list[NUM_BUILTIN_TYPES] = {TYPE_UNDEF, \
 tp_value TEST_NUM_TP_VAL = {.idx=TEST_NUM};
 tp_value TEST_SEXPR_TP_VAL = {.se_ptr=TEST_SEXPR};
 
+void unit_tests_fundamentals(test_env* t_env) {
+    test_create_typed_ptr(t_env);
+    test_create_atom_tp(t_env);
+    test_create_s_expr_tp(t_env);
+    test_create_error_tp(t_env);
+    test_copy_typed_ptr(t_env);
+    test_create_s_expr(t_env);
+    test_create_empty_s_expr(t_env);
+    test_s_expr_next(t_env);
+    test_is_empty_list(t_env);
+    test_is_false_literal(t_env);
+    test_is_pair(t_env);
+    test_copy_s_expr(t_env);
+    test_delete_s_expr_recursive(t_env);
+    return;
+}
+
 void test_create_typed_ptr(test_env* te) {
     typed_ptr* out = NULL;
     bool pass = 1;
@@ -80,18 +97,6 @@ void test_create_error_tp(test_env* te) {
     te->passed += pass;
     te->run++;
     return;
-}
-
-bool match_typed_ptrs(typed_ptr* first, typed_ptr* second) {
-    if (first == NULL || second == NULL) {
-        return false;
-    } else if (first->type != second->type) {
-        return false;
-    } else if (first->type == TYPE_SEXPR) {
-        return first->ptr.se_ptr == second->ptr.se_ptr;
-    } else {
-        return first->ptr.idx == second->ptr.idx;
-    }
 }
 
 void test_copy_typed_ptr(test_env* te) {
