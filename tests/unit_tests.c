@@ -14,20 +14,21 @@ type type_list[NUM_BUILTIN_TYPES] = {TYPE_UNDEF, \
                                      TYPE_FUNCTION};
 #define TEST_NUM 42
 #define TEST_SEXPR (s_expr*) 0xDEADBEEF
+tp_value TEST_NUM_TP_VAL = {.idx=TEST_NUM};
+tp_value TEST_SEXPR_TP_VAL = {.se_ptr=TEST_SEXPR};
 
 void test_create_typed_ptr(test_env* te) {
     typed_ptr* out = NULL;
     bool pass = 1;
     for (unsigned int idx = 0; pass && (idx < NUM_BUILTIN_TYPES); idx++) {
         if (type_list[idx] == TYPE_SEXPR) {
-            out = create_typed_ptr(type_list[idx], \
-                                   (tp_value){.se_ptr=TEST_SEXPR});
-            if (!check_typed_ptr(out, TYPE_SEXPR, TEST_SEXPR)) {
+            out = create_typed_ptr(type_list[idx], TEST_SEXPR_TP_VAL);
+            if (!check_typed_ptr(out, TYPE_SEXPR, TEST_SEXPR_TP_VAL)) {
                 pass = 0;
             }
         } else {
-            out = create_typed_ptr(type_list[idx], (tp_value){.idx=TEST_NUM});
-            if (!check_typed_ptr(out, type_list[idx], TEST_NUM)) {
+            out = create_typed_ptr(type_list[idx], TEST_NUM_TP_VAL);
+            if (!check_typed_ptr(out, type_list[idx], TEST_NUM_TP_VAL)) {
                 pass = 0;
             }
         }
@@ -46,7 +47,7 @@ void test_create_atom_tp(test_env* te) {
             continue;
         } else {
             out = create_atom_tp(type_list[idx], TEST_NUM);
-            if (!check_typed_ptr(out, type_list[idx], TEST_NUM)) {
+            if (!check_typed_ptr(out, type_list[idx], TEST_NUM_TP_VAL)) {
                 pass = 0;
             }
         }
@@ -60,7 +61,7 @@ void test_create_atom_tp(test_env* te) {
 void test_create_s_expr_tp(test_env* te) {
     bool pass = 1;
     typed_ptr* out = create_s_expr_tp(TEST_SEXPR);
-    if (!check_typed_ptr(out, TYPE_SEXPR, TEST_SEXPR)) {
+    if (!check_typed_ptr(out, TYPE_SEXPR, TEST_SEXPR_TP_VAL)) {
         pass = 0;
     }
     free(out);
@@ -72,7 +73,7 @@ void test_create_s_expr_tp(test_env* te) {
 void test_create_error_tp(test_env* te) {
     bool pass = 1;
     typed_ptr* out = create_error_tp(EVAL_ERROR_EXIT);
-    if (!check_typed_ptr(out, TYPE_ERROR, EVAL_ERROR_EXIT)) {
+    if (!check_typed_ptr(out, TYPE_ERROR, (tp_value){.idx=EVAL_ERROR_EXIT})) {
         pass = 0;
     }
     free(out);
