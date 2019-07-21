@@ -241,10 +241,14 @@ void test_is_false_literal(test_env* te) {
 }
 
 void test_is_pair(test_env* te) {
-    // there is a bug in the function: it doesn't allow testing of an empty list
-    s_expr* se = create_s_expr(create_atom_tp(TYPE_NUM, 64), \
-                               create_atom_tp(TYPE_NUM, 128));
+    s_expr* se = create_empty_s_expr();
     bool pass = 1;
+    if (is_pair(se)) {
+        pass = 0;
+    }
+    free(se);
+    se = create_s_expr(create_atom_tp(TYPE_NUM, 64), \
+                       create_atom_tp(TYPE_NUM, 128));
     if (!is_pair(se)) {
         pass = 0;
     }
