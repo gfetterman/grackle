@@ -22,23 +22,18 @@ void test_create_typed_ptr(test_env* te) {
         if (type_list[idx] == TYPE_SEXPR) {
             out = create_typed_ptr(type_list[idx], \
                                    (tp_value){.se_ptr=TEST_SEXPR});
-            if (out == NULL || \
-                out->type != TYPE_SEXPR || \
-                out->ptr.se_ptr != TEST_SEXPR) {
+            if (!check_typed_ptr(out, TYPE_SEXPR, TEST_SEXPR)) {
                 pass = 0;
             }
         } else {
             out = create_typed_ptr(type_list[idx], (tp_value){.idx=TEST_NUM});
-            if (out == NULL || \
-                out->type != type_list[idx] || \
-                out->ptr.idx != TEST_NUM) {
+            if (!check_typed_ptr(out, type_list[idx], TEST_NUM)) {
                 pass = 0;
             }
         }
         free(out);
-        out = NULL;
     }
-    te->passed += (pass) ? 1 : 0;
+    te->passed += pass;
     te->run++;
     return;
 }
@@ -51,16 +46,13 @@ void test_create_atom_tp(test_env* te) {
             continue;
         } else {
             out = create_atom_tp(type_list[idx], TEST_NUM);
-            if (out == NULL || \
-                out->type != type_list[idx] || \
-                out->ptr.idx != TEST_NUM) {
+            if (!check_typed_ptr(out, type_list[idx], TEST_NUM)) {
                 pass = 0;
             }
         }
         free(out);
-        out = NULL;
     }
-    te->passed += (pass) ? 1 : 0;
+    te->passed += pass;
     te->run++;
     return;
 }
@@ -68,13 +60,11 @@ void test_create_atom_tp(test_env* te) {
 void test_create_s_expr_tp(test_env* te) {
     bool pass = 1;
     typed_ptr* out = create_s_expr_tp(TEST_SEXPR);
-    if (out == NULL || \
-        out->type != TYPE_SEXPR || \
-        out->ptr.se_ptr != TEST_SEXPR) {
+    if (!check_typed_ptr(out, TYPE_SEXPR, TEST_SEXPR)) {
         pass = 0;
     }
     free(out);
-    te->passed += (pass) ? 1 : 0;
+    te->passed += pass;
     te->run++;
     return;
 }
@@ -82,67 +72,11 @@ void test_create_s_expr_tp(test_env* te) {
 void test_create_error_tp(test_env* te) {
     bool pass = 1;
     typed_ptr* out = create_error_tp(EVAL_ERROR_EXIT);
-    if (out == NULL || \
-        out->type != TYPE_ERROR || \
-        out->ptr.idx != EVAL_ERROR_EXIT) {
+    if (!check_typed_ptr(out, TYPE_ERROR, EVAL_ERROR_EXIT)) {
         pass = 0;
     }
     free(out);
-    te->passed += (pass) ? 1 : 0;
-    te->run++;
-    return;
-}
-
-void test_copy_typed_ptr(test_env* te) {
-    typed_ptr* original = create_atom_tp(TYPE_NUM, TEST_NUM);
-    typed_ptr* copied = copy_typed_ptr(original);
-    bool pass = 1;
-    if (copied == NULL || \
-        copied->type != original->type || \
-        copied->ptr.idx != original->ptr.idx) {
-        pass = 0;
-    }
-    original->ptr.idx = 100;
-    if (copied->ptr.idx != TEST_NUM) {
-        pass = 0;
-    }
-    free(original);
-    free(copied);
-    te->passed += (pass) ? 1 : 0;
-    te->run++;
-    return;
-}
-
-void test_create_s_expr(test_env* te) {
-    typed_ptr* input_car = create_atom_tp(TYPE_NUM, TEST_NUM);
-    typed_ptr* input_cdr = create_atom_tp(TYPE_NUM, 100);
-    s_expr* out = create_s_expr(input_car, input_cdr);
-    bool pass = 1;
-    if (out == NULL || \
-        out->car == NULL || \
-        out->car != input_car || \
-        out->cdr == NULL || \
-        out->cdr != input_cdr) {
-        pass = 0;
-    }
-    free(input_car);
-    free(input_cdr);
-    free(out);
-    te->passed += (pass) ? 1 : 0;
-    te->run++;
-    return;
-}
-
-void test_create_empty_s_expr(test_env* te) {
-    s_expr* out = create_empty_s_expr();
-    bool pass = 1;
-    if (out == NULL || \
-        out->car != NULL || \
-        out->cdr != NULL) {
-        pass = 0;
-    }
-    free(out);
-    te->passed += (pass) ? 1 : 0;
+    te->passed += pass;
     te->run++;
     return;
 }
@@ -157,6 +91,56 @@ bool match_typed_ptrs(typed_ptr* first, typed_ptr* second) {
     } else {
         return first->ptr.idx == second->ptr.idx;
     }
+}
+
+void test_copy_typed_ptr(test_env* te) {
+    typed_ptr* original = create_atom_tp(TYPE_NUM, TEST_NUM);
+    typed_ptr* copied = copy_typed_ptr(original);
+    bool pass = 1;
+    if (!match_typed_ptrs(original, copied)) {
+        pass = 0;
+    }
+    original->ptr.idx = 100;
+    if (match_typed_ptrs(original, copied)) {
+        pass = 0;
+    }
+    free(original);
+    free(copied);
+    te->passed += pass;
+    te->run++;
+    return;
+}
+
+void test_create_s_expr(test_env* te) {
+    typed_ptr* input_car = create_atom_tp(TYPE_NUM, TEST_NUM);
+    typed_ptr* input_cdr = create_atom_tp(TYPE_NUM, 100);
+    s_expr* out = create_s_expr(input_car, input_cdr);
+    bool pass = 1;
+    if (out == NULL || \
+        out->car != input_car || \
+        out->cdr != input_cdr) {
+        pass = 0;
+    }
+    free(input_car);
+    free(input_cdr);
+    free(out);
+    te->passed += pass;
+    te->run++;
+    return;
+}
+
+void test_create_empty_s_expr(test_env* te) {
+    s_expr* out = create_empty_s_expr();
+    bool pass = 1;
+    if (out == NULL || \
+        out->car != NULL || \
+        out->cdr != NULL) {
+        pass = 0;
+    }
+    free(out);
+    te->passed += pass;
+    te->run++;
+    return;
 }
 
 void test_s_expr_next(test_env* te) {
@@ -176,8 +160,8 @@ void test_s_expr_next(test_env* te) {
     se = create_s_expr(first_atom, create_s_expr_tp(se));
     bool pass = 1;
     s_expr* curr_se = se;
-    for (unsigned int i = 0; i < 4; i++) {
-        if (curr_se->car->ptr.idx != atom_list[i]->ptr.idx) {
+    for (unsigned int idx = 0; idx < 4; idx++) {
+        if (!match_typed_ptrs(curr_se->car, atom_list[idx])) {
             pass = 0;
         }
         curr_se = s_expr_next(curr_se);
@@ -186,7 +170,7 @@ void test_s_expr_next(test_env* te) {
         pass = 0;
     }
     delete_s_expr_recursive(se, true);
-    te->passed += (pass) ? 1 : 0;
+    te->passed += pass;
     te->run++;
     return;
 }
@@ -207,11 +191,8 @@ void test_is_empty_list(test_env* te) {
     if (is_empty_list(se)) {
         pass = 0;
     }
-    free(se->cdr->ptr.se_ptr);
-    free(se->cdr);
-    free(se->car);
-    free(se);
-    te->passed += (pass) ? 1 : 0;
+    delete_s_expr_recursive(se, true);
+    te->passed += pass;
     te->run++;
     return;
 }
@@ -235,7 +216,8 @@ void test_is_false_literal(test_env* te) {
     if (is_false_literal(tp)) {
         pass = 0;
     }
-    te->passed += (pass) ? 1 : 0;
+    free(tp);
+    te->passed += pass;
     te->run++;
     return;
 }
@@ -257,10 +239,8 @@ void test_is_pair(test_env* te) {
     if (is_pair(se)) {
         pass = 0;
     }
-    free(se->car);
-    free(se->cdr);
-    free(se);
-    te->passed += (pass) ? 1 : 0;
+    delete_s_expr_recursive(se, true);
+    te->passed += pass;
     te->run++;
     return;
 }
@@ -299,8 +279,8 @@ void test_copy_s_expr(test_env* te) {
     if (!check_pair(copied_tp, atom_list, 2, NULL)) {
         pass = 0;
     }
-    free(original);
-    free(copied);
+    delete_s_expr_recursive(original, true);
+    delete_s_expr_recursive(copied, true);
     free(copied_tp);
     // copy(one-atomic-element list) -> new one-atomic-element list
     original = create_s_expr(first_atom, \
@@ -310,8 +290,8 @@ void test_copy_s_expr(test_env* te) {
     if (!check_sexpr(copied_tp, atom_list, 1, NULL)) {
         pass = 0;
     }
-    free(original);
-    free(copied);
+    delete_s_expr_recursive(original, true);
+    delete_s_expr_recursive(copied, true);
     free(copied_tp);
     // copy(multi-atomic-element list) -> new multi-atomic-element list
     original = create_empty_s_expr();
@@ -344,7 +324,7 @@ void test_copy_s_expr(test_env* te) {
     }
     delete_s_expr_recursive(original, true);
     delete_s_expr_recursive(copied, true);
-    te->passed += (pass) ? 1 : 0;
+    te->passed += pass;
     te->run++;
     return;
 }
@@ -403,7 +383,7 @@ void test_delete_s_expr_recursive(test_env* te) {
     se = create_s_expr(create_s_expr_tp(branch_2), create_s_expr_tp(se));
     se = create_s_expr(create_s_expr_tp(branch_1), create_s_expr_tp(se));
     delete_s_expr_recursive(se, true);
-    te->passed++; // if it runs (and returns no valgrind errors) it passes
+    te->passed++; // if it runs (and produces no valgrind errors) it passes
     te->run++;
     return;
 }
