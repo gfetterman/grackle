@@ -205,6 +205,10 @@ void test_copy_s_expr(test_env* te) {
     free(copied_tp);
     printf("copy(pair) ok\n");
     // copy(one-atomic-element list) -> new one-atomic-element list
+    first_atom = create_atom_tp(TYPE_NUM, first_value);
+    second_atom = create_atom_tp(TYPE_NUM, second_value);
+    atom_list[0] = first_atom;
+    atom_list[1] = second_atom;
     original = create_s_expr(first_atom, \
                              create_s_expr_tp(create_empty_s_expr()));
     copied = copy_s_expr(original);
@@ -217,6 +221,8 @@ void test_copy_s_expr(test_env* te) {
     free(copied_tp);
     printf("copy 1-elt list ok\n");
     // copy(multi-atomic-element list) -> new multi-atomic-element list
+    first_atom = create_atom_tp(TYPE_NUM, first_value);
+    atom_list[0] = first_atom;
     original = create_empty_s_expr();
     original = create_s_expr(fourth_atom, create_s_expr_tp(original));
     original = create_s_expr(third_atom, create_s_expr_tp(original));
@@ -232,6 +238,14 @@ void test_copy_s_expr(test_env* te) {
     free(copied_tp);
     printf("copy many-elt list ok\n");
     // copy(list with list elements) -> deep copy of list elements
+    first_atom = create_atom_tp(TYPE_NUM, first_value);
+    second_atom = create_atom_tp(TYPE_NUM, second_value);
+    third_atom = create_atom_tp(TYPE_NUM, third_value);
+    fourth_atom = create_atom_tp(TYPE_NUM, fourth_value);
+    atom_list[0] = first_atom;
+    atom_list[1] = second_atom;
+    atom_list[2] = third_atom;
+    atom_list[3] = fourth_atom;
     original = create_empty_s_expr();
     original = create_s_expr(fourth_atom, create_s_expr_tp(original));
     original = create_s_expr(third_atom, create_s_expr_tp(original));
