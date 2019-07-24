@@ -259,7 +259,7 @@ char* substring(const char* str, unsigned int start, unsigned int end) {
 }
 
 // Determines whether a string represents a number (rather than a symbol).
-// Currently only recognizes nonnegative integers.
+// Currently only recognizes integers.
 bool string_is_number(const char str[]) {
     char c;
     bool ok = true;
