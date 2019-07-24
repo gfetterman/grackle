@@ -24,6 +24,7 @@ void unit_tests_fundamentals(test_env* t_env) {
     test_copy_typed_ptr(t_env);
     test_create_s_expr(t_env);
     test_create_empty_s_expr(t_env);
+    printf("finished create_empty_s_expr() tests\n");
     test_copy_s_expr(t_env);
     test_delete_s_expr_recursive(t_env);
     test_s_expr_next(t_env);
@@ -171,6 +172,7 @@ void test_copy_s_expr(test_env* te) {
     if (copied != NULL) {
         pass = 0;
     }
+    printf("copy(NULL) ok\n");
     // copy(empty s-expression) -> new empty s-expression
     original = create_empty_s_expr();
     copied = copy_s_expr(original);
@@ -181,6 +183,7 @@ void test_copy_s_expr(test_env* te) {
     }
     free(original);
     free(copied);
+    printf("copy(empty) ok\n");
     // copy(pair of atomic typed pointers) -> new pair of atomic typed pointers
     int first_value = 64;
     int second_value = 128;
@@ -200,6 +203,7 @@ void test_copy_s_expr(test_env* te) {
     delete_s_expr_recursive(original, true);
     delete_s_expr_recursive(copied, true);
     free(copied_tp);
+    printf("copy(pair) ok\n");
     // copy(one-atomic-element list) -> new one-atomic-element list
     original = create_s_expr(first_atom, \
                              create_s_expr_tp(create_empty_s_expr()));
