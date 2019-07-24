@@ -4,7 +4,7 @@
 #include "unit_tests.h"
 #include "end_to_end_tests.h"
 
-bool unit_tests() {
+test_env* unit_tests() {
     printf("unit tests\n");
     printf("----------------\n");
     // setup
@@ -20,16 +20,14 @@ bool unit_tests() {
     t_env->run = 0;
     // tests
     unit_tests_fundamentals(t_env);
-    // reporting
-    printf("-----\n");
-    printf("unit tests passed/run: %u/%u\n", t_env->passed, t_env->run);
-    bool ok = (t_env->passed == t_env->run);
+    unit_tests_environment(t_env);
+    // cleanup
     delete_environment_full(t_env->env);
-    free(t_env);
-    return ok;
+    t_env->env = NULL;
+    return t_env;
 }
 
-bool end_to_end_tests() {
+test_env* end_to_end_tests() {
     printf("end-to-end tests\n");
     printf("----------------\n");
     // setup
@@ -57,22 +55,33 @@ bool end_to_end_tests() {
     end_to_end_lambda_tests(t_env);
     end_to_end_setvar_tests(t_env);
     end_to_end_define_tests(t_env);
-    // reporting
-    printf("-----\n");
-    printf("end-to-end tests passed/run: %u/%u\n", t_env->passed, t_env->run);
-    bool ok = (t_env->passed == t_env->run);
+    // cleanup
     delete_environment_full(t_env->env);
-    free(t_env);
-    return ok;
+    t_env->env = NULL;
+    return t_env;
 }
 
 int main() {
-    bool ok = unit_tests();
     printf("\n----------------\n");
-    ok = ok && end_to_end_tests();
+    test_env* unit_test_results = unit_tests();
+    printf("\n----------------\n");
+    test_env* e2e_test_results = end_to_end_tests();
+    printf("\n----------------\n");
+    printf("\ntest results");
+    printf("\n------------\n");
+    printf("unit tests passed/run: %u/%u\n", \
+           unit_test_results->passed, \
+           unit_test_results->run);
+    printf("end-to-end tests passed/run: %u/%u\n", \
+           e2e_test_results->passed, \
+           e2e_test_results->run);
     printf("\n----------------\n");
     printf("testing complete\n");
     int PASS = 0;
     int FAIL = 64; // 64 is a generic "failure" exit code in sysexits.h
+    bool ok = (unit_test_results->passed == unit_test_results->run && \
+               e2e_test_results->passed == e2e_test_results->run);
+    free(unit_test_results);
+    free(e2e_test_results);
     return (ok) ? PASS : FAIL;
 }
