@@ -92,3 +92,13 @@ bool match_typed_ptrs(typed_ptr* first, typed_ptr* second) {
         return first->ptr.idx == second->ptr.idx;
     }
 }
+
+void print_test_announce(char function[]) {
+    printf("unit test: %-40s", function);
+    return;
+}
+
+void print_test_result(bool pass) {
+    printf("%s\n", (pass) ? "PASSED" : "FAILED <=");
+    return;
+}

@@ -30,4 +30,7 @@ bool check_sexpr(typed_ptr* tp, \
 
 bool match_typed_ptrs(typed_ptr* first, typed_ptr* second);
 
+void print_test_announce(char function[]);
+void print_test_result(bool pass);
+
 #endif
