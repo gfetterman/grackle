@@ -215,6 +215,7 @@ void test_copy_s_expr(test_env* te) {
     delete_s_expr_recursive(original, true);
     delete_s_expr_recursive(copied, true);
     free(copied_tp);
+    printf("copy 1-elt list ok\n");
     // copy(multi-atomic-element list) -> new multi-atomic-element list
     original = create_empty_s_expr();
     original = create_s_expr(fourth_atom, create_s_expr_tp(original));
@@ -229,6 +230,7 @@ void test_copy_s_expr(test_env* te) {
     delete_s_expr_recursive(original, true);
     delete_s_expr_recursive(copied, true);
     free(copied_tp);
+    printf("copy many-elt list ok\n");
     // copy(list with list elements) -> deep copy of list elements
     original = create_empty_s_expr();
     original = create_s_expr(fourth_atom, create_s_expr_tp(original));
@@ -244,11 +246,14 @@ void test_copy_s_expr(test_env* te) {
         !check_sexpr(copied->cdr, atom_list + 2, 2, NULL)) {
         pass = 0;
     }
+    printf("copy nested list ok\n");
     delete_s_expr_recursive(original, true);
     delete_s_expr_recursive(copied, true);
+    printf("deletion ok\n");
     print_test_result(pass);
     te->passed += pass;
     te->run++;
+    printf("copy_s_expr() tests complete\n");
     return;
 }
 
