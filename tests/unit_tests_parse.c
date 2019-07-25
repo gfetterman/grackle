@@ -88,6 +88,7 @@ void test_init_new_s_expr(test_env* te) {
         pass = 0;
     }
     free(stack->se);
+    free(se_1->car);
     free(se_1);
     free(stack->next);
     free(stack);
@@ -114,6 +115,7 @@ void test_extend_s_expr(test_env* te) {
         pass = 0;
     }
     free(stack->se);
+    free(se_1->cdr);
     free(se_1);
     free(stack->next);
     free(stack);
@@ -218,7 +220,6 @@ void test_register_symbol(test_env* te) {
     }
     free(stack->se->car);
     stack->se->car = NULL;
-    printf("\ndone number\n");
     // passing a symbol already in env
     char symbol_env[] = "in-env";
     typed_ptr* symbol_env_tp = install_symbol(env, \
@@ -235,7 +236,6 @@ void test_register_symbol(test_env* te) {
     free(symbol_env_tp);
     free(stack->se->car);
     stack->se->car = NULL;
-    printf("done in env\n");
     // passing a symbol already in temp_env
     char symbol_temp_env[] = "in-temp-env";
     typed_ptr* symbol_temp_env_tp = install_symbol(temp_env, \
@@ -252,7 +252,6 @@ void test_register_symbol(test_env* te) {
     free(symbol_temp_env_tp);
     free(stack->se->car);
     stack->se->car = NULL;
-    printf("done in temp env\n");
     // passing a symbol in neither environment
     char symbol_absent[] = "absent";
     register_symbol(&stack, env, temp_env, strdup(symbol_absent));
@@ -270,7 +269,6 @@ void test_register_symbol(test_env* te) {
     free(stack->se->car);
     free(stack->se);
     free(stack);
-    printf("done in neither\n");
     delete_environment_full(env);
     delete_environment_full(temp_env);
     print_test_result(pass);

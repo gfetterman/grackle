@@ -294,6 +294,7 @@ void test_copy_environment(test_env* te) {
             pass = 0;
         }
     }
+    free(closure->function_table);
     delete_environment_shared(copied);
     delete_environment_full(original);
     print_test_result(pass);
@@ -319,6 +320,7 @@ void test_delete_environment_shared_full(test_env* te) {
     typed_ptr* out = install_function(original, args, closure, body);
     free(out);
     Environment* copied = copy_environment(original);
+    free(closure->function_table);
     delete_environment_shared(copied);
     delete_environment_full(original);
     print_test_result(true);
@@ -408,6 +410,7 @@ void test_install_function(test_env* te) {
         pass = 0;
     }
     free(out);
+    free(closure->function_table);
     delete_environment_full(env);
     print_test_result(pass);
     te->passed += pass;
@@ -605,7 +608,6 @@ void test_value_lookup_index(test_env* te) {
     free(out);
     free(symbol_num);
     free(symbol_bool);
-    free(se);
     free(symbol_se);
     free(symbol_undef);
     free(absent_symbol);
