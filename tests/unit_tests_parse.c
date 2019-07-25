@@ -135,6 +135,7 @@ void test_terminate_s_expr(test_env* te) {
         pass = 0;
     }
     err = PARSE_ERROR_NONE;
+    printf("done empty\n");
     // passing in a stack with a pair on top -> parse error
     s_expr* se = create_s_expr(NULL, create_atom_tp(TYPE_NUM, 1000));
     s_expr_stack_push(&stack, se);
@@ -147,6 +148,7 @@ void test_terminate_s_expr(test_env* te) {
     free(se);
     free(stack);
     err = PARSE_ERROR_NONE;
+    printf("done pair on top\n");
     // passing in stack of one empty list -> parse is done
     se = create_empty_s_expr();
     s_expr_stack_push(&stack, se);
@@ -158,6 +160,7 @@ void test_terminate_s_expr(test_env* te) {
         pass = 0;
     }
     free(se);
+    printf("done one empty list\n");
     // passing in stack of one partial s-expr -> finish s-expr, parse is done
     typed_ptr* test_atom = create_atom_tp(TYPE_NUM, 1000);
     se = create_s_expr(test_atom, NULL);
@@ -172,6 +175,7 @@ void test_terminate_s_expr(test_env* te) {
         pass = 0;
     }
     delete_s_expr_recursive(se, true);
+    printf("done one partial list\n");
     // passing in stack of a nested s-expr -> return to spine, parse can proceed
     test_atom = create_atom_tp(TYPE_NUM, 1000);
     se = create_empty_s_expr();
@@ -192,6 +196,7 @@ void test_terminate_s_expr(test_env* te) {
     s_expr_stack_pop(&stack);
     se->cdr = create_s_expr_tp(create_empty_s_expr());
     delete_s_expr_recursive(se, true);
+    printf("done nested list\n");
     print_test_result(pass);
     te->passed += pass;
     te->run++;

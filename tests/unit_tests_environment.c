@@ -622,27 +622,13 @@ void test_function_lookup_index(test_env* te) {
     Environment* env = create_environment(0, 0);
     char* x = "x-param";
     char* y = "y-param";
-    char* x_cpy = malloc(sizeof(char) * 20);
-    char* y_cpy = malloc(sizeof(char) * 20);
-    for (unsigned int i = 0; i < 8; i++) {
-        x_cpy[i] = x[i];
-        y_cpy[i] = y[i];
-    }
     Symbol_Node* args;
-    args = create_symbol_node(0, x_cpy, TYPE_NUM, (tp_value){.idx=TEST_NUM});
-    args->next = create_symbol_node(1, y_cpy, TYPE_BOOL, (tp_value){.idx=TEST_NUM});
+    args = create_symbol_node(0, strdup(x), TYPE_NUM, (tp_value){.idx=TEST_NUM});
+    args->next = create_symbol_node(1, strdup(y), TYPE_BOOL, (tp_value){.idx=TEST_NUM});
     //Environment* closure = create_environment(0, 0);
     Environment* closure = copy_environment(env);
     typed_ptr* body = create_s_expr_tp(create_empty_s_expr());
     typed_ptr* out = install_function(env, args, closure, body);
-/*    printf("args1: %p\n", args);
-    printf("  args1->name: %p\n", args->name);
-    printf("args2: %p\n", args->next);
-    printf("  args2->name: %p\n", args->next->name);
-    printf("closure: %p\n", closure);
-    printf("  closure->symtab: %p\n", closure->symbol_table);
-    printf("  closure->funtab: %p\n", closure->function_table);
-    printf("body: %p\n", body);*/
     bool pass = 1;
     if (function_lookup_index(env, out) == NULL || \
         function_lookup_index(env, out)->function_idx != out->ptr.idx || \
@@ -662,15 +648,10 @@ void test_function_lookup_index(test_env* te) {
     if (function_lookup_index(env, absent_function) != NULL) {
         pass = 0;
     }
-    printf("done tests\n");
     free(out);
-    printf("freed out\n");
     free(not_a_function);
-    printf("freed not_a_function\n");
     free(absent_function);
-    printf("freed absent_function\n");
     delete_environment_full(env);
-    printf("deleted env\n");
     print_test_result(pass);
     te->passed += pass;
     te->run++;
