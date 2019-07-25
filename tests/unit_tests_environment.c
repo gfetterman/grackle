@@ -628,7 +628,7 @@ void test_function_lookup_index(test_env* te) {
     args = create_symbol_node(0, strdup(x), TYPE_NUM, (tp_value){.idx=TEST_NUM});
     args->next = create_symbol_node(1, strdup(y), TYPE_BOOL, (tp_value){.idx=TEST_NUM});
     //Environment* closure = create_environment(0, 0);
-    Environment* closure = copy_environment(env);
+    Environment* closure = create_environment(0, 0);
     typed_ptr* body = create_s_expr_tp(create_empty_s_expr());
     typed_ptr* out = install_function(env, args, closure, body);
     bool pass = 1;
@@ -653,6 +653,7 @@ void test_function_lookup_index(test_env* te) {
     free(out);
     free(not_a_function);
     free(absent_function);
+    free(closure->function_table);
     delete_environment_full(env);
     print_test_result(pass);
     te->passed += pass;
