@@ -135,7 +135,6 @@ void test_terminate_s_expr(test_env* te) {
         pass = 0;
     }
     err = PARSE_ERROR_NONE;
-    printf("done empty\n");
     // passing in a stack with a pair on top -> parse error
     s_expr* se = create_s_expr(NULL, create_atom_tp(TYPE_NUM, 1000));
     s_expr_stack_push(&stack, se);
@@ -149,7 +148,6 @@ void test_terminate_s_expr(test_env* te) {
     free(stack);
     stack = NULL;
     err = PARSE_ERROR_NONE;
-    printf("done pair on top\n");
     // passing in stack of one empty list -> parse is done
     se = create_empty_s_expr();
     s_expr_stack_push(&stack, se);
@@ -161,7 +159,6 @@ void test_terminate_s_expr(test_env* te) {
         pass = 0;
     }
     free(se);
-    printf("done one empty list\n");
     // passing in stack of one partial s-expr -> finish s-expr, parse is done
     typed_ptr* test_atom = create_atom_tp(TYPE_NUM, 1000);
     se = create_s_expr(test_atom, NULL);
@@ -176,7 +173,6 @@ void test_terminate_s_expr(test_env* te) {
         pass = 0;
     }
     delete_s_expr_recursive(se, true);
-    printf("done one partial list\n");
     // passing in stack of a nested s-expr -> return to spine, parse can proceed
     test_atom = create_atom_tp(TYPE_NUM, 1000);
     se = create_empty_s_expr();
@@ -197,7 +193,6 @@ void test_terminate_s_expr(test_env* te) {
     s_expr_stack_pop(&stack);
     se->cdr = create_s_expr_tp(create_empty_s_expr());
     delete_s_expr_recursive(se, true);
-    printf("done nested list\n");
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -223,6 +218,7 @@ void test_register_symbol(test_env* te) {
     }
     free(stack->se->car);
     stack->se->car = NULL;
+    printf("\ndone number\n");
     // passing a symbol already in env
     char symbol_env[] = "in-env";
     typed_ptr* symbol_env_tp = install_symbol(env, \
@@ -239,6 +235,7 @@ void test_register_symbol(test_env* te) {
     free(symbol_env_tp);
     free(stack->se->car);
     stack->se->car = NULL;
+    printf("done in env\n");
     // passing a symbol already in temp_env
     char symbol_temp_env[] = "in-temp-env";
     typed_ptr* symbol_temp_env_tp = install_symbol(temp_env, \
@@ -255,6 +252,7 @@ void test_register_symbol(test_env* te) {
     free(symbol_temp_env_tp);
     free(stack->se->car);
     stack->se->car = NULL;
+    printf("done in temp env\n");
     // passing a symbol in neither environment
     char symbol_absent[] = "absent";
     register_symbol(&stack, env, temp_env, strdup(symbol_absent));
@@ -263,6 +261,7 @@ void test_register_symbol(test_env* te) {
     if (stack->se == NULL || \
         stack->se->car == NULL || \
         symbol_lookup_string(env, symbol_absent) != NULL || \
+        sn_from_string == NULL || \
         sn_from_string != sn_from_index || \
         strcmp(sn_from_index->name, symbol_absent) || \
         sn_from_index->type != TYPE_UNDEF) {
@@ -271,6 +270,7 @@ void test_register_symbol(test_env* te) {
     free(stack->se->car);
     free(stack->se);
     free(stack);
+    printf("done in neither\n");
     delete_environment_full(env);
     delete_environment_full(temp_env);
     print_test_result(pass);
