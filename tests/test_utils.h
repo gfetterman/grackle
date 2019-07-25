@@ -33,4 +33,7 @@ bool match_typed_ptrs(typed_ptr* first, typed_ptr* second);
 void print_test_announce(char function[]);
 void print_test_result(bool pass);
 
+void s_expr_append(s_expr* se, typed_ptr* tp);
+bool match_s_exprs(const s_expr* first, const s_expr* second);
+
 #endif

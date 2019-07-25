@@ -398,42 +398,6 @@ void test_string_is_number(test_env* te) {
     return;
 }
 
-bool match_s_exprs(const s_expr* first, const s_expr* second) {
-    if (first == NULL && second == NULL) {
-        return true;
-    } else if (first == NULL || second == NULL) {
-        return false;
-    } else {
-        if (is_empty_list(first) && is_empty_list(second)) {
-            return true;
-        } else if (is_empty_list(first) || is_empty_list(second)) {
-            return false;
-        } else if (first->car == NULL || second->car == NULL) {
-            return false;
-        } else if (first->cdr == NULL || second->cdr == NULL) {
-            return false;
-        } else {
-            bool ok = true;
-            if (first->car->type != second->car->type) {
-                return false;
-            } else if (first->car->type == TYPE_SEXPR) {
-                ok = ok && match_s_exprs(first->car->ptr.se_ptr, \
-                                         second->car->ptr.se_ptr);
-            } else {
-                ok = ok && match_typed_ptrs(first->car, second->car);
-            }
-            if (first->cdr->type != second->cdr->type) {
-                return false;
-            } else if (first->cdr->type == TYPE_SEXPR) {
-                return ok && match_s_exprs(first->cdr->ptr.se_ptr, \
-                                           second->cdr->ptr.se_ptr);
-            } else {
-                return ok && match_typed_ptrs(first->cdr, second->cdr);
-            }
-        }
-    }
-}
-
 bool test_parse_output(const char cmd[], typed_ptr* expected) {
     Environment* env = create_environment(0, 0);
     typed_ptr* out = parse(cmd, env);
@@ -456,16 +420,6 @@ bool test_parse_output(const char cmd[], typed_ptr* expected) {
     free(expected);
     delete_environment_full(env);
     return pass;
-}
-
-void s_expr_append(s_expr* se, typed_ptr* tp) {
-    // assume: se is a valid s-expression
-    while (!is_empty_list(se)) {
-        se = se->cdr->ptr.se_ptr;
-    }
-    se->car = tp;
-    se->cdr = create_s_expr_tp(create_empty_s_expr());
-    return;
 }
 
 void test_parse(test_env* te) {
