@@ -21,7 +21,7 @@ void unit_tests_environment(test_env* te) {
     test_symbol_lookup_index(te);
     test_builtin_lookup_index(te);
     test_value_lookup_index(te);
-    //test_function_lookup_index(te);
+    test_function_lookup_index(te);
     return;
 }
 
@@ -647,10 +647,15 @@ void test_function_lookup_index(test_env* te) {
     if (function_lookup_index(env, absent_function) != NULL) {
         pass = 0;
     }
+    printf("done tests\n");
     free(out);
+    printf("freed out\n");
     free(not_a_function);
+    printf("freed not_a_function\n");
     free(absent_function);
+    printf("freed absent_function\n");
     delete_environment_full(env);
+    printf("deleted env\n");
     print_test_result(pass);
     te->passed += pass;
     te->run++;
