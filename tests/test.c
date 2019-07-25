@@ -22,6 +22,7 @@ test_env* unit_tests() {
     unit_tests_fundamentals(t_env);
     unit_tests_environment(t_env);
     unit_tests_parse(t_env);
+    unit_tests_evaluate(t_env);
     // cleanup
     delete_environment_full(t_env->env);
     t_env->env = NULL;
