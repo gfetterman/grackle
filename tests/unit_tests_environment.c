@@ -628,9 +628,13 @@ void test_function_lookup_index(test_env* te) {
     Environment* closure = create_environment(0, 0);
     typed_ptr* body = create_s_expr_tp(create_empty_s_expr());
     typed_ptr* out = install_function(env, args, closure, body);
-    printf("args: %p\n", args);
-    printf("args->next: %p\n", args->next);
+    printf("args1: %p\n", args);
+    printf("  args1->name: %p\n", args->name);
+    printf("args2: %p\n", args->next);
+    printf("  args2->name: %p\n", args->next->name);
     printf("closure: %p\n", closure);
+    printf("  closure->symtab: %p\n", closure->symbol_table);
+    printf("  closure->funtab: %p\n", closure->function_table);
     printf("body: %p\n", body);
     bool pass = 1;
     if (function_lookup_index(env, out) == NULL || \
