@@ -628,6 +628,10 @@ void test_function_lookup_index(test_env* te) {
     Environment* closure = create_environment(0, 0);
     typed_ptr* body = create_s_expr_tp(create_empty_s_expr());
     typed_ptr* out = install_function(env, args, closure, body);
+    printf("args: %p\n", args);
+    printf("args->next: %p\n", args->next);
+    printf("closure: %p\n", closure);
+    printf("body: %p\n", body);
     bool pass = 1;
     if (function_lookup_index(env, out) == NULL || \
         function_lookup_index(env, out)->function_idx != out->ptr.idx || \
