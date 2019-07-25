@@ -170,13 +170,17 @@ void delete_environment_full(Environment* env) {
     Symbol_Node* curr_sn = env->symbol_table->head;
     while (curr_sn != NULL) {
         Symbol_Node* next_sn = curr_sn->next;
+        printf("freeing curr_sn->name: %p\n", curr_sn->name);
         free(curr_sn->name);
         if (curr_sn->type == TYPE_SEXPR) {
+            printf("freeing curr_sn->value (s-expr): %p\n", curr_sn->value.se_ptr);
             delete_s_expr_recursive(curr_sn->value.se_ptr, true);
         }
+        printf("freeing curr_sn: %p\b", curr_sn);
         free(curr_sn);
         curr_sn = next_sn;
     }
+    printf("freeing symbol table: %p\n", env->symbol_table);
     free(env->symbol_table);
     Function_Node* curr_fn = env->function_table->head;
     while (curr_fn != NULL) {
@@ -185,21 +189,29 @@ void delete_environment_full(Environment* env) {
         Symbol_Node* curr_arg_sn = curr_fn->arg_list;
         while (curr_arg_sn != NULL) {
             Symbol_Node* next_arg_sn = curr_arg_sn->next;
+            printf("freeing curr_arg_sn->name: %p\n", curr_arg_sn->name);
             free(curr_arg_sn->name);
+            printf("freeing curr_arg_sn: %p\n", curr_arg_sn);
             free(curr_arg_sn);
             curr_arg_sn = next_arg_sn;
         }
         // free closure environment
+        printf("freeing closure environment: %p\n", curr_fn->closure_env);
         delete_environment_shared(curr_fn->closure_env);
         // free body s-expression
         if (curr_fn->body->type == TYPE_SEXPR) {
+            printf("freeing curr_fn->body->se: %p\n", curr_fn->body->ptr.se_ptr);
             delete_s_expr_recursive(curr_fn->body->ptr.se_ptr, true);
         }
+        printf("freeing curr_fn->body: %p\n", curr_fn->body);
         free(curr_fn->body);
+        printf("freeing curr_fn: %p\n", curr_fn);
         free(curr_fn);
         curr_fn = next_fn;
     }
+    printf("freeing env->function_table: %p\n", env->function_table);
     free(env->function_table);
+    printf("freeing env: %p\n", env);
     free(env);
     return;
 }
