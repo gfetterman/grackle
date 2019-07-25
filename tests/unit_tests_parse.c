@@ -147,6 +147,7 @@ void test_terminate_s_expr(test_env* te) {
     free(se->cdr);
     free(se);
     free(stack);
+    stack = NULL;
     err = PARSE_ERROR_NONE;
     printf("done pair on top\n");
     // passing in stack of one empty list -> parse is done
