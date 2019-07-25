@@ -21,7 +21,7 @@ void unit_tests_environment(test_env* te) {
     test_symbol_lookup_index(te);
     test_builtin_lookup_index(te);
     test_value_lookup_index(te);
-    test_function_lookup_index(te);
+    //test_function_lookup_index(te);
     return;
 }
 
