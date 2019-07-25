@@ -623,8 +623,8 @@ void test_function_lookup_index(test_env* te) {
     char x[] = "x";
     char y[] = "y";
     Symbol_Node* args;
-    args = create_symbol_node(0, strdup(x), TYPE_NUM, TEST_NUM_TP_VAL);
-    args->next = create_symbol_node(1, strdup(y), TYPE_BOOL, TEST_NUM_TP_VAL);
+    args = create_symbol_node(0, strdup(x), TYPE_NUM, (tp_value){.idx=TEST_NUM});
+    args->next = create_symbol_node(1, strdup(y), TYPE_BOOL, (tp_value){.idx=TEST_NUM});
     Environment* closure = create_environment(0, 0);
     typed_ptr* body = create_s_expr_tp(create_empty_s_expr());
     typed_ptr* out = install_function(env, args, closure, body);
