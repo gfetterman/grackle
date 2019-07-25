@@ -197,7 +197,7 @@ void delete_environment_full(Environment* env) {
         }
         // free closure environment
         printf("freeing closure environment: %p\n", curr_fn->closure_env);
-        delete_environment_shared(curr_fn->closure_env);
+        //delete_environment_shared(curr_fn->closure_env);
         // free body s-expression
         if (curr_fn->body->type == TYPE_SEXPR) {
             printf("freeing curr_fn->body->se: %p\n", curr_fn->body->ptr.se_ptr);
