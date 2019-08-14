@@ -20,9 +20,7 @@ typed_ptr* evaluate(const s_expr* se, Environment* env) {
             case TYPE_UNDEF:
                 result = create_error_tp(EVAL_ERROR_UNDEF_SYM);
                 break;
-            case TYPE_ERROR:
-                result = se->car;
-                break;
+            case TYPE_ERROR: // fall-through
             case TYPE_VOID: // fall-through
             case TYPE_NUM:  // fall-through
             case TYPE_BOOL:
@@ -211,8 +209,13 @@ typed_ptr* eval_arithmetic(const s_expr* se, Environment* env) {
         s_expr* arg = args_tp->ptr.se_ptr;
         if ((op == BUILTIN_SUB || op == BUILTIN_DIV) && \
             !is_empty_list(s_expr_next(arg))) {
-            result->ptr.idx = arg->car->ptr.idx;
-            arg = s_expr_next(arg);
+            if (arg->car->type != TYPE_NUM) {
+                free(result);
+                result = create_error_tp(EVAL_ERROR_NEED_NUM);
+            } else {
+                result->ptr.idx = arg->car->ptr.idx;
+                arg = s_expr_next(arg);
+            }
         }
         while (!is_empty_list(arg)) {
             if (arg->car->type != TYPE_NUM) {
@@ -256,7 +259,7 @@ typed_ptr* eval_arithmetic(const s_expr* se, Environment* env) {
 
 // Evaluates an s-expression whose car is a built-in function in the set
 //   {BUILTIN_NUMBERxx | xx in {EQ, GT, LT, GE, LE}}.
-// These functions take at least 1 argument.
+// These functions take at least 2 arguments.
 // All arguments are expected to (evaluate to) be numbers.
 // Every argument to the built-in function is evaluated.
 // Returns a typed_ptr containing an error code (if the evaluation failed) or
@@ -341,7 +344,7 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
         if (arg->type == TYPE_SYMBOL) {
             Symbol_Node* sym_entry = symbol_lookup_index(env, arg);
             if (sym_entry == NULL) {
-                result = create_error_tp(EVAL_ERROR_UNDEF_SYM);
+                result = create_error_tp(EVAL_ERROR_BAD_SYMBOL);
             } else {
                 arg = evaluate(s_expr_next(args_tp->ptr.se_ptr), env);
                 if (arg->type == TYPE_ERROR) {
@@ -363,7 +366,7 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
                 typed_ptr* fn_sym = arg->ptr.se_ptr->car;
                 Symbol_Node* sym_entry = symbol_lookup_index(env, fn_sym);
                 if (sym_entry == NULL) {
-                    result = create_error_tp(EVAL_ERROR_UNDEF_SYM);
+                    result = create_error_tp(EVAL_ERROR_BAD_SYMBOL);
                 } else {
                     // create a dummy (lambda arg-list body) s-expression
                     typed_ptr* arg_list = arg->ptr.se_ptr->cdr;
@@ -391,6 +394,11 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
                         char* name = strdup(sym_entry->name);
                         blind_install_symbol_atom(env, \
                                                   name, \
+                                                  fn->type, \
+                                                  fn->ptr.idx);
+                        Function_Node* fn_fn = function_lookup_index(env, fn);
+                        blind_install_symbol_atom(fn_fn->closure_env, \
+                                                  strdup(name), \
                                                   fn->type, \
                                                   fn->ptr.idx);
                         free(fn);
@@ -432,7 +440,9 @@ typed_ptr* eval_set_variable(const s_expr* se, Environment* env) {
             result = create_error_tp(EVAL_ERROR_NOT_ID);
         } else {
             Symbol_Node* sym_entry = symbol_lookup_index(env, arg);
-            if (sym_entry == NULL || sym_entry->type == TYPE_UNDEF) {
+            if (sym_entry == NULL) {
+                result = create_error_tp(EVAL_ERROR_BAD_SYMBOL);
+            } else if (sym_entry->type == TYPE_UNDEF) {
                 result = create_error_tp(EVAL_ERROR_UNDEF_SYM);
             } else {
                 arg = evaluate(s_expr_next(args_tp->ptr.se_ptr), env);
@@ -659,6 +669,9 @@ typed_ptr* eval_cond(const s_expr* se, Environment* env) {
             while (!is_empty_list(then_bodies)) {
                 free(eval_interm);
                 eval_interm = evaluate(then_bodies, env);
+                if (eval_interm->type == TYPE_ERROR) {
+                    break;
+                }
                 then_bodies = s_expr_next(then_bodies);
             }
             result = eval_interm;
@@ -790,34 +803,45 @@ Symbol_Node* collect_parameters(typed_ptr* tp, Environment* env) {
     if (is_empty_list(se)) {
         return params;
     }
-    if (se->car->type != TYPE_SYMBOL) {
+    if (se->car == NULL || se->car->type != TYPE_SYMBOL) {
         params = create_error_symbol_node(EVAL_ERROR_NOT_ID);
+    } else if (se->cdr == NULL || se->cdr->type != TYPE_SEXPR) {
+        params = create_error_symbol_node(EVAL_ERROR_BAD_ARG_TYPE);
     } else {
-        char* name = symbol_lookup_index(env, se->car)->name;
-        params = create_symbol_node(0, \
-                                    strdup(name), \
-                                    TYPE_UNDEF, \
-                                    (tp_value){.idx=0});
-        Symbol_Node* curr = params;
-        se = s_expr_next(se);
-        while (!is_empty_list(se)) {
-            if (se->cdr == NULL || se->cdr->type != TYPE_SEXPR) {
-                delete_symbol_node_list(params);
-                params = create_error_symbol_node(EVAL_ERROR_BAD_ARG_TYPE);
-                break;
-            }
-            if (se->car == NULL || se->car->type != TYPE_SYMBOL) {
-                delete_symbol_node_list(params);
-                params = create_error_symbol_node(EVAL_ERROR_NOT_ID);
-                break;
-            }
-            name = symbol_lookup_index(env, se->car)->name;
-            curr->next = create_symbol_node(0, \
-                                            strdup(name), \
-                                            TYPE_UNDEF, \
-                                            (tp_value){.idx=0});
-            curr = curr->next;
+        Symbol_Node* found = symbol_lookup_index(env, se->car);
+        if (found == NULL) {
+            params = create_error_symbol_node(EVAL_ERROR_BAD_SYMBOL);
+        } else {
+            params = create_symbol_node(0, \
+                                        strdup(found->name), \
+                                        TYPE_UNDEF, \
+                                        (tp_value){.idx=0});
+            Symbol_Node* curr = params;
             se = s_expr_next(se);
+            while (!is_empty_list(se)) {
+                if (se->cdr == NULL || se->cdr->type != TYPE_SEXPR) {
+                    delete_symbol_node_list(params);
+                    params = create_error_symbol_node(EVAL_ERROR_BAD_ARG_TYPE);
+                    break;
+                }
+                if (se->car == NULL || se->car->type != TYPE_SYMBOL) {
+                    delete_symbol_node_list(params);
+                    params = create_error_symbol_node(EVAL_ERROR_NOT_ID);
+                    break;
+                }
+                found = symbol_lookup_index(env, se->car);
+                if (found == NULL) {
+                    delete_symbol_node_list(params);
+                    params = create_error_symbol_node(EVAL_ERROR_BAD_SYMBOL);
+                    break;
+                }
+                curr->next = create_symbol_node(0, \
+                                                strdup(found->name), \
+                                                TYPE_UNDEF, \
+                                                (tp_value){.idx=0});
+                curr = curr->next;
+                se = s_expr_next(se);
+            }
         }
     }
     return params;
@@ -826,10 +850,10 @@ Symbol_Node* collect_parameters(typed_ptr* tp, Environment* env) {
 // If the Function_Node's arg list is of different length than the s-expression
 //   pointed to by the args typed pointer, an error is returned in the first
 //   Symbol_Node.
-// Otherwise, the parameters in the arg list are bound to the values produced
-//   when evaluating the members of the args s-expression; any error during
-//   evaluation aborts this process and is passed back out in the first
-//   Symbol_Node.
+// Otherwise, the parameters in the arg list are bound to the values stored in
+//   the members of the args s-expression. Any s-expressions pointed to by the
+//   typed-pointers in the arg list are now the responsibility of the
+//   Symbol_Nodes returned.
 // If no errors are encountered, the Symbol_Node list contains the bound
 //   arguments.
 // In all cases, the Symbol_Node list returned is the caller's responsibility
@@ -876,8 +900,10 @@ Symbol_Node* bind_args(Environment* env, Function_Node* fn, typed_ptr* args) {
 
 // Reads a list of bound arguments into an environment, returning the result.
 // The input environment is not modified.
+// Any s-expressions pointed to in the bound arguments now belong to the
+//   returned closure environment.
 // The returned environment is the caller's responsibility to delete, using
-//   delete_environment_shared() below.
+//   delete_environment_shared().
 Environment* make_eval_env(Environment* env, Symbol_Node* bound_args) {
     Environment* eval_env = copy_environment(env);
     Symbol_Node* curr_arg = bound_args;

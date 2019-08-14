@@ -73,7 +73,8 @@ typedef enum {PARSE_ERROR_NONE, \
               EVAL_ERROR_NONTERMINAL_ELSE, \
               EVAL_ERROR_CAR_NOT_CALLABLE, \
               EVAL_ERROR_MISSING_PROCEDURE, \
-              EVAL_ERROR_BAD_SYNTAX} interpreter_error;
+              EVAL_ERROR_BAD_SYNTAX, \
+              EVAL_ERROR_BAD_SYMBOL} interpreter_error;
 
 // s-expressions & typed pointers
 
