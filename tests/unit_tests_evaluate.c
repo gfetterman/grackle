@@ -1085,6 +1085,18 @@ void test_eval_arithmetic(test_env* te) {
         expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
         pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     }
+    // (+ 1 null) -> EVAL_ERROR_NEED_NUM
+    cmd = unit_list(ADD);
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, NULL_SYM);
+    expected = create_error_tp(EVAL_ERROR_NEED_NUM);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
+    // (+ 1 (list 1 2)) -> EVAL_ERROR_NEED_NUM
+    cmd = unit_list(ADD);
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, create_s_expr_tp(list_one_two_s_expr(env)));
+    expected = create_error_tp(EVAL_ERROR_NEED_NUM);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     delete_environment_full(env);
     delete_s_expr_recursive(add_two_two, true);
     for (unsigned int i = 0; i < NUM_OPS; i++) {
