@@ -5,6 +5,7 @@
 #include<stdlib.h>
 #include<string.h>
 
+#include "fundamentals.h"
 #include "evaluate.h"
 #include "test_utils.h"
 

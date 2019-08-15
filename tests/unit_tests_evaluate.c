@@ -27,15 +27,124 @@ void unit_tests_evaluate(test_env* te) {
     return;
 }
 
+// test helpers
+
+s_expr* unit_list(typed_ptr* tp) {
+    return create_s_expr(tp, create_s_expr_tp(create_empty_s_expr()));
+}
+
+typed_ptr* builtin_tp_from_name(Environment* env, const char name[]) {
+    Symbol_Node* found = symbol_lookup_string(env, name);
+    if (found == NULL || found->type != TYPE_BUILTIN) {
+        return NULL;
+    } else {
+        return create_atom_tp(TYPE_BUILTIN, found->value.idx);
+    }
+}
+
+typed_ptr* symbol_tp_from_name(Environment* env, const char name[]) {
+    Symbol_Node* found = symbol_lookup_string(env, name);
+    return (found == NULL) ? NULL : \
+                             create_atom_tp(TYPE_SYMBOL, found->symbol_idx);
+}
+
+bool tp_is_empty_list(const typed_ptr* tp) {
+    return (tp != NULL && \
+            tp->type == TYPE_SEXPR && \
+            is_empty_list(tp->ptr.se_ptr));
+}
+
+typed_ptr* create_number_tp(long value) {
+    return create_typed_ptr(TYPE_NUM, (tp_value){.idx=value});
+}
+
+bool match_error(const typed_ptr* tp, interpreter_error err) {
+    return (tp != NULL && tp->type == TYPE_ERROR && tp->ptr.idx == err);
+}
+
+bool deep_match_typed_ptrs(typed_ptr* first, typed_ptr* second) {
+    if (first == NULL && second == NULL) {
+        return true;
+    } else if (first == NULL || second == NULL) {
+        return false;
+    } else if (first->type != second->type) {
+        return false;
+    } else {
+        switch (first->type) {
+            case TYPE_SEXPR:
+                return match_s_exprs(first->ptr.se_ptr, second->ptr.se_ptr);
+            default:
+                return first->ptr.idx == second->ptr.idx;
+        }
+    }
+}
+
+// NOTE: frees cmd AND expected
+bool run_test_expect(typed_ptr* (*function)(const s_expr*, Environment*), \
+                     s_expr* cmd, \
+                     Environment* env, \
+                     typed_ptr* expected) {
+    typed_ptr* out = (*function)(cmd, env);
+    bool passed = deep_match_typed_ptrs(out, expected);
+    delete_s_expr_recursive(cmd, true);
+    if (out != NULL && out->type == TYPE_SEXPR) {
+        delete_s_expr_recursive(out->ptr.se_ptr, true);
+    }
+    free(out);
+    if (expected != NULL && expected->type == TYPE_SEXPR) {
+        delete_s_expr_recursive(expected->ptr.se_ptr, true);
+    }
+    free(expected);
+    return passed;
+}
+
+// set up some useful "constants"
+
+#define ADD builtin_tp_from_name(env, "+")
+#define SUBTRACT builtin_tp_from_name(env, "-")
+#define MULTIPLY builtin_tp_from_name(env, "*")
+#define DIVIDE builtin_tp_from_name(env, "/")
+
+#define ADD_SYM symbol_tp_from_name(env, "+")
+#define SUBTRACT_SYM symbol_tp_from_name(env, "-")
+#define MULTIPLY_SYM symbol_tp_from_name(env, "*")
+#define DIVIDE_SYM symbol_tp_from_name(env, "/")
+#define CONS_SYM symbol_tp_from_name(env, "cons")
+#define NULL_SYM symbol_tp_from_name(env, "null")
+#define LIST_SYM symbol_tp_from_name(env, "list")
+#define LAMBDA_SYM symbol_tp_from_name(env, "lambda")
+
+static inline s_expr* divide_zero_s_expr(Environment* env) {
+    s_expr* se = unit_list(DIVIDE_SYM);
+    s_expr_append(se, create_number_tp(0));
+    return se;
+}
+
+static inline s_expr* add_one_one_s_expr(Environment* env) {
+    s_expr* se = unit_list(ADD_SYM);
+    s_expr_append(se, create_number_tp(1));
+    s_expr_append(se, create_number_tp(1));
+    return se;
+}
+
+static inline s_expr* list_one_two_s_expr(Environment* env) {
+    s_expr* se = unit_list(LIST_SYM);
+    s_expr_append(se, create_number_tp(1));
+    s_expr_append(se, create_number_tp(2));
+    return se;
+}
+
+// actual test functions
+
 void test_collect_parameters(test_env* te) {
     print_test_announce("collect_parameters()");
-    bool pass = 1;
+    bool pass = true;
     // pass an empty list
     Environment* env = create_environment(0, 0);
     typed_ptr* se_tp = create_s_expr_tp(create_empty_s_expr());
     Symbol_Node* params = collect_parameters(se_tp, env);
     if (params != NULL) {
-        pass = 0;
+        pass = false;
     }
     // pass a list whose first car is not a symbol
     s_expr_append(se_tp->ptr.se_ptr, create_atom_tp(TYPE_NUM, 1000));
@@ -45,7 +154,7 @@ void test_collect_parameters(test_env* te) {
         params->type != TYPE_ERROR || \
         params->value.idx != EVAL_ERROR_NOT_ID || \
         params->next != NULL) {
-        pass = 0;
+        pass = false;
     }
     delete_symbol_node_list(params);
     params = NULL;
@@ -66,7 +175,7 @@ void test_collect_parameters(test_env* te) {
         params->type != TYPE_ERROR || \
         params->value.idx != EVAL_ERROR_NOT_ID || \
         params->next != NULL) {
-        pass = 0;
+        pass = false;
     }
     delete_symbol_node_list(params);
     params = NULL;
@@ -83,7 +192,7 @@ void test_collect_parameters(test_env* te) {
         params->type != TYPE_ERROR || \
         params->value.idx != EVAL_ERROR_NOT_ID || \
         params->next != NULL) {
-        pass = 0;
+        pass = false;
     }
     delete_symbol_node_list(params);
     params = NULL;
@@ -98,7 +207,7 @@ void test_collect_parameters(test_env* te) {
         params->type != TYPE_ERROR || \
         params->value.idx != EVAL_ERROR_BAD_ARG_TYPE || \
         params->next != NULL) {
-        pass = 0;
+        pass = false;
     }
     delete_symbol_node_list(params);
     params = NULL;
@@ -112,7 +221,7 @@ void test_collect_parameters(test_env* te) {
         params->name != NULL || \
         params->type != TYPE_UNDEF || \
         params->next != NULL) {
-        pass = 0;
+        pass = false;
     }
     delete_symbol_node_list(params);
     params = NULL;
@@ -127,7 +236,7 @@ void test_collect_parameters(test_env* te) {
         params->type != TYPE_ERROR || \
         params->value.idx != EVAL_ERROR_BAD_SYMBOL || \
         params->next != NULL) {
-        pass = 0;
+        pass = false;
     }
     delete_symbol_node_list(params);
     params = NULL;
@@ -149,7 +258,7 @@ void test_collect_parameters(test_env* te) {
         params->next->next->name != NULL || \
         params->next->next->type != TYPE_UNDEF || \
         params->next->next->next != NULL) {
-        pass = 0;
+        pass = false;
     }
     delete_symbol_node_list(params);
     params = NULL;
@@ -163,13 +272,13 @@ void test_collect_parameters(test_env* te) {
 
 void test_bind_args(test_env* te) {
     print_test_announce("bind_args()");
-    bool pass = 1;
+    bool pass = true;
     // no params, no args
     Function_Node* fn_no_params = create_function_node(0, NULL, NULL, NULL);
     typed_ptr* empty_args = create_s_expr_tp(create_empty_s_expr());
     Symbol_Node* bound_args = bind_args(NULL, fn_no_params, empty_args);
     if (bound_args != NULL) {
-        pass = 0;
+        pass = false;
     }
     delete_symbol_node_list(bound_args);
     // no params, one arg
@@ -180,7 +289,7 @@ void test_bind_args(test_env* te) {
         bound_args->type != TYPE_ERROR || \
         bound_args->value.idx != EVAL_ERROR_MANY_ARGS || \
         bound_args->next != NULL) {
-        pass = 0;
+        pass = false;
     }
     delete_symbol_node_list(bound_args);
     // one param, no args
@@ -194,7 +303,7 @@ void test_bind_args(test_env* te) {
         bound_args->type != TYPE_ERROR || \
         bound_args->value.idx != EVAL_ERROR_FEW_ARGS || \
         bound_args->next != NULL) {
-        pass = 0;
+        pass = false;
     }
     delete_symbol_node_list(bound_args);
     // one param, one arg
@@ -204,7 +313,7 @@ void test_bind_args(test_env* te) {
         bound_args->type != TYPE_NUM || \
         bound_args->value.idx != 1000 || \
         bound_args->next != NULL) {
-        pass = 0;
+        pass = false;
     }
     delete_symbol_node_list(bound_args);
     // one param, two args
@@ -217,7 +326,7 @@ void test_bind_args(test_env* te) {
         bound_args->type != TYPE_ERROR || \
         bound_args->value.idx != EVAL_ERROR_MANY_ARGS || \
         bound_args->next != NULL) {
-        pass = 0;
+        pass = false;
     }
     delete_symbol_node_list(bound_args);
     // two params, no args
@@ -238,7 +347,7 @@ void test_bind_args(test_env* te) {
         bound_args->type != TYPE_ERROR || \
         bound_args->value.idx != EVAL_ERROR_FEW_ARGS || \
         bound_args->next != NULL) {
-        pass = 0;
+        pass = false;
     }
     delete_symbol_node_list(bound_args);
     // two params, one arg
@@ -247,7 +356,7 @@ void test_bind_args(test_env* te) {
         bound_args->type != TYPE_ERROR || \
         bound_args->value.idx != EVAL_ERROR_FEW_ARGS || \
         bound_args->next != NULL) {
-        pass = 0;
+        pass = false;
     }
     delete_symbol_node_list(bound_args);
     // two params, two args
@@ -262,20 +371,20 @@ void test_bind_args(test_env* te) {
         bound_args->next->type != TYPE_NUM || \
         bound_args->next->value.idx != 1000 || \
         bound_args->next->next != NULL) {
-        pass = 0;
+        pass = false;
     }
     delete_symbol_node_list(bound_args);
     // two params, three args
     typed_ptr* three_args = create_s_expr_tp(create_empty_s_expr());
     s_expr_append(three_args->ptr.se_ptr, create_atom_tp(TYPE_NUM, 1000));
-    s_expr_append(three_args->ptr.se_ptr, create_atom_tp(TYPE_BOOL, 1));
+    s_expr_append(three_args->ptr.se_ptr, create_atom_tp(TYPE_BOOL, true));
     s_expr_append(three_args->ptr.se_ptr, create_atom_tp(TYPE_NUM, 2000));
     bound_args = bind_args(NULL, fn_2_params, three_args);
     if (bound_args == NULL || \
         bound_args->type != TYPE_ERROR || \
         bound_args->value.idx != EVAL_ERROR_MANY_ARGS || \
         bound_args->next != NULL) {
-        pass = 0;
+        pass = false;
     }
     delete_symbol_node_list(bound_args);
     free(fn_no_params);
@@ -299,7 +408,7 @@ void test_bind_args(test_env* te) {
 
 void test_make_eval_env(test_env* te) {
     print_test_announce("make_eval_env()");
-    bool pass = 1;
+    bool pass = true;
     // empty list of bound args
     Environment* env = create_environment(0, 0);
     blind_install_symbol_atom(env, strdup("x"), TYPE_UNDEF, 0);
@@ -323,7 +432,7 @@ void test_make_eval_env(test_env* te) {
         symbol_lookup_string(out, "y")->type != TYPE_UNDEF || \
         symbol_lookup_string(out, "z") == NULL || \
         symbol_lookup_string(out, "z")->type != TYPE_UNDEF) {
-        pass = 0;
+        pass = false;
     }
     delete_environment_shared(out);
     // one bound arg
@@ -346,7 +455,7 @@ void test_make_eval_env(test_env* te) {
         symbol_lookup_string(out, "y")->type != TYPE_UNDEF || \
         symbol_lookup_string(out, "z") == NULL || \
         symbol_lookup_string(out, "z")->type != TYPE_UNDEF) {
-        pass = 0;
+        pass = false;
     }
     delete_environment_shared(out);
     // two bound args
@@ -376,7 +485,7 @@ void test_make_eval_env(test_env* te) {
         !is_empty_list(symbol_lookup_string(out, "y")->value.se_ptr) || \
         symbol_lookup_string(out, "z") == NULL || \
         symbol_lookup_string(out, "z")->type != TYPE_UNDEF) {
-        pass = 0;
+        pass = false;
     }
     delete_environment_shared(out);
     delete_symbol_node_list(args);
@@ -387,25 +496,9 @@ void test_make_eval_env(test_env* te) {
     return;
 }
 
-bool match_error(const typed_ptr* tp, interpreter_error err) {
-    return (tp != NULL && tp->type == TYPE_ERROR && tp->ptr.idx == err);
-}
-
-bool tp_is_empty_list(const typed_ptr* tp) {
-    return (tp != NULL && \
-            tp->type == TYPE_SEXPR && \
-            is_empty_list(tp->ptr.se_ptr));
-}
-
-typed_ptr* symbol_tp_from_name(Environment* env, const char name[]) {
-    Symbol_Node* found = symbol_lookup_string(env, name);
-    return (found == NULL) ? NULL : \
-                             create_atom_tp(TYPE_SYMBOL, found->symbol_idx);
-}
-
 void test_collect_arguments(test_env* te) {
     print_test_announce("collect_arguments()");
-    bool pass = 1;
+    bool pass = true;
     Environment* env = create_environment(0, 0);
     setup_environment(env);
     // arg s-expr is a pair -> error
@@ -413,7 +506,7 @@ void test_collect_arguments(test_env* te) {
                                       create_atom_tp(TYPE_NUM, 1000));
     typed_ptr* out = collect_arguments(call_pair, env, 0, -1, true);
     if (!match_error(out, EVAL_ERROR_ILLEGAL_PAIR)) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(call_pair, true);
     free(out);
@@ -424,7 +517,7 @@ void test_collect_arguments(test_env* te) {
     s_expr_next(call_bad_list)->cdr = create_atom_tp(TYPE_NUM, 2000);
     out = collect_arguments(call_bad_list, env, 0, -1, true);
     if (!match_error(out, EVAL_ERROR_ILLEGAL_PAIR)) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(call_bad_list, true);
     free(out);
@@ -434,7 +527,7 @@ void test_collect_arguments(test_env* te) {
     out = collect_arguments(call_no_args, env, 0, 0, true);
     if (!tp_is_empty_list(out) || \
         out->ptr.se_ptr == s_expr_next(call_no_args)) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(out->ptr.se_ptr, true);
     free(out);
@@ -442,7 +535,7 @@ void test_collect_arguments(test_env* te) {
     out = collect_arguments(call_no_args, env, 0, 0, false);
     if (!tp_is_empty_list(out) || \
         out->ptr.se_ptr == s_expr_next(call_no_args)) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(out->ptr.se_ptr, true);
     free(out);
@@ -450,7 +543,7 @@ void test_collect_arguments(test_env* te) {
     out = collect_arguments(call_no_args, env, 0, 1, true);
     if (!tp_is_empty_list(out) || \
         out->ptr.se_ptr == s_expr_next(call_no_args)) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(out->ptr.se_ptr, true);
     free(out);
@@ -458,14 +551,14 @@ void test_collect_arguments(test_env* te) {
     out = collect_arguments(call_no_args, env, 0, -1, true);
     if (!tp_is_empty_list(out) || \
         out->ptr.se_ptr == s_expr_next(call_no_args)) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(out->ptr.se_ptr, true);
     free(out);
     // empty arg s-expr, with min_args > 0
     out = collect_arguments(call_no_args, env, 1, 1, true);
     if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
+        pass = false;
     }
     free(out);
     delete_s_expr_recursive(call_no_args, true);
@@ -476,7 +569,7 @@ void test_collect_arguments(test_env* te) {
     s_expr_append(call_one_arg, value_1);
     out = collect_arguments(call_one_arg, env, 0, 0, true);
     if (!match_error(out, EVAL_ERROR_MANY_ARGS)) {
-        pass = 0;
+        pass = false;
     }
     free(out);
     // one-elt arg s-expr, with min_args == 0 & max_args == 1
@@ -485,7 +578,7 @@ void test_collect_arguments(test_env* te) {
         out->type != TYPE_SEXPR || \
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_one_arg)) || \
         out->ptr.se_ptr->car == value_1) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(out->ptr.se_ptr, true);
     free(out);
@@ -495,7 +588,7 @@ void test_collect_arguments(test_env* te) {
         out->type != TYPE_SEXPR || \
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_one_arg)) || \
         out->ptr.se_ptr->car == value_1) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(out->ptr.se_ptr, true);
     free(out);
@@ -505,7 +598,7 @@ void test_collect_arguments(test_env* te) {
         out->type != TYPE_SEXPR || \
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_one_arg)) || \
         out->ptr.se_ptr->car == value_1) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(out->ptr.se_ptr, true);
     free(out);
@@ -515,7 +608,7 @@ void test_collect_arguments(test_env* te) {
         out->type != TYPE_SEXPR || \
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_one_arg)) || \
         out->ptr.se_ptr->car == value_1) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(out->ptr.se_ptr, true);
     free(out);
@@ -525,7 +618,7 @@ void test_collect_arguments(test_env* te) {
         out->type != TYPE_SEXPR || \
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_one_arg)) || \
         out->ptr.se_ptr->car == value_1) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(out->ptr.se_ptr, true);
     free(out);
@@ -535,7 +628,7 @@ void test_collect_arguments(test_env* te) {
         out->type != TYPE_SEXPR || \
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_one_arg)) || \
         out->ptr.se_ptr->car == value_1) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(out->ptr.se_ptr, true);
     free(out);
@@ -545,20 +638,20 @@ void test_collect_arguments(test_env* te) {
         out->type != TYPE_SEXPR || \
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_one_arg)) || \
         out->ptr.se_ptr->car == value_1) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(out->ptr.se_ptr, true);
     free(out);
     // one-elt arg s-expr, with min_args == 2 & max_args == 2
     out = collect_arguments(call_one_arg, env, 2, 2, true);
     if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
+        pass = false;
     }
     free(out);
     // one-elt arg s-expr, with min_args == 2 & max_args == -1
     out = collect_arguments(call_one_arg, env, 2, -1, true);
     if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
+        pass = false;
     }
     free(out);
     delete_s_expr_recursive(call_one_arg, true);
@@ -568,17 +661,17 @@ void test_collect_arguments(test_env* te) {
     value_1 = create_atom_tp(TYPE_NUM, 1000);
     s_expr_append(call_two_args, value_1);
     typed_ptr* value_2 = create_s_expr_tp(create_empty_s_expr());
-    s_expr_append(value_2->ptr.se_ptr, create_atom_tp(TYPE_BOOL, 1));
+    s_expr_append(value_2->ptr.se_ptr, create_atom_tp(TYPE_BOOL, true));
     s_expr_append(call_two_args, value_2);
     out = collect_arguments(call_two_args, env, 0, 0, false);
     if (!match_error(out, EVAL_ERROR_MANY_ARGS)) {
-        pass = 0;
+        pass = false;
     }
     free(out);
     // two-elt arg s-expr, with min_args == 0 & max_args == 1
     out = collect_arguments(call_two_args, env, 0, 1, false);
     if (!match_error(out, EVAL_ERROR_MANY_ARGS)) {
-        pass = 0;
+        pass = false;
     }
     free(out);
     // two-elt arg s-expr, with min_args == 0 & max_args == 2
@@ -588,7 +681,7 @@ void test_collect_arguments(test_env* te) {
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_two_args)) || \
         out->ptr.se_ptr->car == value_1 || \
         s_expr_next(out->ptr.se_ptr)->car->ptr.se_ptr != value_2->ptr.se_ptr) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(out->ptr.se_ptr, false);
     free(out);
@@ -599,7 +692,7 @@ void test_collect_arguments(test_env* te) {
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_two_args)) || \
         out->ptr.se_ptr->car == value_1 || \
         s_expr_next(out->ptr.se_ptr)->car->ptr.se_ptr != value_2->ptr.se_ptr) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(out->ptr.se_ptr, false);
     free(out);
@@ -610,14 +703,14 @@ void test_collect_arguments(test_env* te) {
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_two_args)) || \
         out->ptr.se_ptr->car == value_1 || \
         s_expr_next(out->ptr.se_ptr)->car->ptr.se_ptr != value_2->ptr.se_ptr) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(out->ptr.se_ptr, false);
     free(out);
     // two-elt arg s-expr, with min_args == 1 & max_args == 1
     out = collect_arguments(call_two_args, env, 1, 1, false);
     if (!match_error(out, EVAL_ERROR_MANY_ARGS)) {
-        pass = 0;
+        pass = false;
     }
     free(out);
     // two-elt arg s-expr, with min_args == 1 & max_args == 2
@@ -627,7 +720,7 @@ void test_collect_arguments(test_env* te) {
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_two_args)) || \
         out->ptr.se_ptr->car == value_1 || \
         s_expr_next(out->ptr.se_ptr)->car->ptr.se_ptr != value_2->ptr.se_ptr) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(out->ptr.se_ptr, false);
     free(out);
@@ -638,7 +731,7 @@ void test_collect_arguments(test_env* te) {
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_two_args)) || \
         out->ptr.se_ptr->car == value_1 || \
         s_expr_next(out->ptr.se_ptr)->car->ptr.se_ptr != value_2->ptr.se_ptr) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(out->ptr.se_ptr, false);
     free(out);
@@ -649,7 +742,7 @@ void test_collect_arguments(test_env* te) {
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_two_args)) || \
         out->ptr.se_ptr->car == value_1 || \
         s_expr_next(out->ptr.se_ptr)->car->ptr.se_ptr != value_2->ptr.se_ptr) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(out->ptr.se_ptr, false);
     free(out);
@@ -660,7 +753,7 @@ void test_collect_arguments(test_env* te) {
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_two_args)) || \
         out->ptr.se_ptr->car == value_1 || \
         s_expr_next(out->ptr.se_ptr)->car->ptr.se_ptr != value_2->ptr.se_ptr) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(out->ptr.se_ptr, false);
     free(out);
@@ -671,7 +764,7 @@ void test_collect_arguments(test_env* te) {
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_two_args)) || \
         out->ptr.se_ptr->car == value_1 || \
         s_expr_next(out->ptr.se_ptr)->car->ptr.se_ptr != value_2->ptr.se_ptr) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(out->ptr.se_ptr, false);
     free(out);
@@ -682,20 +775,20 @@ void test_collect_arguments(test_env* te) {
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_two_args)) || \
         out->ptr.se_ptr->car == value_1 || \
         s_expr_next(out->ptr.se_ptr)->car->ptr.se_ptr != value_2->ptr.se_ptr) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(out->ptr.se_ptr, false);
     free(out);
     // two-elt arg s-expr, with min_args == 3 & max_args == 3
     out = collect_arguments(call_two_args, env, 3, 3, false);
     if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
+        pass = false;
     }
     free(out);
     // two-elt arg s-expr, with min_args == 3 & max_args == -1
     out = collect_arguments(call_two_args, env, 3, -1, false);
     if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
+        pass = false;
     }
     free(out);
     delete_s_expr_recursive(call_two_args, true);
@@ -706,8 +799,8 @@ void test_collect_arguments(test_env* te) {
     s_expr_append(addition_arg, create_atom_tp(TYPE_NUM, 2));
     s_expr* list_arg = create_empty_s_expr();
     s_expr_append(list_arg, symbol_tp_from_name(env, "list"));
-    s_expr_append(list_arg, create_atom_tp(TYPE_BOOL, 0));
-    s_expr_append(list_arg, create_atom_tp(TYPE_BOOL, 1));
+    s_expr_append(list_arg, create_atom_tp(TYPE_BOOL, false));
+    s_expr_append(list_arg, create_atom_tp(TYPE_BOOL, true));
     s_expr* call_with_eval = create_empty_s_expr();
     s_expr_append(call_with_eval, create_atom_tp(TYPE_BUILTIN, 0));
     s_expr_append(call_with_eval, create_s_expr_tp(addition_arg));
@@ -715,14 +808,14 @@ void test_collect_arguments(test_env* te) {
     s_expr* expected = create_empty_s_expr();
     s_expr_append(expected, create_atom_tp(TYPE_NUM, 3));
     s_expr* list_result = create_empty_s_expr();
-    s_expr_append(list_result, create_atom_tp(TYPE_BOOL, 0));
-    s_expr_append(list_result, create_atom_tp(TYPE_BOOL, 1));
+    s_expr_append(list_result, create_atom_tp(TYPE_BOOL, false));
+    s_expr_append(list_result, create_atom_tp(TYPE_BOOL, true));
     s_expr_append(expected, create_s_expr_tp(list_result));
     out = collect_arguments(call_with_eval, env, 2, 2, true);
     if (out == NULL || \
         out->type != TYPE_SEXPR || \
         !match_s_exprs(out->ptr.se_ptr, expected)) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(out->ptr.se_ptr, true);
     free(out);
@@ -731,11 +824,11 @@ void test_collect_arguments(test_env* te) {
     s_expr* plus_error = create_empty_s_expr();
     s_expr_append(plus_error, symbol_tp_from_name(env, "+"));
     s_expr_append(plus_error, create_atom_tp(TYPE_NUM, 1));
-    s_expr_append(plus_error, create_atom_tp(TYPE_BOOL, 0));
+    s_expr_append(plus_error, create_atom_tp(TYPE_BOOL, false));
     s_expr_append(call_with_eval, create_s_expr_tp(plus_error));
     out = collect_arguments(call_with_eval, env, 3, 3, true);
     if (!match_error(out, EVAL_ERROR_NEED_NUM)) {
-        pass = 0;
+        pass = false;
     }
     free(out);
     delete_s_expr_recursive(call_with_eval, true);
@@ -746,532 +839,252 @@ void test_collect_arguments(test_env* te) {
     return;
 }
 
-typed_ptr* create_number_tp(long value) {
-    return create_typed_ptr(TYPE_NUM, (tp_value){.idx=value});
-}
-
-s_expr* unit_list(typed_ptr* tp) {
-    return create_s_expr(tp, create_s_expr_tp(create_empty_s_expr()));
-}
-
-bool check_number_tp(typed_ptr* tp, long expected) {
-    return (tp != NULL && tp->type == TYPE_NUM && tp->ptr.idx == expected);
-}
-
-// NOTE: frees cmd
-bool run_test_expect_number(Environment* env, s_expr* cmd, long expected) {
-    typed_ptr* out = eval_arithmetic(cmd, env);
-    bool passed = check_number_tp(out, expected);
-    delete_s_expr_recursive(cmd, true);
-    if (out != NULL && out->type == TYPE_SEXPR) {
-        delete_s_expr_recursive(out->ptr.se_ptr, true);
-    }
-    free(out);
-    return passed;
-}
-
-typed_ptr* builtin_tp_from_name(Environment* env, const char name[]) {
-    Symbol_Node* found = symbol_lookup_string(env, name);
-    if (found == NULL || found->type != TYPE_BUILTIN) {
-        return NULL;
-    } else {
-        return create_atom_tp(TYPE_BUILTIN, found->value.idx);
-    }
-}
-
 void test_eval_arithmetic(test_env* te) {
     print_test_announce("eval_arithmetic()");
-    // setup
-    bool pass = 1;
     Environment* env = create_environment(0, 0);
     setup_environment(env);
-    typed_ptr *add, *subtract, *multiply, *divide;
-    add = builtin_tp_from_name(env, "+");
-    subtract = builtin_tp_from_name(env, "-");
-    multiply = builtin_tp_from_name(env, "*");
-    divide = builtin_tp_from_name(env, "/");
+    bool pass = true;
+    #define NUM_OPS 4
+    typed_ptr* arith_ops[NUM_OPS] = {ADD, SUBTRACT, MULTIPLY, DIVIDE};
     // (+ . 1) -> EVAL_ERROR_ILLEGAL_PAIR
-    s_expr* pair_cmd = create_s_expr(copy_typed_ptr(add), create_number_tp(1));
-    typed_ptr* out = eval_arithmetic(pair_cmd, env);
-    if (!match_error(out, EVAL_ERROR_ILLEGAL_PAIR)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(pair_cmd, true);
-    free(out);
+    s_expr* cmd = create_s_expr(ADD, create_number_tp(1));
+    typed_ptr* expected = create_error_tp(EVAL_ERROR_ILLEGAL_PAIR);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (+ 1 . 2) -> EVAL_ERROR_ILLEGAL_PAIR
-    pair_cmd = create_s_expr(create_number_tp(1), create_number_tp(2));
-    pair_cmd = create_s_expr(copy_typed_ptr(add), create_s_expr_tp(pair_cmd));
-    out = eval_arithmetic(pair_cmd, env);
-    if (!match_error(out, EVAL_ERROR_ILLEGAL_PAIR)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(pair_cmd, true);
-    free(out);
+    cmd = create_s_expr(create_number_tp(1), create_number_tp(2));
+    cmd = create_s_expr(ADD, create_s_expr_tp(cmd));
+    expected = create_error_tp(EVAL_ERROR_ILLEGAL_PAIR);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (+ 1 2 . 3) -> EVAL_ERROR_ILLEGAL_PAIR
-    pair_cmd = create_s_expr(create_number_tp(2), create_number_tp(3));
-    pair_cmd = create_s_expr(create_number_tp(1), create_s_expr_tp(pair_cmd));
-    pair_cmd = create_s_expr(copy_typed_ptr(add), create_s_expr_tp(pair_cmd));
-    out = eval_arithmetic(pair_cmd, env);
-    if (!match_error(out, EVAL_ERROR_ILLEGAL_PAIR)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(pair_cmd, true);
-    free(out);
+    cmd = create_s_expr(create_number_tp(2), create_number_tp(3));
+    cmd = create_s_expr(create_number_tp(1), create_s_expr_tp(cmd));
+    cmd = create_s_expr(ADD, create_s_expr_tp(cmd));
+    expected = create_error_tp(EVAL_ERROR_ILLEGAL_PAIR);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (+) -> 0
-    s_expr* lone_add_cmd = unit_list(copy_typed_ptr(add));
-    pass = pass && run_test_expect_number(env, lone_add_cmd, 0);
+    cmd = unit_list(ADD);
+    expected = create_number_tp(0);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (-) -> EVAL_ERROR_FEW_ARGS
-    s_expr* lone_subtract_cmd = unit_list(copy_typed_ptr(subtract));
-    out = eval_arithmetic(lone_subtract_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(lone_subtract_cmd, true);
-    free(out);
+    cmd = unit_list(SUBTRACT);
+    expected = create_error_tp(EVAL_ERROR_FEW_ARGS);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (*) -> 1
-    s_expr* lone_multiply_cmd = unit_list(copy_typed_ptr(multiply));
-    pass = pass && run_test_expect_number(env, lone_multiply_cmd, 1);
+    cmd = unit_list(MULTIPLY);
+    expected = create_number_tp(1);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (/) -> EVAL_ERROR_FEW_ARGS
-    s_expr* lone_divide_cmd = unit_list(copy_typed_ptr(divide));
-    out = eval_arithmetic(lone_divide_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(lone_divide_cmd, true);
-    free(out);
+    cmd = unit_list(DIVIDE);
+    expected = create_error_tp(EVAL_ERROR_FEW_ARGS);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (+ 0) -> 0
-    s_expr* add_zero_cmd = unit_list(copy_typed_ptr(add));
-    s_expr_append(add_zero_cmd, create_number_tp(0));
-    pass = pass && run_test_expect_number(env, add_zero_cmd, 0);
+    cmd = unit_list(ADD);
+    s_expr_append(cmd, create_number_tp(0));
+    expected = create_number_tp(0);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (- 0) -> 0
-    s_expr* subtract_zero_cmd = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(subtract_zero_cmd, create_number_tp(0));
-    pass = pass && run_test_expect_number(env, subtract_zero_cmd, 0);
+    cmd = unit_list(SUBTRACT);
+    s_expr_append(cmd, create_number_tp(0));
+    expected = create_number_tp(0);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (* 0) -> 0
-    s_expr* multiply_zero_cmd = unit_list(copy_typed_ptr(multiply));
-    s_expr_append(multiply_zero_cmd, create_number_tp(0));
-    pass = pass && run_test_expect_number(env, multiply_zero_cmd, 0);
+    cmd = unit_list(MULTIPLY);
+    s_expr_append(cmd, create_number_tp(0));
+    expected = create_number_tp(0);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (/ 0) -> EVAL_ERROR_DIV_ZERO
-    s_expr* divide_zero_cmd = unit_list(copy_typed_ptr(divide));
-    s_expr_append(divide_zero_cmd, create_number_tp(0));
-    out = eval_arithmetic(divide_zero_cmd, env);
-    if (!match_error(out, EVAL_ERROR_DIV_ZERO)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(divide_zero_cmd, true);
-    free(out);
+    cmd = unit_list(DIVIDE);
+    s_expr_append(cmd, create_number_tp(0));
+    expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (+ 2) -> 2
-    s_expr* add_two_cmd = unit_list(copy_typed_ptr(add));
-    s_expr_append(add_two_cmd, create_number_tp(2));
-    pass = pass && run_test_expect_number(env, add_two_cmd, 2);
+    cmd = unit_list(ADD);
+    s_expr_append(cmd, create_number_tp(2));
+    expected = create_number_tp(2);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (- 2) -> -2
-    s_expr* subtract_two_cmd = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(subtract_two_cmd, create_number_tp(2));
-    pass = pass && run_test_expect_number(env, subtract_two_cmd, -2);
+    cmd = unit_list(SUBTRACT);
+    s_expr_append(cmd, create_number_tp(2));
+    expected = create_number_tp(-2);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (* 2) -> 2
-    s_expr* multiply_two_cmd = unit_list(copy_typed_ptr(multiply));
-    s_expr_append(multiply_two_cmd, create_number_tp(2));
-    pass = pass && run_test_expect_number(env, multiply_two_cmd, 2);
+    cmd = unit_list(MULTIPLY);
+    s_expr_append(cmd, create_number_tp(2));
+    expected = create_number_tp(2);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (/ 2) -> 0 (since floats don't work yet - integer division w/flooring)
-    s_expr* divide_two_cmd = unit_list(copy_typed_ptr(divide));
-    s_expr_append(divide_two_cmd, create_number_tp(2));
-    pass = pass && run_test_expect_number(env, divide_two_cmd, 0);
+    cmd = unit_list(DIVIDE);
+    s_expr_append(cmd, create_number_tp(2));
+    expected = create_number_tp(0);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (+ 2 3) -> 5
-    s_expr* add_two_three_cmd = unit_list(copy_typed_ptr(add));
-    s_expr_append(add_two_three_cmd, create_number_tp(2));
-    s_expr_append(add_two_three_cmd, create_number_tp(3));
-    pass = pass && run_test_expect_number(env, add_two_three_cmd, 5);
+    cmd = unit_list(ADD);
+    s_expr_append(cmd, create_number_tp(2));
+    s_expr_append(cmd, create_number_tp(3));
+    expected = create_number_tp(5);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (- 2 3) -> -1
-    s_expr* subtract_two_three_cmd = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(subtract_two_three_cmd, create_number_tp(2));
-    s_expr_append(subtract_two_three_cmd, create_number_tp(3));
-    pass = pass && run_test_expect_number(env, subtract_two_three_cmd, -1);
+    cmd = unit_list(SUBTRACT);
+    s_expr_append(cmd, create_number_tp(2));
+    s_expr_append(cmd, create_number_tp(3));
+    expected = create_number_tp(-1);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (* 2 3) -> 6
-    s_expr* multiply_two_three_cmd = unit_list(copy_typed_ptr(multiply));
-    s_expr_append(multiply_two_three_cmd, create_number_tp(2));
-    s_expr_append(multiply_two_three_cmd, create_number_tp(3));
-    pass = pass && run_test_expect_number(env, multiply_two_three_cmd, 6);
+    cmd = unit_list(MULTIPLY);
+    s_expr_append(cmd, create_number_tp(2));
+    s_expr_append(cmd, create_number_tp(3));
+    expected = create_number_tp(6);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (* 2 0) -> 0
-    s_expr* multiply_two_zero_cmd = unit_list(copy_typed_ptr(multiply));
-    s_expr_append(multiply_two_zero_cmd, create_number_tp(2));
-    s_expr_append(multiply_two_zero_cmd, create_number_tp(0));
-    pass = pass && run_test_expect_number(env, multiply_two_zero_cmd, 0);
+    cmd = unit_list(MULTIPLY);
+    s_expr_append(cmd, create_number_tp(2));
+    s_expr_append(cmd, create_number_tp(0));
+    expected = create_number_tp(0);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (/ 6 2) -> 3
-    s_expr* divide_six_two_cmd = unit_list(copy_typed_ptr(divide));
-    s_expr_append(divide_six_two_cmd, create_number_tp(6));
-    s_expr_append(divide_six_two_cmd, create_number_tp(2));
-    pass = pass && run_test_expect_number(env, divide_six_two_cmd, 3);
+    cmd = unit_list(DIVIDE);
+    s_expr_append(cmd, create_number_tp(6));
+    s_expr_append(cmd, create_number_tp(2));
+    expected = create_number_tp(3);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (/ 5 2) -> 2 (again - integer division)
-    s_expr* divide_five_two_cmd = unit_list(copy_typed_ptr(divide));
-    s_expr_append(divide_five_two_cmd, create_number_tp(5));
-    s_expr_append(divide_five_two_cmd, create_number_tp(2));
-    pass = pass && run_test_expect_number(env, divide_five_two_cmd, 2);
+    cmd = unit_list(DIVIDE);
+    s_expr_append(cmd, create_number_tp(5));
+    s_expr_append(cmd, create_number_tp(2));
+    expected = create_number_tp(2);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (/ 6 0) -> EVAL_ERROR_DIV_ZERO
-    s_expr* divide_six_zero_cmd = unit_list(copy_typed_ptr(divide));
-    s_expr_append(divide_six_zero_cmd, create_number_tp(6));
-    s_expr_append(divide_six_zero_cmd, create_number_tp(0));
-    out = eval_arithmetic(divide_six_zero_cmd, env);
-    if (!match_error(out, EVAL_ERROR_DIV_ZERO)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(divide_six_zero_cmd, true);
-    free(out);
+    cmd = unit_list(DIVIDE);
+    s_expr_append(cmd, create_number_tp(6));
+    s_expr_append(cmd, create_number_tp(0));
+    expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (/ 0 6) -> 0
-    s_expr* divide_zero_six_cmd = unit_list(copy_typed_ptr(divide));
-    s_expr_append(divide_zero_six_cmd, create_number_tp(0));
-    s_expr_append(divide_zero_six_cmd, create_number_tp(6));
-    pass = pass && run_test_expect_number(env, divide_zero_six_cmd, 0);
+    cmd = unit_list(DIVIDE);
+    s_expr_append(cmd, create_number_tp(0));
+    s_expr_append(cmd, create_number_tp(6));
+    expected = create_number_tp(0);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (+ 2 (+ 2 2)) -> 6
-    s_expr* nested_add_twos_cmd = unit_list(copy_typed_ptr(add));
-    s_expr_append(nested_add_twos_cmd, create_number_tp(2));
-    s_expr* inner_add_twos = unit_list(symbol_tp_from_name(env, "+"));
-    s_expr_append(inner_add_twos, create_number_tp(2));
-    s_expr_append(inner_add_twos, create_number_tp(2));
-    s_expr_append(nested_add_twos_cmd, create_s_expr_tp(inner_add_twos));
-    pass = pass && run_test_expect_number(env, nested_add_twos_cmd, 6);
+    cmd = unit_list(ADD);
+    s_expr_append(cmd, create_number_tp(2));
+    s_expr* add_two_two = unit_list(ADD_SYM);
+    s_expr_append(add_two_two, create_number_tp(2));
+    s_expr_append(add_two_two, create_number_tp(2));
+    s_expr_append(cmd, create_s_expr_tp(copy_s_expr(add_two_two)));
+    expected = create_number_tp(6);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (- 2 (+ 2 2)) -> -2
-    s_expr* nested_subtract_twos_cmd = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(nested_subtract_twos_cmd, create_number_tp(2));
-    inner_add_twos = unit_list(symbol_tp_from_name(env, "+"));
-    s_expr_append(inner_add_twos, create_number_tp(2));
-    s_expr_append(inner_add_twos, create_number_tp(2));
-    s_expr_append(nested_subtract_twos_cmd, create_s_expr_tp(inner_add_twos));
-    pass = pass && run_test_expect_number(env, nested_subtract_twos_cmd, -2);
+    cmd = unit_list(SUBTRACT);
+    s_expr_append(cmd, create_number_tp(2));
+    s_expr_append(cmd, create_s_expr_tp(copy_s_expr(add_two_two)));
+    expected = create_number_tp(-2);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (* 2 (+ 2 2)) -> 8
-    s_expr* nested_multiply_twos_cmd = unit_list(copy_typed_ptr(multiply));
-    s_expr_append(nested_multiply_twos_cmd, create_number_tp(2));
-    inner_add_twos = unit_list(symbol_tp_from_name(env, "+"));
-    s_expr_append(inner_add_twos, create_number_tp(2));
-    s_expr_append(inner_add_twos, create_number_tp(2));
-    s_expr_append(nested_multiply_twos_cmd, create_s_expr_tp(inner_add_twos));
-    pass = pass && run_test_expect_number(env, nested_multiply_twos_cmd, 8);
-    // (/ 10 (+ 1 1)) -> 5
-    s_expr* nested_divide_twos_cmd = unit_list(copy_typed_ptr(divide));
-    s_expr_append(nested_divide_twos_cmd, create_number_tp(10));
-    inner_add_twos = unit_list(symbol_tp_from_name(env, "+"));
-    s_expr_append(inner_add_twos, create_number_tp(1));
-    s_expr_append(inner_add_twos, create_number_tp(1));
-    s_expr_append(nested_divide_twos_cmd, create_s_expr_tp(inner_add_twos));
-    pass = pass && run_test_expect_number(env, nested_divide_twos_cmd, 5);
+    cmd = unit_list(MULTIPLY);
+    s_expr_append(cmd, create_number_tp(2));
+    s_expr_append(cmd, create_s_expr_tp(copy_s_expr(add_two_two)));
+    expected = create_number_tp(8);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
+    // (/ 20 (+ 2 2)) -> 5
+    cmd = unit_list(DIVIDE);
+    s_expr_append(cmd, create_number_tp(20));
+    s_expr_append(cmd, create_s_expr_tp(copy_s_expr(add_two_two)));
+    expected = create_number_tp(5);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (+ 1 1 1) -> 3
-    s_expr* triple_add_cmd = unit_list(copy_typed_ptr(add));
-    s_expr_append(triple_add_cmd, create_number_tp(1));
-    s_expr_append(triple_add_cmd, create_number_tp(1));
-    s_expr_append(triple_add_cmd, create_number_tp(1));
-    pass = pass && run_test_expect_number(env, triple_add_cmd, 3);
+    cmd = unit_list(ADD);
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_number_tp(3);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (- 10 1 1) -> 8
-    s_expr* triple_subtract_cmd = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(triple_subtract_cmd, create_number_tp(10));
-    s_expr_append(triple_subtract_cmd, create_number_tp(1));
-    s_expr_append(triple_subtract_cmd, create_number_tp(1));
-    pass = pass && run_test_expect_number(env, triple_subtract_cmd, 8);
+    cmd = unit_list(SUBTRACT);
+    s_expr_append(cmd, create_number_tp(10));
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_number_tp(8);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (* 2 3 4) -> 24
-    s_expr* triple_multiply_cmd = unit_list(copy_typed_ptr(multiply));
-    s_expr_append(triple_multiply_cmd, create_number_tp(2));
-    s_expr_append(triple_multiply_cmd, create_number_tp(3));
-    s_expr_append(triple_multiply_cmd, create_number_tp(4));
-    pass = pass && run_test_expect_number(env, triple_multiply_cmd, 24);
+    cmd = unit_list(MULTIPLY);
+    s_expr_append(cmd, create_number_tp(2));
+    s_expr_append(cmd, create_number_tp(3));
+    s_expr_append(cmd, create_number_tp(4));
+    expected = create_number_tp(24);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (/ 72 3 4) -> 6
-    s_expr* triple_divide_cmd = unit_list(copy_typed_ptr(divide));
-    s_expr_append(triple_divide_cmd, create_number_tp(72));
-    s_expr_append(triple_divide_cmd, create_number_tp(3));
-    s_expr_append(triple_divide_cmd, create_number_tp(4));
-    pass = pass && run_test_expect_number(env, triple_divide_cmd, 6);
+    cmd = unit_list(DIVIDE);
+    s_expr_append(cmd, create_number_tp(72));
+    s_expr_append(cmd, create_number_tp(3));
+    s_expr_append(cmd, create_number_tp(4));
+    expected = create_number_tp(6);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (/ 72 0 2) -> EVAL_ERROR_DIV_ZERO
-    s_expr* triple_divide_zero_cmd = unit_list(copy_typed_ptr(divide));
-    s_expr_append(triple_divide_zero_cmd, create_number_tp(72));
-    s_expr_append(triple_divide_zero_cmd, create_number_tp(0));
-    s_expr_append(triple_divide_zero_cmd, create_number_tp(2));
-    out = eval_arithmetic(triple_divide_zero_cmd, env);
-    if (!match_error(out, EVAL_ERROR_DIV_ZERO)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(triple_divide_zero_cmd, true);
-    free(out);
+    cmd = unit_list(DIVIDE);
+    s_expr_append(cmd, create_number_tp(72));
+    s_expr_append(cmd, create_number_tp(0));
+    s_expr_append(cmd, create_number_tp(2));
+    expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (/ 72 2 0) -> EVAL_ERROR_DIV_ZERO
-    triple_divide_zero_cmd = unit_list(copy_typed_ptr(divide));
-    s_expr_append(triple_divide_zero_cmd, create_number_tp(72));
-    s_expr_append(triple_divide_zero_cmd, create_number_tp(2));
-    s_expr_append(triple_divide_zero_cmd, create_number_tp(0));
-    out = eval_arithmetic(triple_divide_zero_cmd, env);
-    if (!match_error(out, EVAL_ERROR_DIV_ZERO)) {
-        pass = 0;
+    cmd = unit_list(DIVIDE);
+    s_expr_append(cmd, create_number_tp(72));
+    s_expr_append(cmd, create_number_tp(2));
+    s_expr_append(cmd, create_number_tp(0));
+    expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
+    // (<arith op> 1 #t) -> EVAL_ERROR_NEED_NUM
+    // (<arith op> #t 1) -> EVAL_ERROR_NEED_NUM
+    for (unsigned int i = 0; i < NUM_OPS; i++) {
+        cmd = unit_list(copy_typed_ptr(arith_ops[i]));
+        s_expr_append(cmd, create_number_tp(1));
+        s_expr_append(cmd, create_atom_tp(TYPE_BOOL, true));
+        expected = create_error_tp(EVAL_ERROR_NEED_NUM);
+        pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
+        cmd = unit_list(copy_typed_ptr(arith_ops[i]));
+        s_expr_append(cmd, create_atom_tp(TYPE_BOOL, true));
+        s_expr_append(cmd, create_number_tp(1));
+        expected = create_error_tp(EVAL_ERROR_NEED_NUM);
+        pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     }
-    delete_s_expr_recursive(triple_divide_zero_cmd, true);
-    free(out);
-    // (+ 1 #t) -> EVAL_ERROR_NEED_NUM
-    s_expr* arith_bool_cmd = unit_list(copy_typed_ptr(add));
-    s_expr_append(arith_bool_cmd, create_number_tp(1));
-    s_expr_append(arith_bool_cmd, create_atom_tp(TYPE_BOOL, 1));
-    out = eval_arithmetic(arith_bool_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NEED_NUM)) {
-        pass = 0;
+    // (<arith op> 1 EVAL_ERROR_NOT_ID) -> EVAL_ERROR_NOT_ID
+    // (<arith op> EVAL_ERROR_NOT_ID 1) -> EVAL_ERROR_NOT_ID
+    for (unsigned int i = 0; i < NUM_OPS; i++) {
+        cmd = unit_list(copy_typed_ptr(arith_ops[i]));
+        s_expr_append(cmd, create_number_tp(1));
+        s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_ID));
+        expected = create_error_tp(EVAL_ERROR_NOT_ID);
+        pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
+        cmd = unit_list(copy_typed_ptr(arith_ops[i]));
+        s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_ID));
+        s_expr_append(cmd, create_number_tp(1));
+        expected = create_error_tp(EVAL_ERROR_NOT_ID);
+        pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     }
-    delete_s_expr_recursive(arith_bool_cmd, true);
-    free(out);
-    // (+ #t 1) -> EVAL_ERROR_NEED_NUM
-    arith_bool_cmd = unit_list(copy_typed_ptr(add));
-    s_expr_append(arith_bool_cmd, create_atom_tp(TYPE_BOOL, 1));
-    s_expr_append(arith_bool_cmd, create_number_tp(1));
-    out = eval_arithmetic(arith_bool_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NEED_NUM)) {
-        pass = 0;
+    // (<arith op> 1 (/ 0)) -> EVAL_ERROR_DIV_ZERO
+    // (<arith op> (/ 0) 1) -> EVAL_ERROR_DIV_ZERO
+    for (unsigned int i = 0; i < NUM_OPS; i++) {
+        cmd = unit_list(copy_typed_ptr(arith_ops[i]));
+        s_expr_append(cmd, create_number_tp(1));
+        s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
+        expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+        pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
+        cmd = unit_list(copy_typed_ptr(arith_ops[i]));
+        s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
+        s_expr_append(cmd, create_number_tp(1));
+        expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+        pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     }
-    delete_s_expr_recursive(arith_bool_cmd, true);
-    free(out);
-    // (- 1 #t) -> EVAL_ERROR_NEED_NUM
-    arith_bool_cmd = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(arith_bool_cmd, create_number_tp(1));
-    s_expr_append(arith_bool_cmd, create_atom_tp(TYPE_BOOL, 1));
-    out = eval_arithmetic(arith_bool_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NEED_NUM)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(arith_bool_cmd, true);
-    free(out);
-    // (- #t 1) -> EVAL_ERROR_NEED_NUM
-    arith_bool_cmd = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(arith_bool_cmd, create_atom_tp(TYPE_BOOL, 1));
-    s_expr_append(arith_bool_cmd, create_number_tp(1));
-    out = eval_arithmetic(arith_bool_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NEED_NUM)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(arith_bool_cmd, true);
-    free(out);
-    // (* 1 #t) -> EVAL_ERROR_NEED_NUM
-    arith_bool_cmd = unit_list(copy_typed_ptr(multiply));
-    s_expr_append(arith_bool_cmd, create_number_tp(1));
-    s_expr_append(arith_bool_cmd, create_atom_tp(TYPE_BOOL, 1));
-    out = eval_arithmetic(arith_bool_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NEED_NUM)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(arith_bool_cmd, true);
-    free(out);
-    // (* #t 1) -> EVAL_ERROR_NEED_NUM
-    arith_bool_cmd = unit_list(copy_typed_ptr(multiply));
-    s_expr_append(arith_bool_cmd, create_atom_tp(TYPE_BOOL, 1));
-    s_expr_append(arith_bool_cmd, create_number_tp(1));
-    out = eval_arithmetic(arith_bool_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NEED_NUM)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(arith_bool_cmd, true);
-    free(out);
-    // (/ 1 #t) -> EVAL_ERROR_NEED_NUM
-    arith_bool_cmd = unit_list(copy_typed_ptr(divide));
-    s_expr_append(arith_bool_cmd, create_number_tp(1));
-    s_expr_append(arith_bool_cmd, create_atom_tp(TYPE_BOOL, 1));
-    out = eval_arithmetic(arith_bool_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NEED_NUM)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(arith_bool_cmd, true);
-    free(out);
-    // (/ #t 1) -> EVAL_ERROR_NEED_NUM
-    arith_bool_cmd = unit_list(copy_typed_ptr(divide));
-    s_expr_append(arith_bool_cmd, create_atom_tp(TYPE_BOOL, 1));
-    s_expr_append(arith_bool_cmd, create_number_tp(1));
-    out = eval_arithmetic(arith_bool_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NEED_NUM)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(arith_bool_cmd, true);
-    free(out);
-    // (+ 1 EVAL_ERROR_NOT_ID) -> EVAL_ERROR_NOT_ID
-    s_expr* literal_error_arg_cmd = unit_list(copy_typed_ptr(add));
-    s_expr_append(literal_error_arg_cmd, create_number_tp(1));
-    s_expr_append(literal_error_arg_cmd, create_error_tp(EVAL_ERROR_NOT_ID));
-    out = eval_arithmetic(literal_error_arg_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NOT_ID)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(literal_error_arg_cmd, true);
-    free(out);
-    // (+ EVAL_ERROR_NOT_ID 1) -> EVAL_ERROR_NOT_ID
-    literal_error_arg_cmd = unit_list(copy_typed_ptr(add));
-    s_expr_append(literal_error_arg_cmd, create_error_tp(EVAL_ERROR_NOT_ID));
-    s_expr_append(literal_error_arg_cmd, create_number_tp(1));
-    out = eval_arithmetic(literal_error_arg_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NOT_ID)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(literal_error_arg_cmd, true);
-    free(out);
-    // (- 1 EVAL_ERROR_NOT_ID) -> EVAL_ERROR_NOT_ID
-    literal_error_arg_cmd = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(literal_error_arg_cmd, create_number_tp(1));
-    s_expr_append(literal_error_arg_cmd, create_error_tp(EVAL_ERROR_NOT_ID));
-    out = eval_arithmetic(literal_error_arg_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NOT_ID)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(literal_error_arg_cmd, true);
-    free(out);
-    // (- EVAL_ERROR_NOT_ID 1) -> EVAL_ERROR_NOT_ID
-    literal_error_arg_cmd = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(literal_error_arg_cmd, create_error_tp(EVAL_ERROR_NOT_ID));
-    s_expr_append(literal_error_arg_cmd, create_number_tp(1));
-    out = eval_arithmetic(literal_error_arg_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NOT_ID)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(literal_error_arg_cmd, true);
-    free(out);
-    // (* 1 EVAL_ERROR_NOT_ID) -> EVAL_ERROR_NOT_ID
-    literal_error_arg_cmd = unit_list(copy_typed_ptr(multiply));
-    s_expr_append(literal_error_arg_cmd, create_number_tp(1));
-    s_expr_append(literal_error_arg_cmd, create_error_tp(EVAL_ERROR_NOT_ID));
-    out = eval_arithmetic(literal_error_arg_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NOT_ID)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(literal_error_arg_cmd, true);
-    free(out);
-    // (* EVAL_ERROR_NOT_ID 1) -> EVAL_ERROR_NOT_ID
-    literal_error_arg_cmd = unit_list(copy_typed_ptr(multiply));
-    s_expr_append(literal_error_arg_cmd, create_error_tp(EVAL_ERROR_NOT_ID));
-    s_expr_append(literal_error_arg_cmd, create_number_tp(1));
-    out = eval_arithmetic(literal_error_arg_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NOT_ID)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(literal_error_arg_cmd, true);
-    free(out);
-    // (/ 1 EVAL_ERROR_NOT_ID) -> EVAL_ERROR_NOT_ID
-    literal_error_arg_cmd = unit_list(copy_typed_ptr(divide));
-    s_expr_append(literal_error_arg_cmd, create_number_tp(1));
-    s_expr_append(literal_error_arg_cmd, create_error_tp(EVAL_ERROR_NOT_ID));
-    out = eval_arithmetic(literal_error_arg_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NOT_ID)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(literal_error_arg_cmd, true);
-    free(out);
-    // (/ EVAL_ERROR_NOT_ID 1) -> EVAL_ERROR_NOT_ID
-    literal_error_arg_cmd = unit_list(copy_typed_ptr(divide));
-    s_expr_append(literal_error_arg_cmd, create_error_tp(EVAL_ERROR_NOT_ID));
-    s_expr_append(literal_error_arg_cmd, create_number_tp(1));
-    out = eval_arithmetic(literal_error_arg_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NOT_ID)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(literal_error_arg_cmd, true);
-    free(out);
-    // (+ 1 (-)) -> EVAL_ERROR_FEW_ARGS
-    s_expr* error_passthrough_cmd = unit_list(copy_typed_ptr(add));
-    s_expr_append(error_passthrough_cmd, create_number_tp(1));
-    s_expr* lone_subtract = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(error_passthrough_cmd, create_s_expr_tp(lone_subtract));
-    out = eval_arithmetic(error_passthrough_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(error_passthrough_cmd, true);
-    free(out);
-    // (+ (-) 1) -> EVAL_ERROR_FEW_ARGS
-    error_passthrough_cmd = unit_list(copy_typed_ptr(add));
-    lone_subtract = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(error_passthrough_cmd, create_s_expr_tp(lone_subtract));
-    s_expr_append(error_passthrough_cmd, create_number_tp(1));
-    out = eval_arithmetic(error_passthrough_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(error_passthrough_cmd, true);
-    free(out);
-    // (- 1 (-)) -> EVAL_ERROR_FEW_ARGS
-    error_passthrough_cmd = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(error_passthrough_cmd, create_number_tp(1));
-    lone_subtract = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(error_passthrough_cmd, create_s_expr_tp(lone_subtract));
-    out = eval_arithmetic(error_passthrough_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(error_passthrough_cmd, true);
-    free(out);
-    // (- (-) 1) -> EVAL_ERROR_FEW_ARGS
-    error_passthrough_cmd = unit_list(copy_typed_ptr(subtract));
-    lone_subtract = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(error_passthrough_cmd, create_s_expr_tp(lone_subtract));
-    s_expr_append(error_passthrough_cmd, create_number_tp(1));
-    out = eval_arithmetic(error_passthrough_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(error_passthrough_cmd, true);
-    free(out);
-    // (* 1 (-)) -> EVAL_ERROR_FEW_ARGS
-    error_passthrough_cmd = unit_list(copy_typed_ptr(multiply));
-    s_expr_append(error_passthrough_cmd, create_number_tp(1));
-    lone_subtract = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(error_passthrough_cmd, create_s_expr_tp(lone_subtract));
-    out = eval_arithmetic(error_passthrough_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(error_passthrough_cmd, true);
-    free(out);
-    // (* (-) 1) -> EVAL_ERROR_FEW_ARGS
-    error_passthrough_cmd = unit_list(copy_typed_ptr(multiply));
-    lone_subtract = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(error_passthrough_cmd, create_s_expr_tp(lone_subtract));
-    s_expr_append(error_passthrough_cmd, create_number_tp(1));
-    out = eval_arithmetic(error_passthrough_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(error_passthrough_cmd, true);
-    free(out);
-    // (/ 1 (-)) -> EVAL_ERROR_FEW_ARGS
-    error_passthrough_cmd = unit_list(copy_typed_ptr(divide));
-    s_expr_append(error_passthrough_cmd, create_number_tp(1));
-    lone_subtract = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(error_passthrough_cmd, create_s_expr_tp(lone_subtract));
-    out = eval_arithmetic(error_passthrough_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(error_passthrough_cmd, true);
-    free(out);
-    // (/ (-) 1) -> EVAL_ERROR_FEW_ARGS
-    error_passthrough_cmd = unit_list(copy_typed_ptr(divide));
-    lone_subtract = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(error_passthrough_cmd, create_s_expr_tp(lone_subtract));
-    s_expr_append(error_passthrough_cmd, create_number_tp(1));
-    out = eval_arithmetic(error_passthrough_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(error_passthrough_cmd, true);
-    free(out);
-    free(add);
-    free(subtract);
-    free(multiply);
-    free(divide);
     delete_environment_full(env);
+    for (unsigned int i = 0; i < NUM_OPS; i++) {
+        free(arith_ops[i]);
+    }
+    #undef NUM_OPS
     print_test_result(pass);
     te->passed += pass;
     te->run++;
     return;
-}
-
-bool check_bool_tp(typed_ptr* tp, bool expected) {
-    return (tp != NULL && tp->type == TYPE_BOOL && tp->ptr.idx == expected);
-}
-
-// NOTE: frees cmd
-bool run_compare_expect_bool(Environment* env, s_expr* cmd, bool expected) {
-    typed_ptr* out = eval_comparison(cmd, env);
-    bool passed = check_bool_tp(out, expected);
-    delete_s_expr_recursive(cmd, true);
-    if (out != NULL && out->type == TYPE_SEXPR) {
-        delete_s_expr_recursive(out->ptr.se_ptr, true);
-    }
-    free(out);
-    return passed;
 }
 
 bool compare_expect_bool(Environment* env, \
@@ -1283,23 +1096,15 @@ bool compare_expect_bool(Environment* env, \
     for (unsigned int i = 0; i < num_args; i++) {
         s_expr_append(cmd, create_number_tp(args[i]));
     }
-    typed_ptr* out = eval_comparison(cmd, env);
-    bool passed = check_bool_tp(out, expected);
-    delete_s_expr_recursive(cmd, true);
-    if (out != NULL && out->type == TYPE_SEXPR) {
-        delete_s_expr_recursive(out->ptr.se_ptr, true);
-    }
-    free(out);
-    return passed;
+    typed_ptr* expected_tp = create_atom_tp(TYPE_BOOL, expected);
+    return run_test_expect(eval_comparison, cmd, env, expected_tp);
 }
 
 void test_eval_comparison(test_env* te) {
     print_test_announce("eval_comparison()");
-    // setup
-    bool pass = 1;
+    bool pass = true;
     Environment* env = create_environment(0, 0);
     setup_environment(env);
-    typed_ptr* subtract = symbol_tp_from_name(env, "-");
     typed_ptr *eq_tp, *lt_tp, *gt_tp, *le_tp, *ge_tp;
     eq_tp = builtin_tp_from_name(env, "=");
     lt_tp = builtin_tp_from_name(env, "<");
@@ -1311,119 +1116,34 @@ void test_eval_comparison(test_env* te) {
     builtin_code gt = BUILTIN_NUMBERGT;
     builtin_code le = BUILTIN_NUMBERLE;
     builtin_code ge = BUILTIN_NUMBERGE;
+    #define NUM_OPS 5
+    typed_ptr* compare_ops[NUM_OPS] = {eq_tp, lt_tp, gt_tp, le_tp, ge_tp};
     // (= . 1) -> EVAL_ERROR_ILLEGAL_PAIR
-    s_expr* pair_cmd = create_s_expr(copy_typed_ptr(eq_tp), \
-                                     create_number_tp(1));
-    typed_ptr* out = eval_comparison(pair_cmd, env);
-    if (!match_error(out, EVAL_ERROR_ILLEGAL_PAIR)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(pair_cmd, true);
-    free(out);
+    s_expr* cmd = create_s_expr(copy_typed_ptr(eq_tp), create_number_tp(1));
+    typed_ptr* expected = create_error_tp(EVAL_ERROR_ILLEGAL_PAIR);
+    pass = pass && run_test_expect(eval_comparison, cmd, env, expected);
     // (= 1 . 2) -> EVAL_ERROR_ILLEGAL_PAIR
-    pair_cmd = create_s_expr(create_number_tp(1), create_number_tp(2));
-    pair_cmd = create_s_expr(copy_typed_ptr(eq_tp), create_s_expr_tp(pair_cmd));
-    out = eval_comparison(pair_cmd, env);
-    if (!match_error(out, EVAL_ERROR_ILLEGAL_PAIR)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(pair_cmd, true);
-    free(out);
+    cmd = create_s_expr(create_number_tp(1), create_number_tp(2));
+    cmd = create_s_expr(copy_typed_ptr(eq_tp), create_s_expr_tp(cmd));
+    expected = create_error_tp(EVAL_ERROR_ILLEGAL_PAIR);
+    pass = pass && run_test_expect(eval_comparison, cmd, env, expected);
     // (= 1 2 . 3) -> EVAL_ERROR_ILLEGAL_PAIR
-    pair_cmd = create_s_expr(create_number_tp(2), create_number_tp(3));
-    pair_cmd = create_s_expr(create_number_tp(1), create_s_expr_tp(pair_cmd));
-    pair_cmd = create_s_expr(copy_typed_ptr(eq_tp), create_s_expr_tp(pair_cmd));
-    out = eval_comparison(pair_cmd, env);
-    if (!match_error(out, EVAL_ERROR_ILLEGAL_PAIR)) {
-        pass = 0;
+    cmd = create_s_expr(create_number_tp(2), create_number_tp(3));
+    cmd = create_s_expr(create_number_tp(1), create_s_expr_tp(cmd));
+    cmd = create_s_expr(copy_typed_ptr(eq_tp), create_s_expr_tp(cmd));
+    expected = create_error_tp(EVAL_ERROR_ILLEGAL_PAIR);
+    pass = pass && run_test_expect(eval_comparison, cmd, env, expected);
+    // (<compare op>) -> EVAL_ERROR_FEW_ARGS
+    // (<compare op> 1) -> EVAL_ERROR_FEW_ARGS
+    for (unsigned int i = 0; i < NUM_OPS; i++) {
+        cmd = unit_list(copy_typed_ptr(compare_ops[i]));
+        expected = create_error_tp(EVAL_ERROR_FEW_ARGS);
+        pass = pass && run_test_expect(eval_comparison, cmd, env, expected);
+        cmd = unit_list(copy_typed_ptr(compare_ops[i]));
+        s_expr_append(cmd, create_number_tp(1));
+        expected = create_error_tp(EVAL_ERROR_FEW_ARGS);
+        pass = pass && run_test_expect(eval_comparison, cmd, env, expected);
     }
-    delete_s_expr_recursive(pair_cmd, true);
-    free(out);
-    // (=) -> EVAL_ERROR_FEW_ARGS
-    s_expr* lone_equal_cmd = unit_list(copy_typed_ptr(eq_tp));
-    out = eval_comparison(lone_equal_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(lone_equal_cmd, true);
-    free(out);
-    // (<) -> EVAL_ERROR_FEW_ARGS
-    s_expr* lone_less_cmd = unit_list(copy_typed_ptr(lt_tp));
-    out = eval_comparison(lone_less_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(lone_less_cmd, true);
-    free(out);
-    // (>) -> EVAL_ERROR_FEW_ARGS
-    s_expr* lone_greater_cmd = unit_list(copy_typed_ptr(gt_tp));
-    out = eval_comparison(lone_greater_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(lone_greater_cmd, true);
-    free(out);
-    // (<=) -> EVAL_ERROR_FEW_ARGS
-    s_expr* lone_greater_equal_cmd = unit_list(copy_typed_ptr(le_tp));
-    out = eval_comparison(lone_greater_equal_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(lone_greater_equal_cmd, true);
-    free(out);
-    // (>=) -> EVAL_ERROR_FEW_ARGS
-    s_expr* lone_less_equal_cmd = unit_list(copy_typed_ptr(ge_tp));
-    out = eval_comparison(lone_less_equal_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(lone_less_equal_cmd, true);
-    free(out);
-    // (= 1) -> EVAL_ERROR_FEW_ARGS
-    s_expr* equal_one_cmd = unit_list(copy_typed_ptr(eq_tp));
-    s_expr_append(equal_one_cmd, create_number_tp(1));
-    out = eval_comparison(equal_one_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(equal_one_cmd, true);
-    free(out);
-    // (< 1) -> EVAL_ERROR_FEW_ARGS
-    s_expr* less_one_cmd = unit_list(copy_typed_ptr(lt_tp));
-    s_expr_append(less_one_cmd, create_number_tp(1));
-    out = eval_comparison(less_one_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(less_one_cmd, true);
-    free(out);
-    // (> 1) -> EVAL_ERROR_FEW_ARGS
-    s_expr* greater_one_cmd = unit_list(copy_typed_ptr(gt_tp));
-    s_expr_append(greater_one_cmd, create_number_tp(1));
-    out = eval_comparison(greater_one_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(greater_one_cmd, true);
-    free(out);
-    // (<= 1) -> EVAL_ERROR_FEW_ARGS
-    s_expr* less_equal_one_cmd = unit_list(copy_typed_ptr(le_tp));
-    s_expr_append(less_equal_one_cmd, create_number_tp(1));
-    out = eval_comparison(less_equal_one_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(less_equal_one_cmd, true);
-    free(out);
-    // (>= 1) -> EVAL_ERROR_FEW_ARGS
-    s_expr* greater_equal_one_cmd = unit_list(copy_typed_ptr(ge_tp));
-    s_expr_append(greater_equal_one_cmd, create_number_tp(1));
-    out = eval_comparison(greater_equal_one_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(greater_equal_one_cmd, true);
-    free(out);
     // (= 1 1) -> #t
     pass = pass && compare_expect_bool(env, eq, 2, (long[2]){1, 1}, true);
     // (< 1 1) -> #f
@@ -1474,146 +1194,53 @@ void test_eval_comparison(test_env* te) {
     pass = pass && compare_expect_bool(env, le, 2, (long[2]){1, -1}, false);
     // (>= 1 -1) -> #t
     pass = pass && compare_expect_bool(env, ge, 2, (long[2]){1, -1}, true);
-    // (= 1 #t) -> EVAL_ERROR_NEED_NUM
-    s_expr* cmp_bool_cmd = unit_list(copy_typed_ptr(eq_tp));
-    s_expr_append(cmp_bool_cmd, create_number_tp(1));
-    s_expr_append(cmp_bool_cmd, create_atom_tp(TYPE_BOOL, true));
-    out = eval_comparison(cmp_bool_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NEED_NUM)) {
-        pass = 0;
+    // (<compare op> 1 #t) -> EVAL_ERROR_NEED_NUM
+    // (<compare op> #t 1) -> EVAL_ERROR_NEED_NUM
+    for (unsigned int i = 0; i < NUM_OPS; i++) {
+        cmd = unit_list(copy_typed_ptr(compare_ops[i]));
+        s_expr_append(cmd, create_number_tp(1));
+        s_expr_append(cmd, create_atom_tp(TYPE_BOOL, true));
+        expected = create_error_tp(EVAL_ERROR_NEED_NUM);
+        pass = pass && run_test_expect(eval_comparison, cmd, env, expected);
+        cmd = unit_list(copy_typed_ptr(compare_ops[i]));
+        s_expr_append(cmd, create_atom_tp(TYPE_BOOL, true));
+        s_expr_append(cmd, create_number_tp(1));
+        expected = create_error_tp(EVAL_ERROR_NEED_NUM);
+        pass = pass && run_test_expect(eval_comparison, cmd, env, expected);
     }
-    delete_s_expr_recursive(cmp_bool_cmd, true);
-    free(out);
-    // (= #t 1) -> EVAL_ERROR_NEED_NUM
-    cmp_bool_cmd = unit_list(copy_typed_ptr(eq_tp));
-    s_expr_append(cmp_bool_cmd, create_atom_tp(TYPE_BOOL, true));
-    s_expr_append(cmp_bool_cmd, create_number_tp(1));
-    out = eval_comparison(cmp_bool_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NEED_NUM)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_bool_cmd, true);
-    free(out);
-    // (< 1 #t) -> EVAL_ERROR_NEED_NUM
-    cmp_bool_cmd = unit_list(copy_typed_ptr(lt_tp));
-    s_expr_append(cmp_bool_cmd, create_number_tp(1));
-    s_expr_append(cmp_bool_cmd, create_atom_tp(TYPE_BOOL, true));
-    out = eval_comparison(cmp_bool_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NEED_NUM)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_bool_cmd, true);
-    free(out);
-    // (< #t 1) -> EVAL_ERROR_NEED_NUM
-    cmp_bool_cmd = unit_list(copy_typed_ptr(lt_tp));
-    s_expr_append(cmp_bool_cmd, create_atom_tp(TYPE_BOOL, true));
-    s_expr_append(cmp_bool_cmd, create_number_tp(1));
-    out = eval_comparison(cmp_bool_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NEED_NUM)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_bool_cmd, true);
-    free(out);
-    // (> 1 #t) -> EVAL_ERROR_NEED_NUM
-    cmp_bool_cmd = unit_list(copy_typed_ptr(gt_tp));
-    s_expr_append(cmp_bool_cmd, create_number_tp(1));
-    s_expr_append(cmp_bool_cmd, create_atom_tp(TYPE_BOOL, true));
-    out = eval_comparison(cmp_bool_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NEED_NUM)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_bool_cmd, true);
-    free(out);
-    // (> #t 1) -> EVAL_ERROR_NEED_NUM
-    cmp_bool_cmd = unit_list(copy_typed_ptr(gt_tp));
-    s_expr_append(cmp_bool_cmd, create_atom_tp(TYPE_BOOL, true));
-    s_expr_append(cmp_bool_cmd, create_number_tp(1));
-    out = eval_comparison(cmp_bool_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NEED_NUM)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_bool_cmd, true);
-    free(out);
-    // (<= 1 #t) -> EVAL_ERROR_NEED_NUM
-    cmp_bool_cmd = unit_list(copy_typed_ptr(le_tp));
-    s_expr_append(cmp_bool_cmd, create_number_tp(1));
-    s_expr_append(cmp_bool_cmd, create_atom_tp(TYPE_BOOL, true));
-    out = eval_comparison(cmp_bool_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NEED_NUM)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_bool_cmd, true);
-    free(out);
-    // (<= #t 1) -> EVAL_ERROR_NEED_NUM
-    cmp_bool_cmd = unit_list(copy_typed_ptr(le_tp));
-    s_expr_append(cmp_bool_cmd, create_atom_tp(TYPE_BOOL, true));
-    s_expr_append(cmp_bool_cmd, create_number_tp(1));
-    out = eval_comparison(cmp_bool_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NEED_NUM)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_bool_cmd, true);
-    free(out);
-    // (>= 1 #t) -> EVAL_ERROR_NEED_NUM
-    cmp_bool_cmd = unit_list(copy_typed_ptr(ge_tp));
-    s_expr_append(cmp_bool_cmd, create_number_tp(1));
-    s_expr_append(cmp_bool_cmd, create_atom_tp(TYPE_BOOL, true));
-    out = eval_comparison(cmp_bool_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NEED_NUM)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_bool_cmd, true);
-    free(out);
-    // (>= #t 1) -> EVAL_ERROR_NEED_NUM
-    cmp_bool_cmd = unit_list(copy_typed_ptr(ge_tp));
-    s_expr_append(cmp_bool_cmd, create_atom_tp(TYPE_BOOL, true));
-    s_expr_append(cmp_bool_cmd, create_number_tp(1));
-    out = eval_comparison(cmp_bool_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NEED_NUM)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_bool_cmd, true);
-    free(out);
     // (= 1 (- 3 2)) -> #t
-    s_expr* nested_cmp_cmd = unit_list(copy_typed_ptr(eq_tp));
-    s_expr_append(nested_cmp_cmd, create_number_tp(1));
-    s_expr* subtract_three_two = unit_list(copy_typed_ptr(subtract));
+    cmd = unit_list(copy_typed_ptr(eq_tp));
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr* subtract_three_two = unit_list(SUBTRACT_SYM);
     s_expr_append(subtract_three_two, create_number_tp(3));
     s_expr_append(subtract_three_two, create_number_tp(2));
-    s_expr_append(nested_cmp_cmd, create_s_expr_tp(subtract_three_two));
-    pass = pass && run_compare_expect_bool(env, nested_cmp_cmd, true);
+    s_expr_append(cmd, create_s_expr_tp(copy_s_expr(subtract_three_two)));
+    expected = create_atom_tp(TYPE_BOOL, true);
+    pass = pass && run_test_expect(eval_comparison, cmd, env, expected);
     // (< 1 (- 3 2)) -> #f
-    nested_cmp_cmd = unit_list(copy_typed_ptr(lt_tp));
-    s_expr_append(nested_cmp_cmd, create_number_tp(1));
-    subtract_three_two = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(subtract_three_two, create_number_tp(3));
-    s_expr_append(subtract_three_two, create_number_tp(2));
-    s_expr_append(nested_cmp_cmd, create_s_expr_tp(subtract_three_two));
-    pass = pass && run_compare_expect_bool(env, nested_cmp_cmd, false);
+    cmd = unit_list(copy_typed_ptr(lt_tp));
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, create_s_expr_tp(copy_s_expr(subtract_three_two)));
+    expected = create_atom_tp(TYPE_BOOL, false);
+    pass = pass && run_test_expect(eval_comparison, cmd, env, expected);
     // (> 1 (- 3 2)) -> #f
-    nested_cmp_cmd = unit_list(copy_typed_ptr(gt_tp));
-    s_expr_append(nested_cmp_cmd, create_number_tp(1));
-    subtract_three_two = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(subtract_three_two, create_number_tp(3));
-    s_expr_append(subtract_three_two, create_number_tp(2));
-    s_expr_append(nested_cmp_cmd, create_s_expr_tp(subtract_three_two));
-    pass = pass && run_compare_expect_bool(env, nested_cmp_cmd, false);
+    cmd = unit_list(copy_typed_ptr(gt_tp));
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, create_s_expr_tp(copy_s_expr(subtract_three_two)));
+    expected = create_atom_tp(TYPE_BOOL, false);
+    pass = pass && run_test_expect(eval_comparison, cmd, env, expected);
     // (<= 1 (- 3 2)) -> #t
-    nested_cmp_cmd = unit_list(copy_typed_ptr(le_tp));
-    s_expr_append(nested_cmp_cmd, create_number_tp(1));
-    subtract_three_two = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(subtract_three_two, create_number_tp(3));
-    s_expr_append(subtract_three_two, create_number_tp(2));
-    s_expr_append(nested_cmp_cmd, create_s_expr_tp(subtract_three_two));
-    pass = pass && run_compare_expect_bool(env, nested_cmp_cmd, true);
+    cmd = unit_list(copy_typed_ptr(le_tp));
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, create_s_expr_tp(copy_s_expr(subtract_three_two)));
+    expected = create_atom_tp(TYPE_BOOL, true);
+    pass = pass && run_test_expect(eval_comparison, cmd, env, expected);
     // (>= 1 (- 3 2)) -> #t
-    nested_cmp_cmd = unit_list(copy_typed_ptr(ge_tp));
-    s_expr_append(nested_cmp_cmd, create_number_tp(1));
-    subtract_three_two = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(subtract_three_two, create_number_tp(3));
-    s_expr_append(subtract_three_two, create_number_tp(2));
-    s_expr_append(nested_cmp_cmd, create_s_expr_tp(subtract_three_two));
-    pass = pass && run_compare_expect_bool(env, nested_cmp_cmd, true);
+    cmd = unit_list(copy_typed_ptr(ge_tp));
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, create_s_expr_tp(copy_s_expr(subtract_three_two)));
+    expected = create_atom_tp(TYPE_BOOL, true);
+    pass = pass && run_test_expect(eval_comparison, cmd, env, expected);
     // (= 1 1 1) -> #t
     pass = pass && compare_expect_bool(env, eq, 3, (long[3]){1, 1, 1}, true);
     // (= 1 1 2) -> #f
@@ -1654,223 +1281,41 @@ void test_eval_comparison(test_env* te) {
     pass = pass && compare_expect_bool(env, ge, 3, (long[3]){1, 3, 2}, false);
     // (>= 1 2 0) -> #f
     pass = pass && compare_expect_bool(env, ge, 3, (long[3]){1, 2, 0}, false);
-    // (= 1 EVAL_ERROR_NOT_ID) -> EVAL_ERROR_NOT_ID
-    s_expr* cmp_bare_error_cmd = unit_list(copy_typed_ptr(eq_tp));
-    s_expr_append(cmp_bare_error_cmd, create_number_tp(1));
-    s_expr_append(cmp_bare_error_cmd, create_error_tp(EVAL_ERROR_NOT_ID));
-    out = eval_comparison(cmp_bare_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NOT_ID)) {
-        pass = 0;
+    // (<compare op> 1 EVAL_ERROR_NOT_ID) -> EVAL_ERROR_NOT_ID
+    // (<compare op> EVAL_ERROR_NOT_ID 1) -> EVAL_ERROR_NOT_ID
+    for (unsigned int i = 0; i < NUM_OPS; i++) {
+        cmd = unit_list(copy_typed_ptr(compare_ops[i]));
+        s_expr_append(cmd, create_number_tp(1));
+        s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_ID));
+        expected = create_error_tp(EVAL_ERROR_NOT_ID);
+        pass = pass && run_test_expect(eval_comparison, cmd, env, expected);
+        cmd = unit_list(copy_typed_ptr(compare_ops[i]));
+        s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_ID));
+        s_expr_append(cmd, create_number_tp(1));
+        expected = create_error_tp(EVAL_ERROR_NOT_ID);
+        pass = pass && run_test_expect(eval_comparison, cmd, env, expected);
     }
-    delete_s_expr_recursive(cmp_bare_error_cmd, true);
-    free(out);
-    // (= EVAL_ERROR_NOT_ID 1) -> EVAL_ERROR_NOT_ID
-    cmp_bare_error_cmd = unit_list(copy_typed_ptr(eq_tp));
-    s_expr_append(cmp_bare_error_cmd, create_error_tp(EVAL_ERROR_NOT_ID));
-    s_expr_append(cmp_bare_error_cmd, create_number_tp(1));
-    out = eval_comparison(cmp_bare_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NOT_ID)) {
-        pass = 0;
+    // (<compare op> 1 (/ 0)) -> EVAL_ERROR_DIV_ZERO
+    // (<compare op> (/ 0) 1) -> EVAL_ERROR_DIV_ZERO
+    for (unsigned int i = 0; i < NUM_OPS; i++) {
+        cmd = unit_list(copy_typed_ptr(compare_ops[i]));
+        s_expr_append(cmd, create_number_tp(1));
+        s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
+        expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+        pass = pass && run_test_expect(eval_comparison, cmd, env, expected);
+        cmd = unit_list(copy_typed_ptr(compare_ops[i]));
+        s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
+        s_expr_append(cmd, create_number_tp(1));
+        expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+        pass = pass && run_test_expect(eval_comparison, cmd, env, expected);
     }
-    delete_s_expr_recursive(cmp_bare_error_cmd, true);
-    free(out);
-    // (< 1 EVAL_ERROR_NOT_ID) -> EVAL_ERROR_NOT_ID
-    cmp_bare_error_cmd = unit_list(copy_typed_ptr(lt_tp));
-    s_expr_append(cmp_bare_error_cmd, create_number_tp(1));
-    s_expr_append(cmp_bare_error_cmd, create_error_tp(EVAL_ERROR_NOT_ID));
-    out = eval_comparison(cmp_bare_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NOT_ID)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_bare_error_cmd, true);
-    free(out);
-    // (< EVAL_ERROR_NOT_ID 1) -> EVAL_ERROR_NOT_ID
-    cmp_bare_error_cmd = unit_list(copy_typed_ptr(lt_tp));
-    s_expr_append(cmp_bare_error_cmd, create_error_tp(EVAL_ERROR_NOT_ID));
-    s_expr_append(cmp_bare_error_cmd, create_number_tp(1));
-    out = eval_comparison(cmp_bare_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NOT_ID)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_bare_error_cmd, true);
-    free(out);
-    // (> 1 EVAL_ERROR_NOT_ID) -> EVAL_ERROR_NOT_ID
-    cmp_bare_error_cmd = unit_list(copy_typed_ptr(gt_tp));
-    s_expr_append(cmp_bare_error_cmd, create_number_tp(1));
-    s_expr_append(cmp_bare_error_cmd, create_error_tp(EVAL_ERROR_NOT_ID));
-    out = eval_comparison(cmp_bare_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NOT_ID)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_bare_error_cmd, true);
-    free(out);
-    // (> EVAL_ERROR_NOT_ID 1) -> EVAL_ERROR_NOT_ID
-    cmp_bare_error_cmd = unit_list(copy_typed_ptr(gt_tp));
-    s_expr_append(cmp_bare_error_cmd, create_error_tp(EVAL_ERROR_NOT_ID));
-    s_expr_append(cmp_bare_error_cmd, create_number_tp(1));
-    out = eval_comparison(cmp_bare_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NOT_ID)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_bare_error_cmd, true);
-    free(out);
-    // (<= 1 EVAL_ERROR_NOT_ID) -> EVAL_ERROR_NOT_ID
-    cmp_bare_error_cmd = unit_list(copy_typed_ptr(le_tp));
-    s_expr_append(cmp_bare_error_cmd, create_number_tp(1));
-    s_expr_append(cmp_bare_error_cmd, create_error_tp(EVAL_ERROR_NOT_ID));
-    out = eval_comparison(cmp_bare_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NOT_ID)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_bare_error_cmd, true);
-    free(out);
-    // (<= EVAL_ERROR_NOT_ID 1) -> EVAL_ERROR_NOT_ID
-    cmp_bare_error_cmd = unit_list(copy_typed_ptr(le_tp));
-    s_expr_append(cmp_bare_error_cmd, create_error_tp(EVAL_ERROR_NOT_ID));
-    s_expr_append(cmp_bare_error_cmd, create_number_tp(1));
-    out = eval_comparison(cmp_bare_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NOT_ID)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_bare_error_cmd, true);
-    free(out);
-    // (>= 1 EVAL_ERROR_NOT_ID) -> EVAL_ERROR_NOT_ID
-    cmp_bare_error_cmd = unit_list(copy_typed_ptr(ge_tp));
-    s_expr_append(cmp_bare_error_cmd, create_number_tp(1));
-    s_expr_append(cmp_bare_error_cmd, create_error_tp(EVAL_ERROR_NOT_ID));
-    out = eval_comparison(cmp_bare_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NOT_ID)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_bare_error_cmd, true);
-    free(out);
-    // (>= EVAL_ERROR_NOT_ID 1) -> EVAL_ERROR_NOT_ID
-    cmp_bare_error_cmd = unit_list(copy_typed_ptr(ge_tp));
-    s_expr_append(cmp_bare_error_cmd, create_error_tp(EVAL_ERROR_NOT_ID));
-    s_expr_append(cmp_bare_error_cmd, create_number_tp(1));
-    out = eval_comparison(cmp_bare_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NOT_ID)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_bare_error_cmd, true);
-    free(out);
-    // (= 1 (-)) -> EVAL_ERROR_FEW_ARGS
-    s_expr* cmp_eval_error_cmd = unit_list(copy_typed_ptr(eq_tp));
-    s_expr_append(cmp_eval_error_cmd, create_number_tp(1));
-    s_expr* bare_subtract = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(cmp_eval_error_cmd, create_s_expr_tp(bare_subtract));
-    out = eval_comparison(cmp_eval_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_eval_error_cmd, true);
-    free(out);
-    // (= (-) 1) -> EVAL_ERROR_FEW_ARGS
-    cmp_eval_error_cmd = unit_list(copy_typed_ptr(eq_tp));
-    bare_subtract = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(cmp_eval_error_cmd, create_s_expr_tp(bare_subtract));
-    s_expr_append(cmp_eval_error_cmd, create_number_tp(1));
-    out = eval_comparison(cmp_eval_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_eval_error_cmd, true);
-    free(out);
-    // (< 1 (-)) -> EVAL_ERROR_FEW_ARGS
-    cmp_eval_error_cmd = unit_list(copy_typed_ptr(lt_tp));
-    s_expr_append(cmp_eval_error_cmd, create_number_tp(1));
-    bare_subtract = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(cmp_eval_error_cmd, create_s_expr_tp(bare_subtract));
-    out = eval_comparison(cmp_eval_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_eval_error_cmd, true);
-    free(out);
-    // (< (-) 1) -> EVAL_ERROR_FEW_ARGS
-    cmp_eval_error_cmd = unit_list(copy_typed_ptr(lt_tp));
-    bare_subtract = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(cmp_eval_error_cmd, create_s_expr_tp(bare_subtract));
-    s_expr_append(cmp_eval_error_cmd, create_number_tp(1));
-    out = eval_comparison(cmp_eval_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_eval_error_cmd, true);
-    free(out);
-    // (> 1 (-)) -> EVAL_ERROR_FEW_ARGS
-    cmp_eval_error_cmd = unit_list(copy_typed_ptr(gt_tp));
-    s_expr_append(cmp_eval_error_cmd, create_number_tp(1));
-    bare_subtract = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(cmp_eval_error_cmd, create_s_expr_tp(bare_subtract));
-    out = eval_comparison(cmp_eval_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_eval_error_cmd, true);
-    free(out);
-    // (> (-) 1) -> EVAL_ERROR_FEW_ARGS
-    cmp_eval_error_cmd = unit_list(copy_typed_ptr(gt_tp));
-    bare_subtract = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(cmp_eval_error_cmd, create_s_expr_tp(bare_subtract));
-    s_expr_append(cmp_eval_error_cmd, create_number_tp(1));
-    out = eval_comparison(cmp_eval_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_eval_error_cmd, true);
-    free(out);
-    // (<= 1 (-)) -> EVAL_ERROR_FEW_ARGS
-    cmp_eval_error_cmd = unit_list(copy_typed_ptr(le_tp));
-    s_expr_append(cmp_eval_error_cmd, create_number_tp(1));
-    bare_subtract = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(cmp_eval_error_cmd, create_s_expr_tp(bare_subtract));
-    out = eval_comparison(cmp_eval_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_eval_error_cmd, true);
-    free(out);
-    // (<= (-) 1) -> EVAL_ERROR_FEW_ARGS
-    cmp_eval_error_cmd = unit_list(copy_typed_ptr(le_tp));
-    bare_subtract = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(cmp_eval_error_cmd, create_s_expr_tp(bare_subtract));
-    s_expr_append(cmp_eval_error_cmd, create_number_tp(1));
-    out = eval_comparison(cmp_eval_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_eval_error_cmd, true);
-    free(out);
-    // (>= 1 (-)) -> EVAL_ERROR_FEW_ARGS
-    cmp_eval_error_cmd = unit_list(copy_typed_ptr(ge_tp));
-    s_expr_append(cmp_eval_error_cmd, create_number_tp(1));
-    bare_subtract = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(cmp_eval_error_cmd, create_s_expr_tp(bare_subtract));
-    out = eval_comparison(cmp_eval_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_eval_error_cmd, true);
-    free(out);
-    // (>= (-) 1) -> EVAL_ERROR_FEW_ARGS
-    cmp_eval_error_cmd = unit_list(copy_typed_ptr(ge_tp));
-    bare_subtract = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(cmp_eval_error_cmd, create_s_expr_tp(bare_subtract));
-    s_expr_append(cmp_eval_error_cmd, create_number_tp(1));
-    out = eval_comparison(cmp_eval_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(cmp_eval_error_cmd, true);
-    free(out);
     free(eq_tp);
     free(lt_tp);
     free(gt_tp);
     free(le_tp);
     free(ge_tp);
-    free(subtract);
     delete_environment_full(env);
+    #undef NUM_OPS
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -1881,43 +1326,26 @@ void test_eval_exit(test_env* te) {
     print_test_announce("eval_exit()");
     Environment* env = create_environment(0, 0);
     setup_environment(env);
-    bool pass = 1;
+    bool pass = true;
     // (exit) -> EVAL_ERROR_EXIT
-    s_expr* exit_cmd = unit_list(builtin_tp_from_name(env, "exit"));
-    typed_ptr* out = eval_exit(exit_cmd, env);
-    if (!match_error(out, EVAL_ERROR_EXIT)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(exit_cmd, true);
-    free(out);
+    s_expr* cmd = unit_list(builtin_tp_from_name(env, "exit"));
+    typed_ptr* expected = create_error_tp(EVAL_ERROR_EXIT);
+    pass = pass && run_test_expect(eval_exit, cmd, env, expected);
     // (exit 1) -> EVAL_ERROR_MANY_ARGS
-    exit_cmd = unit_list(builtin_tp_from_name(env, "exit"));
-    s_expr_append(exit_cmd, create_number_tp(1));
-    out = eval_exit(exit_cmd, env);
-    if (!match_error(out, EVAL_ERROR_MANY_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(exit_cmd, true);
-    free(out);
+    cmd = unit_list(builtin_tp_from_name(env, "exit"));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_error_tp(EVAL_ERROR_MANY_ARGS);
+    pass = pass && run_test_expect(eval_exit, cmd, env, expected);
     // (exit EVAL_ERROR_NOT_ID) -> EVAL_ERROR_MANY_ARGS
-    exit_cmd = unit_list(builtin_tp_from_name(env, "exit"));
-    s_expr_append(exit_cmd, create_error_tp(EVAL_ERROR_NOT_ID));
-    out = eval_exit(exit_cmd, env);
-    if (!match_error(out, EVAL_ERROR_MANY_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(exit_cmd, true);
-    free(out);
-    // (exit (-)) -> EVAL_ERROR_MANY_ARGS
-    exit_cmd = unit_list(builtin_tp_from_name(env, "exit"));
-    s_expr* lone_subtract = unit_list(symbol_tp_from_name(env, "-"));
-    s_expr_append(exit_cmd, create_s_expr_tp(lone_subtract));
-    out = eval_exit(exit_cmd, env);
-    if (!match_error(out, EVAL_ERROR_MANY_ARGS)) {
-        pass = 0;
-    }
-    delete_s_expr_recursive(exit_cmd, true);
-    free(out);
+    cmd = unit_list(builtin_tp_from_name(env, "exit"));
+    s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_ID));
+    expected = create_error_tp(EVAL_ERROR_MANY_ARGS);
+    pass = pass && run_test_expect(eval_exit, cmd, env, expected);
+    // (exit (/ 0)) -> EVAL_ERROR_MANY_ARGS
+    cmd = unit_list(builtin_tp_from_name(env, "exit"));
+    s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
+    expected = create_error_tp(EVAL_ERROR_MANY_ARGS);
+    pass = pass && run_test_expect(eval_exit, cmd, env, expected);
     delete_environment_full(env);
     print_test_result(pass);
     te->passed += pass;
@@ -1930,173 +1358,86 @@ void test_eval_cons(test_env* te) {
     Environment* env = create_environment(0, 0);
     setup_environment(env);
     typed_ptr* cons = builtin_tp_from_name(env, "cons");
-    typed_ptr* subtract = symbol_tp_from_name(env, "-");
     bool pass = true;
     // (cons) -> EVAL_ERROR_FEW_ARGS
-    s_expr* lone_cons_cmd = unit_list(copy_typed_ptr(cons));
-    typed_ptr* out = eval_cons(lone_cons_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(lone_cons_cmd, true);
-    free(out);
+    s_expr* cmd = unit_list(copy_typed_ptr(cons));
+    typed_ptr* expected = create_error_tp(EVAL_ERROR_FEW_ARGS);
+    pass = pass && run_test_expect(eval_cons, cmd, env, expected);
     // (cons 1) -> EVAL_ERROR_FEW_ARGS
-    s_expr* cons_one_cmd = unit_list(copy_typed_ptr(cons));
-    s_expr_append(cons_one_cmd, create_number_tp(1));
-    out = eval_cons(cons_one_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(cons_one_cmd, true);
-    free(out);
+    cmd = unit_list(copy_typed_ptr(cons));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_error_tp(EVAL_ERROR_FEW_ARGS);
+    pass = pass && run_test_expect(eval_cons, cmd, env, expected);
     // (cons 1 #t) -> '(1 . #t)
-    s_expr* cons_one_true_cmd = unit_list(copy_typed_ptr(cons));
-    s_expr_append(cons_one_true_cmd, create_number_tp(1));
-    s_expr_append(cons_one_true_cmd, create_atom_tp(TYPE_BOOL, 1));
-    out = eval_cons(cons_one_true_cmd, env);
-    if (out == NULL || \
-        out->type != TYPE_SEXPR || \
-        out->ptr.se_ptr->car == NULL || \
-        out->ptr.se_ptr->car->type != TYPE_NUM || \
-        out->ptr.se_ptr->car->ptr.idx != 1 || \
-        out->ptr.se_ptr->cdr == NULL || \
-        out->ptr.se_ptr->cdr->type != TYPE_BOOL || \
-        out->ptr.se_ptr->cdr->ptr.idx != 1) {
-        pass = false;
-    }
-    delete_s_expr_recursive(cons_one_true_cmd, true);
-    if (out != NULL && out->type == TYPE_SEXPR) {
-        delete_s_expr_recursive(out->ptr.se_ptr, true);
-    }
-    free(out);
+    cmd = unit_list(copy_typed_ptr(cons));
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, create_atom_tp(TYPE_BOOL, true));
+    expected = create_s_expr_tp(create_s_expr(create_number_tp(1), \
+                                              create_atom_tp(TYPE_BOOL, true)));
+    pass = pass && run_test_expect(eval_cons, cmd, env, expected);
     // (cons 1 #t 2) -> EVAL_ERROR_MANY_ARGS
-    s_expr* cons_one_true_two_cmd = unit_list(copy_typed_ptr(cons));
-    s_expr_append(cons_one_true_two_cmd, create_number_tp(1));
-    s_expr_append(cons_one_true_two_cmd, create_atom_tp(TYPE_BOOL, 1));
-    s_expr_append(cons_one_true_two_cmd, create_number_tp(2));
-    out = eval_cons(cons_one_true_two_cmd, env);
-    if (!match_error(out, EVAL_ERROR_MANY_ARGS)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(cons_one_true_two_cmd, true);
-    free(out);
+    cmd = unit_list(copy_typed_ptr(cons));
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, create_atom_tp(TYPE_BOOL, true));
+    s_expr_append(cmd, create_number_tp(2));
+    expected = create_error_tp(EVAL_ERROR_MANY_ARGS);
+    pass = pass && run_test_expect(eval_cons, cmd, env, expected);
     // (cons (- 3 1) #t) -> '(2 . #t)
-    s_expr* cons_subtract_true_cmd = unit_list(copy_typed_ptr(cons));
-    s_expr* subtract_three_one = unit_list(copy_typed_ptr(subtract));
+    cmd = unit_list(copy_typed_ptr(cons));
+    s_expr* subtract_three_one = unit_list(SUBTRACT_SYM);
     s_expr_append(subtract_three_one, create_number_tp(3));
     s_expr_append(subtract_three_one, create_number_tp(1));
-    s_expr_append(cons_subtract_true_cmd, create_s_expr_tp(subtract_three_one));
-    s_expr_append(cons_subtract_true_cmd, create_atom_tp(TYPE_BOOL, 1));
-    out = eval_cons(cons_subtract_true_cmd, env);
-    if (out == NULL || \
-        out->type != TYPE_SEXPR || \
-        out->ptr.se_ptr->car == NULL || \
-        out->ptr.se_ptr->car->type != TYPE_NUM || \
-        out->ptr.se_ptr->car->ptr.idx != 2 || \
-        out->ptr.se_ptr->cdr == NULL || \
-        out->ptr.se_ptr->cdr->type != TYPE_BOOL || \
-        out->ptr.se_ptr->cdr->ptr.idx != 1) {
-        pass = false;
-    }
-    delete_s_expr_recursive(cons_subtract_true_cmd, true);
-    if (out != NULL && out->type == TYPE_SEXPR) {
-        delete_s_expr_recursive(out->ptr.se_ptr, true);
-    }
-    free(out);
+    s_expr_append(cmd, create_s_expr_tp(copy_s_expr(subtract_three_one)));
+    s_expr_append(cmd, create_atom_tp(TYPE_BOOL, true));
+    expected = create_s_expr_tp(create_s_expr(create_number_tp(2), \
+                                              create_atom_tp(TYPE_BOOL, true)));
+    pass = pass && run_test_expect(eval_cons, cmd, env, expected);
     // (cons #t (- 3 1)) -> '(#t . 2)
-    s_expr* cons_true_subtract_cmd = unit_list(copy_typed_ptr(cons));
-    s_expr_append(cons_true_subtract_cmd, create_atom_tp(TYPE_BOOL, 1));
-    subtract_three_one = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(subtract_three_one, create_number_tp(3));
-    s_expr_append(subtract_three_one, create_number_tp(1));
-    s_expr_append(cons_true_subtract_cmd, create_s_expr_tp(subtract_three_one));
-    out = eval_cons(cons_true_subtract_cmd, env);
-    if (out == NULL || \
-        out->type != TYPE_SEXPR || \
-        out->ptr.se_ptr->car == NULL || \
-        out->ptr.se_ptr->car->type != TYPE_BOOL || \
-        out->ptr.se_ptr->car->ptr.idx != 1 || \
-        out->ptr.se_ptr->cdr == NULL || \
-        out->ptr.se_ptr->cdr->type != TYPE_NUM || \
-        out->ptr.se_ptr->cdr->ptr.idx != 2) {
-        pass = false;
-    }
-    delete_s_expr_recursive(cons_true_subtract_cmd, true);
-    if (out != NULL && out->type == TYPE_SEXPR) {
-        delete_s_expr_recursive(out->ptr.se_ptr, true);
-    }
-    free(out);
+    cmd = unit_list(copy_typed_ptr(cons));
+    s_expr_append(cmd, create_atom_tp(TYPE_BOOL, true));
+    s_expr_append(cmd, create_s_expr_tp(copy_s_expr(subtract_three_one)));
+    expected = create_s_expr_tp(create_s_expr(create_atom_tp(TYPE_BOOL, true), \
+                                              create_number_tp(2)));
+    pass = pass && run_test_expect(eval_cons, cmd, env, expected);
     // (cons EVAL_ERROR_NOT_ID 1) -> EVAL_ERROR_NOT_ID
-    s_expr* cons_err_cmd = unit_list(copy_typed_ptr(cons));
-    s_expr_append(cons_err_cmd, create_error_tp(EVAL_ERROR_NOT_ID));
-    s_expr_append(cons_err_cmd, create_number_tp(1));
-    out = eval_cons(cons_err_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NOT_ID)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(cons_err_cmd, true);
-    free(out);
+    cmd = unit_list(copy_typed_ptr(cons));
+    s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_ID));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_error_tp(EVAL_ERROR_NOT_ID);
+    pass = pass && run_test_expect(eval_cons, cmd, env, expected);
     // (cons 1 EVAL_ERROR_NOT_ID) -> EVAL_ERROR_NOT_ID
-    cons_err_cmd = unit_list(copy_typed_ptr(cons));
-    s_expr_append(cons_err_cmd, create_number_tp(1));
-    s_expr_append(cons_err_cmd, create_error_tp(EVAL_ERROR_NOT_ID));
-    out = eval_cons(cons_err_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NOT_ID)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(cons_err_cmd, true);
-    free(out);
-    // (cons (-) 1) -> EVAL_ERROR_FEW_ARGS
-    s_expr* cons_eval_err_cmd = unit_list(copy_typed_ptr(cons));
-    s_expr* bare_subtract = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(cons_eval_err_cmd, create_s_expr_tp(bare_subtract));
-    s_expr_append(cons_eval_err_cmd, create_number_tp(1));
-    out = eval_cons(cons_eval_err_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(cons_eval_err_cmd, true);
-    free(out);
-    // (cons 1 (-)) -> EVAL_ERROR_FEW_ARGS
-    cons_eval_err_cmd = unit_list(copy_typed_ptr(cons));
-    s_expr_append(cons_eval_err_cmd, create_number_tp(1));
-    bare_subtract = unit_list(copy_typed_ptr(subtract));
-    s_expr_append(cons_eval_err_cmd, create_s_expr_tp(bare_subtract));
-    out = eval_cons(cons_eval_err_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(cons_eval_err_cmd, true);
-    free(out);
+    cmd = unit_list(copy_typed_ptr(cons));
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_ID));
+    expected = create_error_tp(EVAL_ERROR_NOT_ID);
+    pass = pass && run_test_expect(eval_cons, cmd, env, expected);
+    // (cons (/ 0) 1) -> EVAL_ERROR_DIV_ZERO
+    cmd = unit_list(copy_typed_ptr(cons));
+    s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+    pass = pass && run_test_expect(eval_cons, cmd, env, expected);
+    // (cons 1 (/ 0)) -> EVAL_ERROR_DIV_ZERO
+    cmd = unit_list(copy_typed_ptr(cons));
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
+    expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+    pass = pass && run_test_expect(eval_cons, cmd, env, expected);
     // (cons 1 (cons 2 (cons 3 null))) -> '(1 2 3)
-    typed_ptr* cons_sym = symbol_tp_from_name(env, "cons");
-    s_expr* cons_one_list_cmd = unit_list(copy_typed_ptr(cons));
-    s_expr_append(cons_one_list_cmd, create_number_tp(1));
-    s_expr* cons_two_list = unit_list(copy_typed_ptr(cons_sym));
+    cmd = unit_list(copy_typed_ptr(cons));
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr* cons_two_list = unit_list(CONS_SYM);
     s_expr_append(cons_two_list, create_number_tp(2));
-    s_expr* cons_three_list = unit_list(copy_typed_ptr(cons_sym));
+    s_expr* cons_three_list = unit_list(CONS_SYM);
     s_expr_append(cons_three_list, create_number_tp(3));
-    s_expr_append(cons_three_list, symbol_tp_from_name(env, "null"));
+    s_expr_append(cons_three_list, NULL_SYM);
     s_expr_append(cons_two_list, create_s_expr_tp(cons_three_list));
-    s_expr_append(cons_one_list_cmd, create_s_expr_tp(cons_two_list));
-    out = eval_cons(cons_one_list_cmd, env);
-    s_expr* expected = unit_list(create_number_tp(1));
-    s_expr_append(expected, create_number_tp(2));
-    s_expr_append(expected, create_number_tp(3));
-    if (out == NULL || \
-        out->type != TYPE_SEXPR || \
-        !match_s_exprs(out->ptr.se_ptr, expected)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(cons_one_list_cmd, true);
-    delete_s_expr_recursive(expected, true);
-    if (out != NULL && out->type == TYPE_SEXPR) {
-        delete_s_expr_recursive(out->ptr.se_ptr, true);
-    }
-    free(out);
+    s_expr_append(cmd, create_s_expr_tp(cons_two_list));
+    expected = create_s_expr_tp(unit_list(create_number_tp(1)));
+    s_expr_append(expected->ptr.se_ptr, create_number_tp(2));
+    s_expr_append(expected->ptr.se_ptr, create_number_tp(3));
+    pass = pass && run_test_expect(eval_cons, cmd, env, expected);
     free(cons);
-    free(subtract);
-    free(cons_sym);
     delete_environment_full(env);
     print_test_result(pass);
     te->passed += pass;
@@ -2110,164 +1451,78 @@ void test_eval_car_cdr(test_env* te) {
     setup_environment(env);
     typed_ptr* car = builtin_tp_from_name(env, "car");
     typed_ptr* cdr = builtin_tp_from_name(env, "cdr");
-    typed_ptr* list_sym = symbol_tp_from_name(env, "list");
-    typed_ptr* subtract_sym = symbol_tp_from_name(env, "-");
     bool pass = true;
     // (car) -> EVAL_ERROR_FEW_ARGS
-    s_expr* lone_car_cmd = unit_list(copy_typed_ptr(car));
-    typed_ptr* out = eval_car_cdr(lone_car_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(lone_car_cmd, true);
-    free(out);
+    s_expr* cmd = unit_list(copy_typed_ptr(car));
+    typed_ptr* expected = create_error_tp(EVAL_ERROR_FEW_ARGS);
+    pass = pass && run_test_expect(eval_car_cdr, cmd, env, expected);
     // (cdr) -> EVAL_ERROR_FEW_ARGS
-    s_expr* lone_cdr_cmd = unit_list(copy_typed_ptr(cdr));
-    out = eval_car_cdr(lone_cdr_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(lone_cdr_cmd, true);
-    free(out);
+    cmd = unit_list(copy_typed_ptr(cdr));
+    expected = create_error_tp(EVAL_ERROR_FEW_ARGS);
+    pass = pass && run_test_expect(eval_car_cdr, cmd, env, expected);
     // (car 1) -> EVAL_ERROR_BAD_ARG_TYPE
-    s_expr* car_one_cmd = unit_list(copy_typed_ptr(car));
-    s_expr_append(car_one_cmd, create_number_tp(1));
-    out = eval_car_cdr(car_one_cmd, env);
-    if (!match_error(out, EVAL_ERROR_BAD_ARG_TYPE)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(car_one_cmd, true);
-    free(out);
+    cmd = unit_list(copy_typed_ptr(car));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
+    pass = pass && run_test_expect(eval_car_cdr, cmd, env, expected);
     // (cdr 1) -> EVAL_ERROR_BAD_ARG_TYPE
-    s_expr* cdr_one_cmd = unit_list(copy_typed_ptr(cdr));
-    s_expr_append(cdr_one_cmd, create_number_tp(1));
-    out = eval_car_cdr(cdr_one_cmd, env);
-    if (!match_error(out, EVAL_ERROR_BAD_ARG_TYPE)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(cdr_one_cmd, true);
-    free(out);
-    // (car <a list of 1 2>) -> EVAL_ERROR_CAR_NOT_CALLABLE
-    s_expr* car_bare_list_cmd = unit_list(copy_typed_ptr(car));
-    s_expr* bare_list = unit_list(create_number_tp(1));
-    s_expr_append(bare_list, create_number_tp(2));
-    s_expr_append(car_bare_list_cmd, create_s_expr_tp(bare_list));
-    out = eval_car_cdr(car_bare_list_cmd, env);
-    if (!match_error(out, EVAL_ERROR_CAR_NOT_CALLABLE)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(car_bare_list_cmd, true);
-    free(out);
-    // (cdr <a list of 1 2>) -> EVAL_ERROR_NOT_CALLABLE
-    s_expr* cdr_bare_list_cmd = unit_list(copy_typed_ptr(cdr));
-    bare_list = unit_list(create_number_tp(1));
-    s_expr_append(bare_list, create_number_tp(2));
-    s_expr_append(cdr_bare_list_cmd, create_s_expr_tp(bare_list));
-    out = eval_car_cdr(cdr_bare_list_cmd, env);
-    if (!match_error(out, EVAL_ERROR_CAR_NOT_CALLABLE)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(cdr_bare_list_cmd, true);
-    free(out);
+    cmd = unit_list(copy_typed_ptr(cdr));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
+    pass = pass && run_test_expect(eval_car_cdr, cmd, env, expected);
     // (car (list 1 2)) -> 1
-    s_expr* car_list_cmd = unit_list(copy_typed_ptr(car));
-    s_expr* list_call = unit_list(copy_typed_ptr(list_sym));
-    s_expr_append(list_call, create_number_tp(1));
-    s_expr_append(list_call, create_number_tp(2));
-    s_expr_append(car_list_cmd, create_s_expr_tp(list_call));
-    out = eval_car_cdr(car_list_cmd, env);
-    if (!check_typed_ptr(out, TYPE_NUM, (tp_value){.idx=1})) {
-        pass = false;
-    }
-    delete_s_expr_recursive(car_list_cmd, true);
-    free(out);
+    cmd = unit_list(copy_typed_ptr(car));
+    s_expr_append(cmd, create_s_expr_tp(list_one_two_s_expr(env)));
+    expected = create_number_tp(1);
+    pass = pass && run_test_expect(eval_car_cdr, cmd, env, expected);
     // (cdr (list 1 2)) -> '(2)
-    s_expr* cdr_list_cmd = unit_list(copy_typed_ptr(cdr));
-    list_call = unit_list(copy_typed_ptr(list_sym));
-    s_expr_append(list_call, create_number_tp(1));
-    s_expr_append(list_call, create_number_tp(2));
-    s_expr_append(cdr_list_cmd, create_s_expr_tp(list_call));
-    s_expr* expected = unit_list(create_number_tp(2));
-    out = eval_car_cdr(cdr_list_cmd, env);
-    if (out == NULL || \
-        out->type != TYPE_SEXPR || \
-        !match_s_exprs(out->ptr.se_ptr, expected)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(cdr_list_cmd, true);
-    delete_s_expr_recursive(expected, true);
-    free(out);
+    cmd = unit_list(copy_typed_ptr(cdr));
+    s_expr_append(cmd, create_s_expr_tp(list_one_two_s_expr(env)));
+    expected = create_s_expr_tp(unit_list(create_number_tp(2)));
+    pass = pass && run_test_expect(eval_car_cdr, cmd, env, expected);
     // (car (list 1) (list 2)) -> EVAL_ERROR_MANY_ARGS
-    s_expr* car_two_lists_cmd = unit_list(copy_typed_ptr(car));
-    s_expr* list_one = unit_list(copy_typed_ptr(list_sym));
+    cmd = unit_list(copy_typed_ptr(car));
+    s_expr* list_one = unit_list(LIST_SYM);
     s_expr_append(list_one, create_number_tp(1));
-    s_expr* list_two = unit_list(copy_typed_ptr(list_sym));
+    s_expr* list_two = unit_list(LIST_SYM);
     s_expr_append(list_two, create_number_tp(1));
-    s_expr_append(car_two_lists_cmd, create_s_expr_tp(list_one));
-    s_expr_append(car_two_lists_cmd, create_s_expr_tp(list_two));
-    out = eval_car_cdr(car_two_lists_cmd, env);
-    if (!match_error(out, EVAL_ERROR_MANY_ARGS)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(car_two_lists_cmd, true);
-    free(out);
+    s_expr_append(cmd, create_s_expr_tp(list_one));
+    s_expr_append(cmd, create_s_expr_tp(list_two));
+    expected = create_error_tp(EVAL_ERROR_MANY_ARGS);
+    pass = pass && run_test_expect(eval_car_cdr, cmd, env, expected);
     // (cdr (list 1) (list 2)) -> EVAL_ERROR_MANY_ARGS
-    s_expr* cdr_two_lists_cmd = unit_list(copy_typed_ptr(cdr));
-    list_one = unit_list(copy_typed_ptr(list_sym));
+    cmd = unit_list(copy_typed_ptr(cdr));
+    list_one = unit_list(LIST_SYM);
     s_expr_append(list_one, create_number_tp(1));
-    list_two = unit_list(copy_typed_ptr(list_sym));
+    list_two = unit_list(LIST_SYM);
     s_expr_append(list_two, create_number_tp(1));
-    s_expr_append(cdr_two_lists_cmd, create_s_expr_tp(list_one));
-    s_expr_append(cdr_two_lists_cmd, create_s_expr_tp(list_two));
-    out = eval_car_cdr(cdr_two_lists_cmd, env);
-    if (!match_error(out, EVAL_ERROR_MANY_ARGS)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(cdr_two_lists_cmd, true);
-    free(out);
+    s_expr_append(cmd, create_s_expr_tp(list_one));
+    s_expr_append(cmd, create_s_expr_tp(list_two));
+    expected = create_error_tp(EVAL_ERROR_MANY_ARGS);
+    pass = pass && run_test_expect(eval_car_cdr, cmd, env, expected);
     // (car EVAL_ERROR_NOT_ID) -> EVAL_ERROR_NOT_ID
-    s_expr* car_bare_error_cmd = unit_list(copy_typed_ptr(car));
-    s_expr_append(car_bare_error_cmd, create_error_tp(EVAL_ERROR_NOT_ID));
-    out = eval_car_cdr(car_bare_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NOT_ID)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(car_bare_error_cmd, true);
-    free(out);
+    cmd = unit_list(copy_typed_ptr(car));
+    s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_ID));
+    expected = create_error_tp(EVAL_ERROR_NOT_ID);
+    pass = pass && run_test_expect(eval_car_cdr, cmd, env, expected);
     // (cdr EVAL_ERROR_NOT_ID) -> EVAL_ERROR_NOT_ID
-    s_expr* cdr_bare_error_cmd = unit_list(copy_typed_ptr(cdr));
-    s_expr_append(cdr_bare_error_cmd, create_error_tp(EVAL_ERROR_NOT_ID));
-    out = eval_car_cdr(cdr_bare_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NOT_ID)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(cdr_bare_error_cmd, true);
-    free(out);
-    // (car (-)) -> EVAL_ERROR_FEW_ARGS
-    s_expr* car_eval_error_cmd = unit_list(copy_typed_ptr(car));
-    s_expr* lone_subtract = unit_list(copy_typed_ptr(subtract_sym));
-    s_expr_append(car_eval_error_cmd, create_s_expr_tp(lone_subtract));
-    out = eval_car_cdr(car_eval_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(car_eval_error_cmd, true);
-    free(out);
-    // (cdr (-)) -> EVAL_ERROR_FEW_ARGS
-    s_expr* cdr_eval_error_cmd = unit_list(copy_typed_ptr(cdr));
-    lone_subtract = unit_list(copy_typed_ptr(subtract_sym));
-    s_expr_append(cdr_eval_error_cmd, create_s_expr_tp(lone_subtract));
-    out = eval_car_cdr(cdr_eval_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(cdr_eval_error_cmd, true);
-    free(out);
+    cmd = unit_list(copy_typed_ptr(cdr));
+    s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_ID));
+    expected = create_error_tp(EVAL_ERROR_NOT_ID);
+    pass = pass && run_test_expect(eval_car_cdr, cmd, env, expected);
+    // (car (/ 0)) -> EVAL_ERROR_DIV_ZERO
+    cmd = unit_list(copy_typed_ptr(car));
+    s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
+    expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+    pass = pass && run_test_expect(eval_car_cdr, cmd, env, expected);
+    // (cdr (/ 0)) -> EVAL_ERROR_DIV_ZERO
+    cmd = unit_list(copy_typed_ptr(cdr));
+    s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
+    expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+    pass = pass && run_test_expect(eval_car_cdr, cmd, env, expected);
     delete_environment_full(env);
     free(car);
     free(cdr);
-    free(list_sym);
-    free(subtract_sym);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -2279,168 +1534,61 @@ void test_eval_list_construction(test_env* te) {
     Environment* env = create_environment(0, 0);
     setup_environment(env);
     typed_ptr* list = builtin_tp_from_name(env, "list");
-    typed_ptr* subtract_sym = symbol_tp_from_name(env, "-");
     bool pass = true;
     // (list) -> '()
-    s_expr* lone_list_cmd = unit_list(copy_typed_ptr(list));
-    typed_ptr* out = eval_list_construction(lone_list_cmd, env);
-    if (out == NULL || \
-        out->type != TYPE_SEXPR || \
-        !is_empty_list(out->ptr.se_ptr)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(lone_list_cmd, true);
-    if (out != NULL && out->type == TYPE_SEXPR) {
-        delete_s_expr_recursive(out->ptr.se_ptr, true);
-    }
-    free(out);
+    s_expr* cmd = unit_list(copy_typed_ptr(list));
+    typed_ptr* expected = create_s_expr_tp(create_empty_s_expr());
+    pass = pass && run_test_expect(eval_list_construction, cmd, env, expected);
     // (list 1) -> '(1)
-    s_expr* list_one_cmd = unit_list(copy_typed_ptr(list));
-    s_expr_append(list_one_cmd, create_number_tp(1));
-    s_expr* expected = unit_list(create_number_tp(1));
-    out = eval_list_construction(list_one_cmd, env);
-    if (out == NULL || \
-        out->type != TYPE_SEXPR || \
-        !match_s_exprs(out->ptr.se_ptr, expected)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(list_one_cmd, true);
-    delete_s_expr_recursive(expected, true);
-    if (out != NULL && out->type == TYPE_SEXPR) {
-        delete_s_expr_recursive(out->ptr.se_ptr, true);
-    }
-    free(out);
+    cmd = unit_list(copy_typed_ptr(list));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_s_expr_tp(unit_list(create_number_tp(1)));
+    pass = pass && run_test_expect(eval_list_construction, cmd, env, expected);
     // (list 1 #t) -> '(1 #t)
-    s_expr* list_one_true_cmd = unit_list(copy_typed_ptr(list));
-    s_expr_append(list_one_true_cmd, create_number_tp(1));
-    s_expr_append(list_one_true_cmd, create_atom_tp(TYPE_BOOL, 1));
-    expected = unit_list(create_number_tp(1));
-    s_expr_append(expected, create_atom_tp(TYPE_BOOL, 1));
-    out = eval_list_construction(list_one_true_cmd, env);
-    if (out == NULL || \
-        out->type != TYPE_SEXPR || \
-        !match_s_exprs(out->ptr.se_ptr, expected)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(list_one_true_cmd, true);
-    delete_s_expr_recursive(expected, true);
-    if (out != NULL && out->type == TYPE_SEXPR) {
-        delete_s_expr_recursive(out->ptr.se_ptr, true);
-    }
-    free(out);
+    cmd = unit_list(copy_typed_ptr(list));
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, create_atom_tp(TYPE_BOOL, true));
+    expected = create_s_expr_tp(unit_list(create_number_tp(1)));
+    s_expr_append(expected->ptr.se_ptr, create_atom_tp(TYPE_BOOL, true));
+    pass = pass && run_test_expect(eval_list_construction, cmd, env, expected);
     // (list 1 #t (- 3 1)) -> '(1 #t 2)
-    s_expr* list_one_true_subtract_cmd = unit_list(copy_typed_ptr(list));
-    s_expr_append(list_one_true_subtract_cmd, create_number_tp(1));
-    s_expr_append(list_one_true_subtract_cmd, create_atom_tp(TYPE_BOOL, 1));
-    s_expr* subtract_three_one = unit_list(copy_typed_ptr(subtract_sym));
+    cmd = unit_list(copy_typed_ptr(list));
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, create_atom_tp(TYPE_BOOL, true));
+    s_expr* subtract_three_one = unit_list(SUBTRACT_SYM);
     s_expr_append(subtract_three_one, create_number_tp(3));
     s_expr_append(subtract_three_one, create_number_tp(1));
-    s_expr_append(list_one_true_subtract_cmd, \
-                  create_s_expr_tp(subtract_three_one));
-    expected = unit_list(create_number_tp(1));
-    s_expr_append(expected, create_atom_tp(TYPE_BOOL, 1));
-    s_expr_append(expected, create_number_tp(2));
-    out = eval_list_construction(list_one_true_subtract_cmd, env);
-    if (out == NULL || \
-        out->type != TYPE_SEXPR || \
-        !match_s_exprs(out->ptr.se_ptr, expected)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(list_one_true_subtract_cmd, true);
-    delete_s_expr_recursive(expected, true);
-    if (out != NULL && out->type == TYPE_SEXPR) {
-        delete_s_expr_recursive(out->ptr.se_ptr, true);
-    }
-    free(out);
+    s_expr_append(cmd, create_s_expr_tp(subtract_three_one));
+    expected = create_s_expr_tp(unit_list(create_number_tp(1)));
+    s_expr_append(expected->ptr.se_ptr, create_atom_tp(TYPE_BOOL, true));
+    s_expr_append(expected->ptr.se_ptr, create_number_tp(2));
+    pass = pass && run_test_expect(eval_list_construction, cmd, env, expected);
     // (list EVAL_ERROR_NOT_ID) -> EVAL_ERROR_NOT_ID
-    s_expr* list_bare_error_cmd = unit_list(copy_typed_ptr(list));
-    s_expr_append(list_bare_error_cmd, create_error_tp(EVAL_ERROR_NOT_ID));
-    out = eval_list_construction(list_bare_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_NOT_ID)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(list_bare_error_cmd, true);
-    if (out != NULL && out->type == TYPE_SEXPR) {
-        delete_s_expr_recursive(out->ptr.se_ptr, true);
-    }
-    free(out);
-    // (list (-)) -> EVAL_ERROR_FEW_ARGS
-    s_expr* list_subtract_error_cmd = unit_list(copy_typed_ptr(list));
-    s_expr* lone_subtract = unit_list(copy_typed_ptr(subtract_sym));
-    s_expr_append(list_subtract_error_cmd, create_s_expr_tp(lone_subtract));
-    out = eval_list_construction(list_subtract_error_cmd, env);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(list_subtract_error_cmd, true);
-    if (out != NULL && out->type == TYPE_SEXPR) {
-        delete_s_expr_recursive(out->ptr.se_ptr, true);
-    }
-    free(out);
-    // (list (cons 1 null) 2) -> '((1) 2)
-    s_expr* list_nested_cmd = unit_list(copy_typed_ptr(list));
-    s_expr* cons_one_null = unit_list(symbol_tp_from_name(env, "cons"));
-    s_expr_append(cons_one_null, create_number_tp(1));
-    s_expr_append(cons_one_null, symbol_tp_from_name(env, "null"));
-    s_expr_append(list_nested_cmd, create_s_expr_tp(cons_one_null));
-    s_expr_append(list_nested_cmd, create_number_tp(2));
-    expected = unit_list(create_s_expr_tp(unit_list(create_number_tp(1))));
-    s_expr_append(expected, create_number_tp(2));
-    out = eval_list_construction(list_nested_cmd, env);
-    if (out == NULL || \
-        out->type != TYPE_SEXPR || \
-        !match_s_exprs(out->ptr.se_ptr, expected)) {
-        pass = false;
-    }
-    delete_s_expr_recursive(list_nested_cmd, true);
-    delete_s_expr_recursive(expected, true);
-    if (out != NULL && out->type == TYPE_SEXPR) {
-        delete_s_expr_recursive(out->ptr.se_ptr, true);
-    }
-    free(out);
+    cmd = unit_list(copy_typed_ptr(list));
+    s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_ID));
+    expected = create_error_tp(EVAL_ERROR_NOT_ID);
+    pass = pass && run_test_expect(eval_list_construction, cmd, env, expected);
+    // (list (/ 0)) -> EVAL_ERROR_DIV_ZERO
+    cmd = unit_list(copy_typed_ptr(list));
+    s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
+    expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+    pass = pass && run_test_expect(eval_list_construction, cmd, env, expected);
+    // (list (list 1) 2) -> '((1) 2)
+    cmd = unit_list(copy_typed_ptr(list));
+    s_expr* list_one = unit_list(LIST_SYM);
+    s_expr_append(list_one, create_number_tp(1));
+    s_expr_append(cmd, create_s_expr_tp(list_one));
+    s_expr_append(cmd, create_number_tp(2));
+    s_expr* lone_one = unit_list(create_number_tp(1));
+    expected = create_s_expr_tp(unit_list(create_s_expr_tp(lone_one)));
+    s_expr_append(expected->ptr.se_ptr, create_number_tp(2));
+    pass = pass && run_test_expect(eval_list_construction, cmd, env, expected);
     delete_environment_full(env);
     free(list);
-    free(subtract_sym);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
     return;
-}
-
-bool deep_match_typed_ptrs(typed_ptr* first, typed_ptr* second) {
-    if (first == NULL && second == NULL) {
-        return true;
-    } else if (first == NULL || second == NULL) {
-        return false;
-    } else if (first->type != second->type) {
-        return false;
-    } else {
-        switch (first->type) {
-            case TYPE_SEXPR:
-                return match_s_exprs(first->ptr.se_ptr, second->ptr.se_ptr);
-            default:
-                return first->ptr.idx == second->ptr.idx;
-        }
-    }
-}
-
-// NOTE: frees cmd AND expected
-bool run_test_expect(typed_ptr* (*function)(const s_expr*, Environment*), \
-                     s_expr* cmd, \
-                     Environment* env, \
-                     typed_ptr* expected) {
-    typed_ptr* out = (*function)(cmd, env);
-    bool passed = deep_match_typed_ptrs(out, expected);
-    delete_s_expr_recursive(cmd, true);
-    if (out != NULL && out->type == TYPE_SEXPR) {
-        delete_s_expr_recursive(out->ptr.se_ptr, true);
-    }
-    free(out);
-    if (expected != NULL && expected->type == TYPE_SEXPR) {
-        delete_s_expr_recursive(expected->ptr.se_ptr, true);
-    }
-    free(expected);
-    return passed;
 }
 
 void test_eval_and_or(test_env* te) {
@@ -2449,9 +1597,7 @@ void test_eval_and_or(test_env* te) {
     setup_environment(env);
     typed_ptr* and_builtin = builtin_tp_from_name(env, "and");
     typed_ptr* or_builtin = builtin_tp_from_name(env, "or");
-    typed_ptr* null_sym = symbol_tp_from_name(env, "null");
     typed_ptr* cond_sym = symbol_tp_from_name(env, "cond");
-    typed_ptr* add_sym = symbol_tp_from_name(env, "+");
     typed_ptr* define_sym = symbol_tp_from_name(env, "define");
     typed_ptr* boolpred_sym = symbol_tp_from_name(env, "boolean?");
     typed_ptr* x_sym;
@@ -2459,7 +1605,7 @@ void test_eval_and_or(test_env* te) {
     bool pass = true;
     // (and) -> #t
     s_expr* cmd = unit_list(copy_typed_ptr(and_builtin));
-    typed_ptr* expected = create_atom_tp(TYPE_BOOL, 1);
+    typed_ptr* expected = create_atom_tp(TYPE_BOOL, true);
     pass = pass && run_test_expect(eval_and_or, cmd, env, expected);
     // (and 1) -> 1
     cmd = unit_list(copy_typed_ptr(and_builtin));
@@ -2502,7 +1648,7 @@ void test_eval_and_or(test_env* te) {
     pass = pass && run_test_expect(eval_and_or, cmd, env, expected);
     // (and null #t) -> #t
     cmd = unit_list(copy_typed_ptr(and_builtin));
-    s_expr_append(cmd, copy_typed_ptr(null_sym));
+    s_expr_append(cmd, NULL_SYM);
     s_expr_append(cmd, create_atom_tp(TYPE_BOOL, true));
     expected = create_atom_tp(TYPE_BOOL, true);
     pass = pass && run_test_expect(eval_and_or, cmd, env, expected);
@@ -2527,10 +1673,7 @@ void test_eval_and_or(test_env* te) {
     // (and #t (+ 1 1)) -> 2
     cmd = unit_list(copy_typed_ptr(and_builtin));
     s_expr_append(cmd, create_atom_tp(TYPE_BOOL, true));
-    s_expr* add_one_one = unit_list(copy_typed_ptr(add_sym));
-    s_expr_append(add_one_one, create_number_tp(1));
-    s_expr_append(add_one_one, create_number_tp(1));
-    s_expr_append(cmd, create_s_expr_tp(add_one_one));
+    s_expr_append(cmd, create_s_expr_tp(add_one_one_s_expr(env)));
     expected = create_number_tp(2);
     pass = pass && run_test_expect(eval_and_or, cmd, env, expected);
     // (and #t #t #t) -> #t
@@ -2573,7 +1716,7 @@ void test_eval_and_or(test_env* te) {
     if (curr_x_val == NULL || \
         curr_x_val->type != TYPE_NUM || \
         curr_x_val->ptr.idx != 2) {
-        pass = 0;
+        pass = false;
     }
     free(curr_x_val);
     // (and (define x 3) #f (define x 4)) -> #f AND SIDE EFFECT x == 4
@@ -2593,12 +1736,12 @@ void test_eval_and_or(test_env* te) {
     if (curr_x_val == NULL || \
         curr_x_val->type != TYPE_NUM || \
         curr_x_val->ptr.idx != 4) {
-        pass = 0;
+        pass = false;
     }
     free(curr_x_val);
     // (or) -> #f
     cmd = unit_list(copy_typed_ptr(or_builtin));
-    expected = create_atom_tp(TYPE_BOOL, 0);
+    expected = create_atom_tp(TYPE_BOOL, false);
     pass = pass && run_test_expect(eval_and_or, cmd, env, expected);
     // (or 1) -> 1
     cmd = unit_list(copy_typed_ptr(or_builtin));
@@ -2641,7 +1784,7 @@ void test_eval_and_or(test_env* te) {
     pass = pass && run_test_expect(eval_and_or, cmd, env, expected);
     // (or null #t) -> null
     cmd = unit_list(copy_typed_ptr(or_builtin));
-    s_expr_append(cmd, copy_typed_ptr(null_sym));
+    s_expr_append(cmd, NULL_SYM);
     s_expr_append(cmd, create_atom_tp(TYPE_BOOL, true));
     expected = create_s_expr_tp(create_empty_s_expr());
     pass = pass && run_test_expect(eval_and_or, cmd, env, expected);
@@ -2666,10 +1809,7 @@ void test_eval_and_or(test_env* te) {
     // (or #f (+ 1 1)) -> 2
     cmd = unit_list(copy_typed_ptr(or_builtin));
     s_expr_append(cmd, create_atom_tp(TYPE_BOOL, false));
-    add_one_one = unit_list(copy_typed_ptr(add_sym));
-    s_expr_append(add_one_one, create_number_tp(1));
-    s_expr_append(add_one_one, create_number_tp(1));
-    s_expr_append(cmd, create_s_expr_tp(add_one_one));
+    s_expr_append(cmd, create_s_expr_tp(add_one_one_s_expr(env)));
     expected = create_number_tp(2);
     pass = pass && run_test_expect(eval_and_or, cmd, env, expected);
     // (or #f #f #f) -> #f
@@ -2715,7 +1855,7 @@ void test_eval_and_or(test_env* te) {
     if (curr_x_val == NULL || \
         curr_x_val->type != TYPE_NUM || \
         curr_x_val->ptr.idx != 6) {
-        pass = 0;
+        pass = false;
     }
     free(curr_x_val);
     // (or (define x 7) (define x 8)) -> <void> AND SIDE EFFECT x == 8
@@ -2734,15 +1874,13 @@ void test_eval_and_or(test_env* te) {
     if (curr_x_val == NULL || \
         curr_x_val->type != TYPE_NUM || \
         curr_x_val->ptr.idx != 8) {
-        pass = 0;
+        pass = false;
     }
     free(curr_x_val);
     delete_environment_full(env);
     free(and_builtin);
     free(or_builtin);
-    free(null_sym);
     free(cond_sym);
-    free(add_sym);
     free(define_sym);
     free(boolpred_sym);
     free(x_sym);
@@ -2757,10 +1895,7 @@ void test_eval_not(test_env* te) {
     Environment* env = create_environment(0, 0);
     setup_environment(env);
     typed_ptr* not_builtin = builtin_tp_from_name(env, "not");
-    typed_ptr* null_sym = symbol_tp_from_name(env, "null");
     typed_ptr* cond_sym = symbol_tp_from_name(env, "cond");
-    typed_ptr* list_sym = symbol_tp_from_name(env, "list");
-    typed_ptr* subtract_sym = symbol_tp_from_name(env, "-");
     bool pass = true;
     // (not) -> EVAL_ERROR_FEW_ARGS
     s_expr* cmd = unit_list(copy_typed_ptr(not_builtin));
@@ -2789,7 +1924,7 @@ void test_eval_not(test_env* te) {
     pass = pass && run_test_expect(eval_not, cmd, env, expected);
     // (not null) -> #f
     cmd = unit_list(copy_typed_ptr(not_builtin));
-    s_expr_append(cmd, copy_typed_ptr(null_sym));
+    s_expr_append(cmd, NULL_SYM);
     expected = create_atom_tp(TYPE_BOOL, false);
     pass = pass && run_test_expect(eval_not, cmd, env, expected);
     // (not (cond)) -> #f
@@ -2800,10 +1935,7 @@ void test_eval_not(test_env* te) {
     pass = pass && run_test_expect(eval_not, cmd, env, expected);
     // (not (list 1 2)) -> #f
     cmd = unit_list(copy_typed_ptr(not_builtin));
-    s_expr* list_one_two = unit_list(copy_typed_ptr(list_sym));
-    s_expr_append(list_one_two, create_number_tp(1));
-    s_expr_append(list_one_two, create_number_tp(2));
-    s_expr_append(cmd, create_s_expr_tp(list_one_two));
+    s_expr_append(cmd, create_s_expr_tp(list_one_two_s_expr(env)));
     expected = create_atom_tp(TYPE_BOOL, false);
     pass = pass && run_test_expect(eval_not, cmd, env, expected);
     // (not #f) -> #t
@@ -2816,18 +1948,14 @@ void test_eval_not(test_env* te) {
     s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_ID));
     expected = create_error_tp(EVAL_ERROR_NOT_ID);
     pass = pass && run_test_expect(eval_not, cmd, env, expected);
-    // (not (-)) -> EVAL_ERROR_FEW_ARGS
+    // (not (/ 0)) -> EVAL_ERROR_DIV_ZERO
     cmd = unit_list(copy_typed_ptr(not_builtin));
-    s_expr* lone_subtract = unit_list(copy_typed_ptr(subtract_sym));
-    s_expr_append(cmd, create_s_expr_tp(lone_subtract));
-    expected = create_error_tp(EVAL_ERROR_FEW_ARGS);
+    s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
+    expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = pass && run_test_expect(eval_not, cmd, env, expected);
     delete_environment_full(env);
     free(not_builtin);
-    free(null_sym);
     free(cond_sym);
-    free(list_sym);
-    free(subtract_sym);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -2839,10 +1967,7 @@ void test_eval_list_pred(test_env* te) {
     Environment* env = create_environment(0, 0);
     setup_environment(env);
     typed_ptr* listpred_builtin = builtin_tp_from_name(env, "list?");
-    typed_ptr* null_sym = symbol_tp_from_name(env, "null");
     typed_ptr* cons_sym = symbol_tp_from_name(env, "cons");
-    typed_ptr* list_sym = symbol_tp_from_name(env, "list");
-    typed_ptr* subtract_sym = symbol_tp_from_name(env, "-");
     bool pass = true;
     // (list?) -> EVAL_ERROR_FEW_ARGS
     s_expr* cmd = unit_list(copy_typed_ptr(listpred_builtin));
@@ -2866,7 +1991,7 @@ void test_eval_list_pred(test_env* te) {
     pass = pass && run_test_expect(eval_list_pred, cmd, env, expected);
     // (list? (cons 1 2)) -> #f
     cmd = unit_list(copy_typed_ptr(listpred_builtin));
-    s_expr* cons_subexpr = unit_list(copy_typed_ptr(cons_sym));
+    s_expr* cons_subexpr = unit_list(CONS_SYM);
     s_expr_append(cons_subexpr, create_number_tp(1));
     s_expr_append(cons_subexpr, create_number_tp(2));
     s_expr_append(cmd, create_s_expr_tp(cons_subexpr));
@@ -2874,15 +1999,12 @@ void test_eval_list_pred(test_env* te) {
     pass = pass && run_test_expect(eval_list_pred, cmd, env, expected);
     // (list? (list 1 2)) -> #t
     cmd = unit_list(copy_typed_ptr(listpred_builtin));
-    s_expr* list_subexpr = unit_list(copy_typed_ptr(list_sym));
-    s_expr_append(list_subexpr, create_number_tp(1));
-    s_expr_append(list_subexpr, create_number_tp(2));
-    s_expr_append(cmd, create_s_expr_tp(list_subexpr));
+    s_expr_append(cmd, create_s_expr_tp(list_one_two_s_expr(env)));
     expected = create_atom_tp(TYPE_BOOL, true);
     pass = pass && run_test_expect(eval_list_pred, cmd, env, expected);
     // (list? null) -> #t
     cmd = unit_list(copy_typed_ptr(listpred_builtin));
-    s_expr_append(cmd, copy_typed_ptr(null_sym));
+    s_expr_append(cmd, NULL_SYM);
     expected = create_atom_tp(TYPE_BOOL, true);
     pass = pass && run_test_expect(eval_list_pred, cmd, env, expected);
     // (list? EVAL_ERROR_NOT_ID) -> EVAL_ERROR_NOT_ID
@@ -2890,18 +2012,14 @@ void test_eval_list_pred(test_env* te) {
     s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_ID));
     expected = create_error_tp(EVAL_ERROR_NOT_ID);
     pass = pass && run_test_expect(eval_list_pred, cmd, env, expected);
-    // (list? (-)) -> EVAL_ERROR_FEW_ARGS
+    // (list? (/ 0)) -> EVAL_ERROR_DIV_ZERO
     cmd = unit_list(copy_typed_ptr(listpred_builtin));
-    s_expr* lone_subtract = unit_list(copy_typed_ptr(subtract_sym));
-    s_expr_append(cmd, create_s_expr_tp(lone_subtract));
-    expected = create_error_tp(EVAL_ERROR_FEW_ARGS);
+    s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
+    expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = pass && run_test_expect(eval_list_pred, cmd, env, expected);
     delete_environment_full(env);
     free(listpred_builtin);
-    free(null_sym);
     free(cons_sym);
-    free(list_sym);
-    free(subtract_sym);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -2948,13 +2066,9 @@ void test_eval_atom_pred(test_env* te) {
     print_test_announce("eval_list_pred()");
     Environment* env = create_environment(0, 0);
     setup_environment(env);
-    typed_ptr* add_sym = symbol_tp_from_name(env, "+");
     typed_ptr* cons_sym = symbol_tp_from_name(env, "cons");
-    typed_ptr* list_sym = symbol_tp_from_name(env, "list");
-    typed_ptr* null_sym = symbol_tp_from_name(env, "null");
-    typed_ptr* x_sym;
+   typed_ptr* x_sym;
     x_sym = install_symbol(env, strdup("x"), TYPE_FUNCTION, (tp_value){.idx=0});
-    typed_ptr* divide_sym = symbol_tp_from_name(env, "/");
     bool pass = true;
     #define NUM_TYPES 9
     type type_list[NUM_TYPES] = {TYPE_UNDEF, TYPE_ERROR, TYPE_VOID, \
@@ -3000,72 +2114,45 @@ void test_eval_atom_pred(test_env* te) {
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
         cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
         s_expr_append(cmd, create_atom_tp(TYPE_VOID, 0));
-        if (type_list[i] == TYPE_VOID) {
-            expected = create_atom_tp(TYPE_BOOL, true);
-        } else {
-            expected = create_atom_tp(TYPE_BOOL, false);
-        }
+        expected = create_atom_tp(TYPE_BOOL, type_list[i] == TYPE_VOID);
         pass = pass && run_test_expect(pred_fns[i], cmd, env, expected);
     }
     // ([any_atomic]? 1) -> #t if [num] else #f
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
         cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
         s_expr_append(cmd, create_number_tp(1));
-        if (type_list[i] == TYPE_NUM) {
-            expected = create_atom_tp(TYPE_BOOL, true);
-        } else {
-            expected = create_atom_tp(TYPE_BOOL, false);
-        }
+        expected = create_atom_tp(TYPE_BOOL, type_list[i] == TYPE_NUM);
         pass = pass && run_test_expect(pred_fns[i], cmd, env, expected);
     }
     // ([any_atomic]? #f) -> #t if [bool] else #f
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
         cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
         s_expr_append(cmd, create_atom_tp(TYPE_BOOL, true));
-        if (type_list[i] == TYPE_BOOL) {
-            expected = create_atom_tp(TYPE_BOOL, true);
-        } else {
-            expected = create_atom_tp(TYPE_BOOL, false);
-        }
+        expected = create_atom_tp(TYPE_BOOL, type_list[i] == TYPE_BOOL);
         pass = pass && run_test_expect(pred_fns[i], cmd, env, expected);
     }
     // ([any_atomic]? +) -> #t if [builtin] else #f
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
         cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
-        s_expr_append(cmd, copy_typed_ptr(add_sym));
-        if (type_list[i] == TYPE_BUILTIN) {
-            expected = create_atom_tp(TYPE_BOOL, true);
-        } else {
-            expected = create_atom_tp(TYPE_BOOL, false);
-        }
+        s_expr_append(cmd, ADD_SYM);
+        expected = create_atom_tp(TYPE_BOOL, type_list[i] == TYPE_BUILTIN);
         pass = pass && run_test_expect(pred_fns[i], cmd, env, expected);
     }
     // ([any_atomic]? (cons 1 2)) -> #t if [pair] else #f
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
         cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
-        s_expr* cons_subexpr = unit_list(copy_typed_ptr(cons_sym));
+        s_expr* cons_subexpr = unit_list(CONS_SYM);
         s_expr_append(cons_subexpr, create_number_tp(1));
         s_expr_append(cons_subexpr, create_number_tp(2));
         s_expr_append(cmd, create_s_expr_tp(cons_subexpr));
-        if (type_list[i] == TYPE_SEXPR) {
-            expected = create_atom_tp(TYPE_BOOL, true);
-        } else {
-            expected = create_atom_tp(TYPE_BOOL, false);
-        }
+        expected = create_atom_tp(TYPE_BOOL, type_list[i] == TYPE_SEXPR);
         pass = pass && run_test_expect(pred_fns[i], cmd, env, expected);
     }
     // ([any_atomic]? (list 1 2)) -> #t if [pair] else #f
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
         cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
-        s_expr* list_subexpr = unit_list(copy_typed_ptr(list_sym));
-        s_expr_append(list_subexpr, create_number_tp(1));
-        s_expr_append(list_subexpr, create_number_tp(2));
-        s_expr_append(cmd, create_s_expr_tp(list_subexpr));
-        if (type_list[i] == TYPE_SEXPR) {
-            expected = create_atom_tp(TYPE_BOOL, true);
-        } else {
-            expected = create_atom_tp(TYPE_BOOL, false);
-        }
+        s_expr_append(cmd, create_s_expr_tp(list_one_two_s_expr(env)));
+        expected = create_atom_tp(TYPE_BOOL, type_list[i] == TYPE_SEXPR);
         pass = pass && run_test_expect(pred_fns[i], cmd, env, expected);
     }
     // ([any_atomic]? 'x) -> #t if [symbol] else #f
@@ -3076,36 +2163,28 @@ void test_eval_atom_pred(test_env* te) {
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
         cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
         s_expr_append(cmd, copy_typed_ptr(x_sym));
-        if (type_list[i] == TYPE_FUNCTION) {
-            expected = create_atom_tp(TYPE_BOOL, true);
-        } else {
-            expected = create_atom_tp(TYPE_BOOL, false);
-        }
+        expected = create_atom_tp(TYPE_BOOL, type_list[i] == TYPE_FUNCTION);
         pass = pass && run_test_expect(pred_fns[i], cmd, env, expected);
     }
     // ([any_atomic]? null) -> #f
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
         cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
-        s_expr_append(cmd, copy_typed_ptr(null_sym));
+        s_expr_append(cmd, NULL_SYM);
         expected = create_atom_tp(TYPE_BOOL, false);
         pass = pass && run_test_expect(pred_fns[i], cmd, env, expected);
     }
     // ([any_atomic]? (/ 0)) -> EVAL_ERROR_DIV_ZERO
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
         cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
-        s_expr* divide_subexpr = unit_list(copy_typed_ptr(divide_sym));
+        s_expr* divide_subexpr = unit_list(DIVIDE_SYM);
         s_expr_append(divide_subexpr, create_number_tp(0));
         s_expr_append(cmd, create_s_expr_tp(divide_subexpr));
         expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
         pass = pass && run_test_expect(pred_fns[i], cmd, env, expected);
     }
     delete_environment_full(env);
-    free(add_sym);
     free(cons_sym);
-    free(list_sym);
-    free(null_sym);
     free(x_sym);
-    free(divide_sym);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -3120,9 +2199,6 @@ void test_eval_lambda(test_env* te) {
     typed_ptr *x_sym, *y_sym;
     x_sym = install_symbol(env, strdup("x"), TYPE_UNDEF, (tp_value){.idx=0});
     y_sym = install_symbol(env, strdup("y"), TYPE_UNDEF, (tp_value){.idx=0});
-    typed_ptr* null_sym = symbol_tp_from_name(env, "null");
-    typed_ptr* add_sym = symbol_tp_from_name(env, "+");
-    typed_ptr* divide_sym = symbol_tp_from_name(env, "/");
     bool pass = true;
     // (lambda) -> EVAL_ERROR_FEW_ARGS
     s_expr* cmd = unit_list(copy_typed_ptr(lambda_builtin));
@@ -3170,7 +2246,7 @@ void test_eval_lambda(test_env* te) {
     pass = pass && run_test_expect(eval_lambda, cmd, env, expected);
     // (lambda null 1) -> currently EVAL_ERROR_BAD_ARG_TYPE; should be ok
     cmd = unit_list(copy_typed_ptr(lambda_builtin));
-    s_expr_append(cmd, copy_typed_ptr(null_sym));
+    s_expr_append(cmd, NULL_SYM);
     s_expr_append(cmd, create_number_tp(1));
     expected = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
     pass = pass && run_test_expect(eval_lambda, cmd, env, expected);
@@ -3224,7 +2300,7 @@ void test_eval_lambda(test_env* te) {
     s_expr* x_and_y = unit_list(copy_typed_ptr(x_sym));
     s_expr_append(x_and_y, copy_typed_ptr(y_sym));
     s_expr_append(cmd, create_s_expr_tp(x_and_y));
-    body = create_s_expr_tp(unit_list(copy_typed_ptr(add_sym)));
+    body = create_s_expr_tp(unit_list(ADD_SYM));
     s_expr_append(body->ptr.se_ptr, copy_typed_ptr(x_sym));
     s_expr_append(body->ptr.se_ptr, copy_typed_ptr(y_sym));
     s_expr_append(cmd, body);
@@ -3252,7 +2328,7 @@ void test_eval_lambda(test_env* te) {
     cmd = unit_list(copy_typed_ptr(lambda_builtin));
     lone_x = unit_list(copy_typed_ptr(x_sym));
     s_expr_append(cmd, create_s_expr_tp(lone_x));
-    body = create_s_expr_tp(unit_list(copy_typed_ptr(add_sym)));
+    body = create_s_expr_tp(unit_list(ADD_SYM));
     s_expr_append(body->ptr.se_ptr, copy_typed_ptr(x_sym));
     s_expr_append(body->ptr.se_ptr, copy_typed_ptr(y_sym));
     s_expr_append(cmd, body);
@@ -3277,7 +2353,7 @@ void test_eval_lambda(test_env* te) {
     // (lambda () (/ 0)) -> <#procedure> + side effects
     cmd = unit_list(copy_typed_ptr(lambda_builtin));
     s_expr_append(cmd, create_s_expr_tp(create_empty_s_expr()));
-    body = create_s_expr_tp(unit_list(copy_typed_ptr(divide_sym)));
+    body = create_s_expr_tp(unit_list(DIVIDE_SYM));
     s_expr_append(body->ptr.se_ptr, create_number_tp(0));
     s_expr_append(cmd, body);
     expected = create_atom_tp(TYPE_FUNCTION, 4);
@@ -3298,11 +2374,8 @@ void test_eval_lambda(test_env* te) {
     free(out);
     delete_environment_full(env);
     free(lambda_builtin);
-    free(add_sym);
-    free(null_sym);
     free(x_sym);
     free(y_sym);
-    free(divide_sym);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -3314,12 +2387,8 @@ void test_eval_cond(test_env* te) {
     Environment* env = create_environment(0, 0);
     setup_environment(env);
     typed_ptr* cond_builtin = builtin_tp_from_name(env, "cond");
-    typed_ptr* null_sym = symbol_tp_from_name(env, "null");
     typed_ptr* else_sym = symbol_tp_from_name(env, "else");
-    typed_ptr* add_sym = symbol_tp_from_name(env, "+");
     typed_ptr* equals_sym = symbol_tp_from_name(env, "=");
-    typed_ptr* subtract_sym = symbol_tp_from_name(env, "-");
-    typed_ptr* divide_sym = symbol_tp_from_name(env, "/");
     bool pass = true;
     // (cond) -> <void>
     s_expr* cmd = unit_list(copy_typed_ptr(cond_builtin));
@@ -3371,7 +2440,7 @@ void test_eval_cond(test_env* te) {
     pass = pass && run_test_expect(eval_cond, cmd, env, expected);
     // (cond (null 1)) -> 1
     cmd = unit_list(copy_typed_ptr(cond_builtin));
-    first_case = unit_list(copy_typed_ptr(null_sym));
+    first_case = unit_list(NULL_SYM);
     s_expr_append(first_case, create_number_tp(1));
     s_expr_append(cmd, create_s_expr_tp(first_case));
     expected = create_number_tp(1);
@@ -3502,10 +2571,7 @@ void test_eval_cond(test_env* te) {
     // (cond ((+ 1 1))) -> 2
     cmd = unit_list(copy_typed_ptr(cond_builtin));
     first_case = create_empty_s_expr();
-    s_expr* add_one_one = unit_list(copy_typed_ptr(add_sym));
-    s_expr_append(add_one_one, create_number_tp(1));
-    s_expr_append(add_one_one, create_number_tp(1));
-    s_expr_append(first_case, create_s_expr_tp(add_one_one));
+    s_expr_append(first_case, create_s_expr_tp(add_one_one_s_expr(env)));
     s_expr_append(cmd, create_s_expr_tp(first_case));
     expected = create_number_tp(2);
     pass = pass && run_test_expect(eval_cond, cmd, env, expected);
@@ -3516,19 +2582,14 @@ void test_eval_cond(test_env* te) {
     s_expr_append(equals_one_one, create_number_tp(1));
     s_expr_append(equals_one_one, create_number_tp(1));
     s_expr_append(first_case, create_s_expr_tp(equals_one_one));
-    add_one_one = unit_list(copy_typed_ptr(add_sym));
-    s_expr_append(add_one_one, create_number_tp(1));
-    s_expr_append(add_one_one, create_number_tp(1));
-    s_expr_append(first_case, create_s_expr_tp(add_one_one));
+    s_expr_append(first_case, create_s_expr_tp(add_one_one_s_expr(env)));
     s_expr_append(cmd, create_s_expr_tp(first_case));
     expected = create_number_tp(2);
     pass = pass && run_test_expect(eval_cond, cmd, env, expected);
     // (cond (#f (/ 0))) -> <void>
     cmd = unit_list(copy_typed_ptr(cond_builtin));
     first_case = unit_list(create_atom_tp(TYPE_BOOL, false));
-    s_expr* divide_zero = unit_list(copy_typed_ptr(divide_sym));
-    s_expr_append(divide_zero, create_number_tp(0));
-    s_expr_append(first_case, create_s_expr_tp(divide_zero));
+    s_expr_append(first_case, create_s_expr_tp(divide_zero_s_expr(env)));
     s_expr_append(cmd, create_s_expr_tp(first_case));
     expected = create_atom_tp(TYPE_VOID, 0);
     pass = pass && run_test_expect(eval_cond, cmd, env, expected);
@@ -3538,9 +2599,7 @@ void test_eval_cond(test_env* te) {
     s_expr_append(first_case, create_number_tp(1));
     s_expr_append(cmd, create_s_expr_tp(first_case));
     second_case = create_empty_s_expr();
-    divide_zero = unit_list(copy_typed_ptr(divide_sym));
-    s_expr_append(divide_zero, create_number_tp(0));
-    s_expr_append(second_case, create_s_expr_tp(divide_zero));
+    s_expr_append(second_case, create_s_expr_tp(divide_zero_s_expr(env)));
     s_expr_append(second_case, create_number_tp(2));
     s_expr_append(cmd, create_s_expr_tp(second_case));
     expected = create_number_tp(1);
@@ -3549,18 +2608,14 @@ void test_eval_cond(test_env* te) {
     cmd = unit_list(copy_typed_ptr(cond_builtin));
     first_case = unit_list(create_atom_tp(TYPE_BOOL, true));
     s_expr_append(first_case, create_number_tp(1));
-    divide_zero = unit_list(copy_typed_ptr(divide_sym));
-    s_expr_append(divide_zero, create_number_tp(0));
-    s_expr_append(first_case, create_s_expr_tp(divide_zero));
+    s_expr_append(first_case, create_s_expr_tp(divide_zero_s_expr(env)));
     s_expr_append(cmd, create_s_expr_tp(first_case));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = pass && run_test_expect(eval_cond, cmd, env, expected);
     // (cond (#t (/ 0) 1)) -> EVAL_ERROR_DIV_ZERO
     cmd = unit_list(copy_typed_ptr(cond_builtin));
     first_case = unit_list(create_atom_tp(TYPE_BOOL, true));
-    divide_zero = unit_list(copy_typed_ptr(divide_sym));
-    s_expr_append(divide_zero, create_number_tp(0));
-    s_expr_append(first_case, create_s_expr_tp(divide_zero));
+    s_expr_append(first_case, create_s_expr_tp(divide_zero_s_expr(env)));
     s_expr_append(first_case, create_number_tp(1));
     s_expr_append(cmd, create_s_expr_tp(first_case));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
@@ -3582,9 +2637,7 @@ void test_eval_cond(test_env* te) {
     // (cond ((/ 0) 1)) -> EVAL_ERROR_DIV_ZERO
     cmd = unit_list(copy_typed_ptr(cond_builtin));
     first_case = create_empty_s_expr();
-    divide_zero = unit_list(copy_typed_ptr(divide_sym));
-    s_expr_append(divide_zero, create_number_tp(0));
-    s_expr_append(first_case, create_s_expr_tp(divide_zero));
+    s_expr_append(first_case, create_s_expr_tp(divide_zero_s_expr(env)));
     s_expr_append(first_case, create_number_tp(1));
     s_expr_append(cmd, create_s_expr_tp(first_case));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
@@ -3592,20 +2645,14 @@ void test_eval_cond(test_env* te) {
     // (cond (#t (/ 0))) -> EVAL_ERROR_DIV_ZERO
     cmd = unit_list(copy_typed_ptr(cond_builtin));
     first_case = unit_list(create_atom_tp(TYPE_BOOL, true));
-    divide_zero = unit_list(copy_typed_ptr(divide_sym));
-    s_expr_append(divide_zero, create_number_tp(0));
-    s_expr_append(first_case, create_s_expr_tp(divide_zero));
+    s_expr_append(first_case, create_s_expr_tp(divide_zero_s_expr(env)));
     s_expr_append(cmd, create_s_expr_tp(first_case));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = pass && run_test_expect(eval_cond, cmd, env, expected);
     delete_environment_full(env);
     free(cond_builtin);
-    free(add_sym);
     free(equals_sym);
-    free(null_sym);
     free(else_sym);
-    free(subtract_sym);
-    free(divide_sym);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -3617,12 +2664,6 @@ void test_eval_define(test_env* te) {
     Environment* env = create_environment(0, 0);
     setup_environment(env);
     typed_ptr* define_builtin = builtin_tp_from_name(env, "define");
-    typed_ptr* null_sym = symbol_tp_from_name(env, "null");
-    typed_ptr* else_sym = symbol_tp_from_name(env, "else");
-    typed_ptr* add_sym = symbol_tp_from_name(env, "+");
-    typed_ptr* equals_sym = symbol_tp_from_name(env, "=");
-    typed_ptr* subtract_sym = symbol_tp_from_name(env, "-");
-    typed_ptr* divide_sym = symbol_tp_from_name(env, "/");
     typed_ptr *x_sym, *y_sym, *z_sym;
     x_sym = install_symbol(env, strdup("x"), TYPE_UNDEF, (tp_value){.idx=0});
     y_sym = install_symbol(env, strdup("y"), TYPE_UNDEF, (tp_value){.idx=0});
@@ -3666,10 +2707,7 @@ void test_eval_define(test_env* te) {
     // (define x (+ 1 1)) -> <void> + side effect
     cmd = unit_list(copy_typed_ptr(define_builtin));
     s_expr_append(cmd, copy_typed_ptr(x_sym));
-    s_expr* add_one_one = unit_list(copy_typed_ptr(add_sym));
-    s_expr_append(add_one_one, create_number_tp(1));
-    s_expr_append(add_one_one, create_number_tp(1));
-    s_expr_append(cmd, create_s_expr_tp(add_one_one));
+    s_expr_append(cmd, create_s_expr_tp(add_one_one_s_expr(env)));
     expected = create_atom_tp(TYPE_VOID, 0);
     pass = pass && run_test_expect(eval_define, cmd, env, expected);
     x_value = value_lookup_index(env, x_sym);
@@ -3682,9 +2720,7 @@ void test_eval_define(test_env* te) {
     // (define x (/ 0)) -> EVAL_ERROR_DIV_ZERO
     cmd = unit_list(copy_typed_ptr(define_builtin));
     s_expr_append(cmd, copy_typed_ptr(x_sym));
-    s_expr* divide_zero = unit_list(copy_typed_ptr(divide_sym));
-    s_expr_append(divide_zero, create_number_tp(0));
-    s_expr_append(cmd, create_s_expr_tp(divide_zero));
+    s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = pass && run_test_expect(eval_define, cmd, env, expected);
     // (define <weird symbol number> 1) -> EVAL_ERROR_BAD_SYMBOL
@@ -3754,18 +2790,12 @@ void test_eval_define(test_env* te) {
     cmd = unit_list(copy_typed_ptr(define_builtin));
     fn_name_args = unit_list(copy_typed_ptr(x_sym));
     s_expr_append(cmd, create_s_expr_tp(fn_name_args));
-    add_one_one = unit_list(copy_typed_ptr(add_sym));
-    s_expr_append(add_one_one, create_number_tp(1));
-    s_expr_append(add_one_one, create_number_tp(1));
-    s_expr_append(cmd, create_s_expr_tp(add_one_one));
+    s_expr_append(cmd, create_s_expr_tp(add_one_one_s_expr(env)));
     expected = create_atom_tp(TYPE_VOID, 0);
     pass = pass && run_test_expect(eval_define, cmd, env, expected);
     x_value = value_lookup_index(env, x_sym);
     x_fn = function_lookup_index(env, x_value);
-    add_one_one = unit_list(copy_typed_ptr(add_sym));
-    s_expr_append(add_one_one, create_number_tp(1));
-    s_expr_append(add_one_one, create_number_tp(1));
-    body = create_s_expr_tp(add_one_one);
+    body = create_s_expr_tp(add_one_one_s_expr(env));
     if (x_fn == NULL || \
         x_fn->arg_list != NULL || \
         x_fn->closure_env == NULL || \
@@ -3773,7 +2803,6 @@ void test_eval_define(test_env* te) {
         pass = false;
     }
     free(x_value);
-    delete_s_expr_recursive(add_one_one, true);
     free(body);
     // (define (x <weird symbol number>) 1) -> EVAL_ERROR_BAD_SYMBOL
     cmd = unit_list(copy_typed_ptr(define_builtin));
@@ -3789,18 +2818,18 @@ void test_eval_define(test_env* te) {
     s_expr_append(fn_name_args, copy_typed_ptr(y_sym));
     s_expr_append(fn_name_args, copy_typed_ptr(z_sym));
     s_expr_append(cmd, create_s_expr_tp(fn_name_args));
-    add_one_one = unit_list(copy_typed_ptr(add_sym));
-    s_expr_append(add_one_one, copy_typed_ptr(y_sym));
-    s_expr_append(add_one_one, copy_typed_ptr(z_sym));
-    s_expr_append(cmd, create_s_expr_tp(add_one_one));
+    s_expr* add_y_z = unit_list(ADD_SYM);
+    s_expr_append(add_y_z, copy_typed_ptr(y_sym));
+    s_expr_append(add_y_z, copy_typed_ptr(z_sym));
+    s_expr_append(cmd, create_s_expr_tp(add_y_z));
     expected = create_atom_tp(TYPE_VOID, 0);
     pass = pass && run_test_expect(eval_define, cmd, env, expected);
     x_value = value_lookup_index(env, x_sym);
     x_fn = function_lookup_index(env, x_value);
-    add_one_one = unit_list(copy_typed_ptr(add_sym));
-    s_expr_append(add_one_one, copy_typed_ptr(y_sym));
-    s_expr_append(add_one_one, copy_typed_ptr(z_sym));
-    body = create_s_expr_tp(add_one_one);
+    add_y_z = unit_list(ADD_SYM);
+    s_expr_append(add_y_z, copy_typed_ptr(y_sym));
+    s_expr_append(add_y_z, copy_typed_ptr(z_sym));
+    body = create_s_expr_tp(add_y_z);
     if (x_fn == NULL || \
         x_fn->arg_list == NULL || \
         strcmp(x_fn->arg_list->name, "y") || \
@@ -3812,22 +2841,18 @@ void test_eval_define(test_env* te) {
         pass = false;
     }
     free(x_value);
-    delete_s_expr_recursive(add_one_one, true);
+    delete_s_expr_recursive(add_y_z, true);
     free(body);
     // (define (x) (/ 0)) -> <void> + side effect
     cmd = unit_list(copy_typed_ptr(define_builtin));
     fn_name_args = unit_list(copy_typed_ptr(x_sym));
     s_expr_append(cmd, create_s_expr_tp(fn_name_args));
-    divide_zero = unit_list(copy_typed_ptr(divide_sym));
-    s_expr_append(divide_zero, create_number_tp(0));
-    s_expr_append(cmd, create_s_expr_tp(divide_zero));
+    s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     expected = create_atom_tp(TYPE_VOID, 0);
     pass = pass && run_test_expect(eval_define, cmd, env, expected);
     x_value = value_lookup_index(env, x_sym);
     x_fn = function_lookup_index(env, x_value);
-    add_one_one = unit_list(copy_typed_ptr(divide_sym));
-    s_expr_append(add_one_one, create_number_tp(0));
-    body = create_s_expr_tp(add_one_one);
+    body = create_s_expr_tp(divide_zero_s_expr(env));
     if (x_fn == NULL || \
         x_fn->arg_list != NULL || \
         x_fn->closure_env == NULL || \
@@ -3835,16 +2860,9 @@ void test_eval_define(test_env* te) {
         pass = false;
     }
     free(x_value);
-    delete_s_expr_recursive(add_one_one, true);
     free(body);
     delete_environment_full(env);
     free(define_builtin);
-    free(add_sym);
-    free(equals_sym);
-    free(null_sym);
-    free(else_sym);
-    free(subtract_sym);
-    free(divide_sym);
     free(x_sym);
     free(y_sym);
     free(z_sym);
@@ -3859,9 +2877,6 @@ void test_eval_setvar(test_env* te) {
     Environment* env = create_environment(0, 0);
     setup_environment(env);
     typed_ptr* setvar_builtin = builtin_tp_from_name(env, "set!");
-    typed_ptr* add_sym = symbol_tp_from_name(env, "+");
-    typed_ptr* divide_sym = symbol_tp_from_name(env, "/");
-    typed_ptr* list_sym = symbol_tp_from_name(env, "list");
     typed_ptr *x_sym;
     x_sym = install_symbol(env, strdup("x"), TYPE_UNDEF, (tp_value){.idx=0});
     bool pass = true;
@@ -3923,10 +2938,7 @@ void test_eval_setvar(test_env* te) {
     // (set! x (+ 1 1)) [with x defined] -> <void> + side effect
     cmd = unit_list(copy_typed_ptr(setvar_builtin));
     s_expr_append(cmd, copy_typed_ptr(x_sym));
-    s_expr* add_one_one = unit_list(copy_typed_ptr(add_sym));
-    s_expr_append(add_one_one, create_number_tp(1));
-    s_expr_append(add_one_one, create_number_tp(1));
-    s_expr_append(cmd, create_s_expr_tp(add_one_one));
+    s_expr_append(cmd, create_s_expr_tp(add_one_one_s_expr(env)));
     expected = create_atom_tp(TYPE_VOID, 0);
     pass = pass && run_test_expect(eval_set_variable, cmd, env, expected);
     x_value = value_lookup_index(env, x_sym);
@@ -3939,10 +2951,7 @@ void test_eval_setvar(test_env* te) {
     // (set! x (list 1 2)) [with x defined] -> <void> + side effect
     cmd = unit_list(copy_typed_ptr(setvar_builtin));
     s_expr_append(cmd, copy_typed_ptr(x_sym));
-    s_expr* list_one_two = unit_list(copy_typed_ptr(list_sym));
-    s_expr_append(list_one_two, create_number_tp(1));
-    s_expr_append(list_one_two, create_number_tp(2));
-    s_expr_append(cmd, create_s_expr_tp(list_one_two));
+    s_expr_append(cmd, create_s_expr_tp(list_one_two_s_expr(env)));
     expected = create_atom_tp(TYPE_VOID, 0);
     pass = pass && run_test_expect(eval_set_variable, cmd, env, expected);
     x_value = value_lookup_index(env, x_sym);
@@ -3958,9 +2967,7 @@ void test_eval_setvar(test_env* te) {
     // (set! x (/ 0)) [with x defined] -> EVAL_ERROR_DIV_ZERO
     cmd = unit_list(copy_typed_ptr(setvar_builtin));
     s_expr_append(cmd, copy_typed_ptr(x_sym));
-    s_expr* divide_zero = unit_list(copy_typed_ptr(divide_sym));
-    s_expr_append(divide_zero, create_number_tp(0));
-    s_expr_append(cmd, create_s_expr_tp(divide_zero));
+    s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = pass && run_test_expect(eval_set_variable, cmd, env, expected);
     // (set! x EVAL_ERROR_NOT_ID) [with x defined] -> EVAL_ERROR_NOT_ID
@@ -3971,9 +2978,6 @@ void test_eval_setvar(test_env* te) {
     pass = pass && run_test_expect(eval_set_variable, cmd, env, expected);
     delete_environment_full(env);
     free(setvar_builtin);
-    free(add_sym);
-    free(divide_sym);
-    free(list_sym);
     free(x_sym);
     print_test_result(pass);
     te->passed += pass;
@@ -3985,11 +2989,6 @@ void test_eval_builtin(test_env* te) {
     print_test_announce("eval_builtin()");
     Environment* env = create_environment(0, 0);
     setup_environment(env);
-    typed_ptr* setvar_builtin = builtin_tp_from_name(env, "set!");
-    typed_ptr* add_sym = symbol_tp_from_name(env, "+");
-    typed_ptr* divide_sym = symbol_tp_from_name(env, "/");
-    typed_ptr* list_sym = symbol_tp_from_name(env, "list");
-    typed_ptr* null_sym = symbol_tp_from_name(env, "null");
     typed_ptr* else_sym = symbol_tp_from_name(env, "else");
     typed_ptr *x_sym;
     x_sym = install_symbol(env, strdup("x"), TYPE_UNDEF, (tp_value){.idx=0});
@@ -4081,23 +3080,17 @@ void test_eval_builtin(test_env* te) {
     // (cons 1 null) -> '(1)
     cmd = unit_list(create_atom_tp(TYPE_BUILTIN, BUILTIN_CONS));
     s_expr_append(cmd, create_number_tp(1));
-    s_expr_append(cmd, copy_typed_ptr(null_sym));
+    s_expr_append(cmd, NULL_SYM);
     expected = create_s_expr_tp(unit_list(create_number_tp(1)));
     pass = pass && run_test_expect(eval_builtin, cmd, env, expected);
     // (car (list 1 2)) -> 1
     cmd = unit_list(create_atom_tp(TYPE_BUILTIN, BUILTIN_CAR));
-    s_expr* list_one_two = unit_list(copy_typed_ptr(list_sym));
-    s_expr_append(list_one_two, create_number_tp(1));
-    s_expr_append(list_one_two, create_number_tp(2));
-    s_expr_append(cmd, create_s_expr_tp(list_one_two));
+    s_expr_append(cmd, create_s_expr_tp(list_one_two_s_expr(env)));
     expected = create_number_tp(1);
     pass = pass && run_test_expect(eval_builtin, cmd, env, expected);
     // (cdr (list 1 2)) -> '(2)
     cmd = unit_list(create_atom_tp(TYPE_BUILTIN, BUILTIN_CDR));
-    list_one_two = unit_list(copy_typed_ptr(list_sym));
-    s_expr_append(list_one_two, create_number_tp(1));
-    s_expr_append(list_one_two, create_number_tp(2));
-    s_expr_append(cmd, create_s_expr_tp(list_one_two));
+    s_expr_append(cmd, create_s_expr_tp(list_one_two_s_expr(env)));
     expected = create_s_expr_tp(unit_list(create_number_tp(2)));
     pass = pass && run_test_expect(eval_builtin, cmd, env, expected);
     // (list 1 2) -> '(1 2)
@@ -4187,12 +3180,7 @@ void test_eval_builtin(test_env* te) {
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = pass && run_test_expect(eval_builtin, cmd, env, expected);
     delete_environment_full(env);
-    free(setvar_builtin);
-    free(add_sym);
-    free(divide_sym);
-    free(list_sym);
     free(x_sym);
-    free(null_sym);
     free(else_sym);
     print_test_result(pass);
     te->passed += pass;
@@ -4204,14 +3192,6 @@ void test_eval_sexpr(test_env* te) {
     print_test_announce("eval_sexpr()");
     Environment* env = create_environment(0, 0);
     setup_environment(env);
-    typed_ptr* define_builtin = builtin_tp_from_name(env, "define");
-    typed_ptr* add_sym = symbol_tp_from_name(env, "+");
-    typed_ptr* multiply_sym = symbol_tp_from_name(env, "*");
-    typed_ptr* divide_sym = symbol_tp_from_name(env, "/");
-    typed_ptr* list_sym = symbol_tp_from_name(env, "list");
-    typed_ptr* null_sym = symbol_tp_from_name(env, "null");
-    typed_ptr* else_sym = symbol_tp_from_name(env, "else");
-    typed_ptr* lambda_sym = symbol_tp_from_name(env, "lambda");
     typed_ptr *x_sym, *x2_sym;
     x_sym = install_symbol(env, strdup("x"), TYPE_UNDEF, (tp_value){.idx=0});
     x2_sym = install_symbol(env, strdup("x2"), TYPE_UNDEF, (tp_value){.idx=0});
@@ -4225,9 +3205,7 @@ void test_eval_sexpr(test_env* te) {
     // ((/ 0) 1) -> EVAL_ERROR_DIV_ZERO
     cmd = create_empty_s_expr();
     nested_cmd = create_empty_s_expr();
-    s_expr* divide_zero = unit_list(copy_typed_ptr(divide_sym));
-    s_expr_append(divide_zero, create_number_tp(0));
-    s_expr_append(nested_cmd, create_s_expr_tp(divide_zero));
+    s_expr_append(nested_cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     s_expr_append(nested_cmd, create_number_tp(1));
     s_expr_append(cmd, create_s_expr_tp(nested_cmd));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
@@ -4235,28 +3213,25 @@ void test_eval_sexpr(test_env* te) {
     // ((+ 1 1) 1) -> EVAL_ERROR_CAR_NOT_CALLABLE
     cmd = create_empty_s_expr();
     nested_cmd = create_empty_s_expr();
-    s_expr* add_one_one = unit_list(copy_typed_ptr(add_sym));
-    s_expr_append(add_one_one, create_number_tp(1));
-    s_expr_append(add_one_one, create_number_tp(1));
-    s_expr_append(nested_cmd, create_s_expr_tp(add_one_one));
+    s_expr_append(nested_cmd, create_s_expr_tp(add_one_one_s_expr(env)));
     s_expr_append(nested_cmd, create_number_tp(1));
     s_expr_append(cmd, create_s_expr_tp(nested_cmd));
     expected = create_error_tp(EVAL_ERROR_CAR_NOT_CALLABLE);
     pass = pass && run_test_expect(eval_sexpr, cmd, env, expected);
     // ('+ 1 1) -> 2
     cmd = create_empty_s_expr();
-    nested_cmd = unit_list(copy_typed_ptr(add_sym));
+    nested_cmd = unit_list(ADD_SYM);
     s_expr_append(nested_cmd, create_number_tp(1));
     s_expr_append(nested_cmd, create_number_tp(1));
     s_expr_append(cmd, create_s_expr_tp(nested_cmd));
     expected = create_number_tp(2);
     pass = pass && run_test_expect(eval_sexpr, cmd, env, expected);
     // ('x2 10) [if x2 previously defined as doubling function] -> 20
-    cmd = unit_list(copy_typed_ptr(define_builtin));
+    cmd = unit_list(builtin_tp_from_name(env, "define"));
     s_expr* fn_sig = unit_list(copy_typed_ptr(x2_sym));
     s_expr_append(fn_sig, copy_typed_ptr(x_sym));
     s_expr_append(cmd, create_s_expr_tp(fn_sig));
-    s_expr* body = unit_list(copy_typed_ptr(multiply_sym));
+    s_expr* body = unit_list(MULTIPLY_SYM);
     s_expr_append(body, copy_typed_ptr(x_sym));
     s_expr_append(body, create_number_tp(2));
     s_expr_append(cmd, create_s_expr_tp(body));
@@ -4271,9 +3246,9 @@ void test_eval_sexpr(test_env* te) {
     // ((lambda (x) (* x 3)) 10) -> 30
     cmd = create_empty_s_expr();
     nested_cmd = create_empty_s_expr();
-    s_expr* lambda = unit_list(copy_typed_ptr(lambda_sym));
+    s_expr* lambda = unit_list(LAMBDA_SYM);
     s_expr_append(lambda, create_s_expr_tp(unit_list(copy_typed_ptr(x_sym))));
-    body = unit_list(copy_typed_ptr(multiply_sym));
+    body = unit_list(MULTIPLY_SYM);
     s_expr_append(body, copy_typed_ptr(x_sym));
     s_expr_append(body, create_number_tp(3));
     s_expr_append(lambda, create_s_expr_tp(body));
@@ -4284,21 +3259,13 @@ void test_eval_sexpr(test_env* te) {
     pass = pass && run_test_expect(eval_sexpr, cmd, env, expected);
     // ('/ 0) -> EVAL_ERROR_DIV_ZERO
     cmd = create_empty_s_expr();
-    nested_cmd = unit_list(copy_typed_ptr(divide_sym));
+    nested_cmd = unit_list(DIVIDE_SYM);
     s_expr_append(nested_cmd, create_number_tp(0));
     s_expr_append(cmd, create_s_expr_tp(nested_cmd));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = pass && run_test_expect(eval_sexpr, cmd, env, expected);
     delete_environment_full(env);
-    free(define_builtin);
-    free(add_sym);
-    free(multiply_sym);
-    free(divide_sym);
-    free(list_sym);
     free(x_sym);
-    free(null_sym);
-    free(else_sym);
-    free(lambda_sym);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -4309,14 +3276,6 @@ void test_eval_function(test_env* te) {
     print_test_announce("eval_function()");
     Environment* env = create_environment(0, 0);
     setup_environment(env);
-    typed_ptr* define_builtin = builtin_tp_from_name(env, "define");
-    typed_ptr* add_sym = symbol_tp_from_name(env, "+");
-    typed_ptr* multiply_sym = symbol_tp_from_name(env, "*");
-    typed_ptr* divide_sym = symbol_tp_from_name(env, "/");
-    typed_ptr* list_sym = symbol_tp_from_name(env, "list");
-    typed_ptr* cons_sym = symbol_tp_from_name(env, "cons");
-    typed_ptr* else_sym = symbol_tp_from_name(env, "else");
-    typed_ptr* lambda_sym = symbol_tp_from_name(env, "lambda");
     typed_ptr *x_sym, *y_sym, *my_fun;
     x_sym = install_symbol(env, strdup("x"), TYPE_UNDEF, (tp_value){.idx=0});
     y_sym = install_symbol(env, strdup("y"), TYPE_UNDEF, (tp_value){.idx=0});
@@ -4326,13 +3285,13 @@ void test_eval_function(test_env* te) {
     // given my-fun, a two-parameter function that doubles its first argument
     //   and prepends it to its second
     //   (i.e.: (define (my-fun x y) (cons (* x 2) y))     )
-    s_expr* cmd = unit_list(copy_typed_ptr(define_builtin));
+    s_expr* cmd = unit_list(builtin_tp_from_name(env, "define"));
     s_expr* fn_sig = unit_list(copy_typed_ptr(my_fun));
     s_expr_append(fn_sig, copy_typed_ptr(x_sym));
     s_expr_append(fn_sig, copy_typed_ptr(y_sym));
     s_expr_append(cmd, create_s_expr_tp(fn_sig));
-    s_expr* body = unit_list(copy_typed_ptr(cons_sym));
-    s_expr* multiply_x_two = unit_list(copy_typed_ptr(multiply_sym));
+    s_expr* body = unit_list(CONS_SYM);
+    s_expr* multiply_x_two = unit_list(MULTIPLY_SYM);
     s_expr_append(multiply_x_two, copy_typed_ptr(x_sym));
     s_expr_append(multiply_x_two, create_number_tp(2));
     s_expr_append(body, create_s_expr_tp(multiply_x_two));
@@ -4347,9 +3306,7 @@ void test_eval_function(test_env* te) {
     pass = pass && run_test_expect(eval_function, cmd, env, expected);
     // (my-fun (/ 0)) -> EVAL_ERROR_DIV_ZERO
     cmd = unit_list(value_lookup_index(env, my_fun));
-    s_expr* divide_zero = unit_list(copy_typed_ptr(divide_sym));
-    s_expr_append(divide_zero, create_number_tp(0));
-    s_expr_append(cmd, create_s_expr_tp(divide_zero));
+    s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = pass && run_test_expect(eval_function, cmd, env, expected);
     // (my-fun) -> EVAL_ERROR_FEW_ARGS
@@ -4371,7 +3328,7 @@ void test_eval_function(test_env* te) {
     // (my-fun 2 (list 8 16)) -> '(4 8 16)
     /*cmd = unit_list(value_lookup_index(env, my_fun));
     s_expr_append(cmd, create_number_tp(2));
-    s_expr* list_eight_sixteen = unit_list(copy_typed_ptr(list_sym));
+    s_expr* list_eight_sixteen = unit_list(LIST_SYM);
     s_expr_append(list_eight_sixteen, create_number_tp(8));
     s_expr_append(list_eight_sixteen, create_number_tp(16));
     s_expr_append(cmd, create_s_expr_tp(list_eight_sixteen));
@@ -4382,22 +3339,14 @@ void test_eval_function(test_env* te) {
     // (my-fun #t (list 8 16)) -> EVAL_ERROR_NEED_NUM
     cmd = unit_list(value_lookup_index(env, my_fun));
     s_expr_append(cmd, create_atom_tp(TYPE_BOOL, true));
-    list_eight_sixteen = unit_list(copy_typed_ptr(list_sym));
+    list_eight_sixteen = unit_list(LIST_SYM);
     s_expr_append(list_eight_sixteen, create_number_tp(8));
     s_expr_append(list_eight_sixteen, create_number_tp(16));
     s_expr_append(cmd, create_s_expr_tp(list_eight_sixteen));
     expected = create_error_tp(EVAL_ERROR_NEED_NUM);
     pass = pass && run_test_expect(eval_function, cmd, env, expected);*/
     delete_environment_full(env);
-    free(define_builtin);
-    free(add_sym);
-    free(multiply_sym);
-    free(divide_sym);
-    free(list_sym);
     free(x_sym);
-    free(cons_sym);
-    free(else_sym);
-    free(lambda_sym);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -4408,14 +3357,6 @@ void test_evaluate(test_env* te) {
     print_test_announce("eval_function()");
     Environment* env = create_environment(0, 0);
     setup_environment(env);
-    typed_ptr* define_builtin = builtin_tp_from_name(env, "define");
-    typed_ptr* add_sym = symbol_tp_from_name(env, "+");
-    typed_ptr* multiply_sym = symbol_tp_from_name(env, "*");
-    typed_ptr* divide_sym = symbol_tp_from_name(env, "/");
-    typed_ptr* list_sym = symbol_tp_from_name(env, "list");
-    typed_ptr* cond_sym = symbol_tp_from_name(env, "cond");
-    typed_ptr* else_sym = symbol_tp_from_name(env, "else");
-    typed_ptr* lambda_sym = symbol_tp_from_name(env, "lambda");
     typed_ptr *x_sym;
     x_sym = install_symbol(env, strdup("x"), TYPE_NUM, (tp_value){.idx=1});
     bool pass = true;
@@ -4462,9 +3403,9 @@ void test_evaluate(test_env* te) {
     pass = pass && run_test_expect(evaluate, cmd, env, expected);
     // eval[ ((lambda (x) (* x 10)) 2) ] -> <procedure>
     cmd = create_empty_s_expr();
-    s_expr* lambda = unit_list(copy_typed_ptr(lambda_sym));
+    s_expr* lambda = unit_list(LAMBDA_SYM);
     s_expr_append(lambda, create_s_expr_tp(unit_list(copy_typed_ptr(x_sym))));
-    s_expr* multiply_x_ten = unit_list(copy_typed_ptr(multiply_sym));
+    s_expr* multiply_x_ten = unit_list(MULTIPLY_SYM);
     s_expr_append(multiply_x_ten, copy_typed_ptr(x_sym));
     s_expr_append(multiply_x_ten, create_number_tp(10));
     s_expr_append(lambda, create_s_expr_tp(multiply_x_ten));
@@ -4486,17 +3427,23 @@ void test_evaluate(test_env* te) {
     expected = create_error_tp(EVAL_ERROR_UNDEF_TYPE);
     pass = pass && run_test_expect(evaluate, cmd, env, expected);
     delete_environment_full(env);
-    free(define_builtin);
-    free(add_sym);
-    free(multiply_sym);
-    free(divide_sym);
-    free(list_sym);
     free(x_sym);
-    free(cond_sym);
-    free(else_sym);
-    free(lambda_sym);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
     return;
 }
+
+#undef ADD
+#undef SUBTRACT
+#undef MULTIPLY
+#undef DIVIDE
+
+#undef ADD_SYM
+#undef SUBTRACT_SYM
+#undef MULTIPLY_SYM
+#undef DIVIDE_SYM
+#undef CONS_SYM
+#undef NULL_SYM
+#undef LIST_SYM
+#undef LAMBDA_SYM
