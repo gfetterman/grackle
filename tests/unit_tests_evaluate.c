@@ -162,9 +162,9 @@ void test_collect_parameters(test_env* te) {
     free(se_tp);
     // pass a list whose middle car is not a symbol
     typed_ptr *sym_1, *sym_2, *sym_3;
-    sym_1 = install_symbol(env, NULL, TYPE_NUM, (tp_value){.idx=1000});
-    sym_2 = install_symbol(env, NULL, TYPE_NUM, (tp_value){.idx=1000});
-    sym_3 = install_symbol(env, NULL, TYPE_NUM, (tp_value){.idx=1000});
+    sym_1 = install_symbol(env, strdup("x"), TYPE_NUM, (tp_value){.idx=1000});
+    sym_2 = install_symbol(env, strdup("y"), TYPE_NUM, (tp_value){.idx=1000});
+    sym_3 = install_symbol(env, strdup("z"), TYPE_NUM, (tp_value){.idx=1000});
     se_tp = create_s_expr_tp(create_empty_s_expr());
     s_expr_append(se_tp->ptr.se_ptr, copy_typed_ptr(sym_1));
     s_expr_append(se_tp->ptr.se_ptr, create_atom_tp(TYPE_NUM, 1000));
@@ -218,7 +218,7 @@ void test_collect_parameters(test_env* te) {
     s_expr_append(se_tp->ptr.se_ptr, copy_typed_ptr(sym_1));
     params = collect_parameters(se_tp, env);
     if (params == NULL || \
-        params->name != NULL || \
+        strcmp(params->name, "x") || \
         params->type != TYPE_UNDEF || \
         params->next != NULL) {
         pass = false;
@@ -249,13 +249,13 @@ void test_collect_parameters(test_env* te) {
     s_expr_append(se_tp->ptr.se_ptr, copy_typed_ptr(sym_3));
     params = collect_parameters(se_tp, env);
     if (params == NULL || \
-        params->name != NULL || \
+        strcmp(params->name, "x") || \
         params->type != TYPE_UNDEF || \
         params->next == NULL || \
-        params->next->name != NULL || \
+        strcmp(params->next->name, "y") || \
         params->next->type != TYPE_UNDEF || \
         params->next->next == NULL || \
-        params->next->next->name != NULL || \
+        strcmp(params->next->next->name, "z") || \
         params->next->next->type != TYPE_UNDEF || \
         params->next->next->next != NULL) {
         pass = false;
@@ -264,6 +264,10 @@ void test_collect_parameters(test_env* te) {
     params = NULL;
     delete_s_expr_recursive(se_tp->ptr.se_ptr, true);
     free(se_tp);
+    delete_environment_full(env);
+    free(sym_1);
+    free(sym_2);
+    free(sym_3);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -364,7 +368,7 @@ void test_bind_args(test_env* te) {
     if (bound_args == NULL || \
         strcmp(bound_args->name, "y") || \
         bound_args->type != TYPE_SEXPR || \
-        bound_args->value.se_ptr != se || \
+        bound_args->value.se_ptr == se || \
         !is_empty_list(bound_args->value.se_ptr) || \
         bound_args->next == NULL || \
         strcmp(bound_args->next->name, "x") || \
@@ -372,6 +376,11 @@ void test_bind_args(test_env* te) {
         bound_args->next->value.idx != 1000 || \
         bound_args->next->next != NULL) {
         pass = false;
+    }
+    for (Symbol_Node* arg = bound_args; arg != NULL; arg = arg->next) {
+        if (arg->type == TYPE_SEXPR) {
+            delete_s_expr_recursive(arg->value.se_ptr, true);
+        }
     }
     delete_symbol_node_list(bound_args);
     // two params, three args
@@ -1077,6 +1086,7 @@ void test_eval_arithmetic(test_env* te) {
         pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     }
     delete_environment_full(env);
+    delete_s_expr_recursive(add_two_two, true);
     for (unsigned int i = 0; i < NUM_OPS; i++) {
         free(arith_ops[i]);
     }
@@ -1315,6 +1325,7 @@ void test_eval_comparison(test_env* te) {
     free(le_tp);
     free(ge_tp);
     delete_environment_full(env);
+    delete_s_expr_recursive(subtract_three_two, true);
     #undef NUM_OPS
     print_test_result(pass);
     te->passed += pass;
@@ -1439,6 +1450,7 @@ void test_eval_cons(test_env* te) {
     pass = pass && run_test_expect(eval_cons, cmd, env, expected);
     free(cons);
     delete_environment_full(env);
+    delete_s_expr_recursive(subtract_three_one, true);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -2803,6 +2815,7 @@ void test_eval_define(test_env* te) {
         pass = false;
     }
     free(x_value);
+    delete_s_expr_recursive(body->ptr.se_ptr, true);
     free(body);
     // (define (x <weird symbol number>) 1) -> EVAL_ERROR_BAD_SYMBOL
     cmd = unit_list(copy_typed_ptr(define_builtin));
@@ -2860,6 +2873,7 @@ void test_eval_define(test_env* te) {
         pass = false;
     }
     free(x_value);
+    delete_s_expr_recursive(body->ptr.se_ptr, true);
     free(body);
     delete_environment_full(env);
     free(define_builtin);
@@ -2961,6 +2975,9 @@ void test_eval_setvar(test_env* te) {
         x_value->type != TYPE_SEXPR || \
         !match_s_exprs(x_value->ptr.se_ptr, result_list)) {
         pass = false;
+    }
+    if (x_value != NULL && x_value->type == TYPE_SEXPR) {
+        delete_s_expr_recursive(x_value->ptr.se_ptr, true);
     }
     free(x_value);
     delete_s_expr_recursive(result_list, true);
@@ -3266,6 +3283,7 @@ void test_eval_sexpr(test_env* te) {
     pass = pass && run_test_expect(eval_sexpr, cmd, env, expected);
     delete_environment_full(env);
     free(x_sym);
+    free(x2_sym);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -3326,7 +3344,7 @@ void test_eval_function(test_env* te) {
     expected = create_error_tp(EVAL_ERROR_MANY_ARGS);
     pass = pass && run_test_expect(eval_function, cmd, env, expected);
     // (my-fun 2 (list 8 16)) -> '(4 8 16)
-    /*cmd = unit_list(value_lookup_index(env, my_fun));
+    cmd = unit_list(value_lookup_index(env, my_fun));
     s_expr_append(cmd, create_number_tp(2));
     s_expr* list_eight_sixteen = unit_list(LIST_SYM);
     s_expr_append(list_eight_sixteen, create_number_tp(8));
@@ -3344,9 +3362,11 @@ void test_eval_function(test_env* te) {
     s_expr_append(list_eight_sixteen, create_number_tp(16));
     s_expr_append(cmd, create_s_expr_tp(list_eight_sixteen));
     expected = create_error_tp(EVAL_ERROR_NEED_NUM);
-    pass = pass && run_test_expect(eval_function, cmd, env, expected);*/
+    pass = pass && run_test_expect(eval_function, cmd, env, expected);
     delete_environment_full(env);
     free(x_sym);
+    free(y_sym);
+    free(my_fun);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -3354,7 +3374,7 @@ void test_eval_function(test_env* te) {
 }
 
 void test_evaluate(test_env* te) {
-    print_test_announce("eval_function()");
+    print_test_announce("evaluate()");
     Environment* env = create_environment(0, 0);
     setup_environment(env);
     typed_ptr *x_sym;

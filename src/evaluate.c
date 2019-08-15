@@ -391,14 +391,13 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
                     } else {
                         delete_s_expr_recursive(arg_list->ptr.se_ptr, true);
                         delete_s_expr_recursive(dummy_lam, false);
-                        char* name = strdup(sym_entry->name);
                         blind_install_symbol_atom(env, \
-                                                  name, \
+                                                  strdup(sym_entry->name), \
                                                   fn->type, \
                                                   fn->ptr.idx);
                         Function_Node* fn_fn = function_lookup_index(env, fn);
                         blind_install_symbol_atom(fn_fn->closure_env, \
-                                                  strdup(name), \
+                                                  strdup(sym_entry->name), \
                                                   fn->type, \
                                                   fn->ptr.idx);
                         free(fn);
@@ -667,6 +666,9 @@ typed_ptr* eval_cond(const s_expr* se, Environment* env) {
             }
         } else {
             while (!is_empty_list(then_bodies)) {
+                if (eval_interm->type == TYPE_SEXPR) {
+                    delete_s_expr_recursive(eval_interm->ptr.se_ptr, true);
+                }
                 free(eval_interm);
                 eval_interm = evaluate(then_bodies, env);
                 if (eval_interm->type == TYPE_ERROR) {
@@ -873,6 +875,9 @@ Symbol_Node* bind_args(Environment* env, Function_Node* fn, typed_ptr* args) {
                                         strdup(curr_param->name), \
                                         arg_se->car->type, \
                                         arg_se->car->ptr);
+        if (bound_args->type == TYPE_SEXPR) {
+            bound_args->value.se_ptr = copy_s_expr(bound_args->value.se_ptr);
+        }
         curr_param = curr_param->next;
         arg_se = s_expr_next(arg_se);
         while (!is_empty_list(arg_se)) {
@@ -885,6 +890,9 @@ Symbol_Node* bind_args(Environment* env, Function_Node* fn, typed_ptr* args) {
                                                       strdup(curr_param->name),\
                                                       arg_se->car->type, \
                                                       arg_se->car->ptr);
+            if (new_arg->type == TYPE_SEXPR) {
+                new_arg->value.se_ptr = copy_s_expr(new_arg->value.se_ptr);
+            }
             new_arg->next = bound_args;
             bound_args = new_arg;
             curr_param = curr_param->next;
