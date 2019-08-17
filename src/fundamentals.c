@@ -121,8 +121,10 @@ bool is_pair(const s_expr* se) {
         printf("cannot determine pair-ness of NULL s-expression\n");
         exit(-1);
     }
-    if (se->cdr == NULL) {
-        printf("cannot determine pair-ness if cdr is NULL\n");
+    if (se->car == NULL && se->cdr == NULL) {
+        return false;
+    } else if (se->cdr == NULL) {
+        printf("malformed s-expression: only cdr is NULL\n");
         exit(-1);
     }
     return se->cdr->type != TYPE_SEXPR;

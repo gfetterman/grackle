@@ -126,6 +126,9 @@ void print_error(const typed_ptr* tp) {
         case EVAL_ERROR_UNDEF_FUNCTION:
             printf("evaluation: undefined user function");
             break;
+        case EVAL_ERROR_BAD_SYMBOL:
+            printf("evaluation: symbol not in symbol table");
+            break;
         default:
             printf("unknown error: error code %ld", tp->ptr.idx);
             break;

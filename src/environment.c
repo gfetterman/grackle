@@ -45,7 +45,7 @@ Symbol_Table* create_symbol_table(unsigned int offset) {
 }
 
 // Merges the second symbol table into the first; the second pointer remains
-//   valid, but its head is set to NULL.
+//   valid, but its head is set to NULL and its length to zero.
 // Makes no attempt to guard against name or symbol number collisions.
 void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second) {
     if (first->head == NULL) {
@@ -59,6 +59,7 @@ void merge_symbol_tables(Symbol_Table* first, Symbol_Table* second) {
     }
     first->length += second->length;
     second->head = NULL;
+    second->length = 0;
     return;
 }
 
@@ -138,6 +139,7 @@ Environment* copy_environment(Environment* env) {
         new_env->symbol_table->head = new_sn;
         curr_sn = curr_sn->next;
     }
+    new_env->symbol_table->length = env->symbol_table->length;
     // risky, but currently ok, because the function table is only added to,
     // not modified or deleted from
     free(new_env->function_table);
@@ -331,6 +333,9 @@ void setup_environment(Environment* env) {
 // The returned Symbol_Node should (usually) not be freed.
 // If the given name does not match any symbol table entry, NULL is returned.
 Symbol_Node* symbol_lookup_string(const Environment* env, const char* name) {
+    if (name == NULL) {
+        return NULL;
+    }
     Symbol_Node* curr = env->symbol_table->head;
     while (curr != NULL) {
         if (!strcmp(curr->name, name)) {
