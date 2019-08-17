@@ -79,9 +79,13 @@ typed_ptr* parse(const char str[], Environment* env) {
             case PARSE_READ_SYMBOL:
                 if (str[curr] == ' ' || str[curr] == '(' || str[curr] == ')') {
                     new_symbol = substring(str, symbol_start, curr);
-                    register_symbol(&stack, env, temp_env, new_symbol);
+                    error = register_symbol(&stack, env, temp_env, new_symbol);
                     free(new_symbol);
                     new_symbol = NULL;
+                    if (error != PARSE_ERROR_NONE) {
+                        state = PARSE_ERROR;
+                        break;
+                    }
                 }
                 switch (str[curr]) {
                     case ' ':
@@ -171,14 +175,23 @@ Parse_State terminate_s_expr(s_expr_stack** stack, interpreter_error* error) {
     }
 }
 
-void register_symbol(s_expr_stack** stack, \
-                     Environment* env, \
-                     Environment* temp_env, \
-                     char* name) {
+interpreter_error register_symbol(s_expr_stack** stack, \
+                                  Environment* env, \
+                                  Environment* temp_env, \
+                                  char* name) {
     typed_ptr* tp = NULL;
     if (string_is_number(name)) {
-        long value = atol(name);
-        tp = create_atom_tp(TYPE_NUM, value);
+        errno = 0;
+        long value = strtol(name, NULL, 10);
+        if (value == 0 && errno == EINVAL) {
+            return PARSE_ERROR_INT_UNSPEC;
+        } else if (value == LONG_MIN && errno == ERANGE) {
+            return PARSE_ERROR_INT_TOO_LOW;
+        } else if (value == LONG_MAX && errno == ERANGE) {
+            return PARSE_ERROR_INT_TOO_HIGH;
+        } else {
+            tp = create_atom_tp(TYPE_NUM, value);
+        }
     } else {
         Symbol_Node* found = symbol_lookup_string(env, name);
         found = (found == NULL) ? symbol_lookup_string(temp_env, name) : found;
@@ -189,7 +202,7 @@ void register_symbol(s_expr_stack** stack, \
         }
     }
     (*stack)->se->car = tp;
-    return;
+    return PARSE_ERROR_NONE;
 }
 
 // The s-expression storage node is the caller's responsibility to free.

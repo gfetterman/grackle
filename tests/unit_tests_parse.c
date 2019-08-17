@@ -208,10 +208,30 @@ void test_register_symbol(test_env* te) {
     s_expr_stack* stack = NULL;
     s_expr_stack_push(&stack, create_empty_s_expr());
     bool pass = 1;
-    // passing a number
+    interpreter_error out;
+    // passing a number too small (negative)
+    char symbol_num_low[100];
+    snprintf(symbol_num_low, 100, "%lld", ((long long) LONG_MIN) - 1);
+    out = register_symbol(&stack, env, temp_env, symbol_num_low);
+    if (out != PARSE_ERROR_INT_TOO_LOW || \
+        stack->se == NULL || \
+        stack->se->car != NULL) {
+        pass = 0;
+    }
+    // passing a number too large
+    char symbol_num_high[100];
+    snprintf(symbol_num_high, 100, "%lld", ((long long) LONG_MAX) + 1);
+    out = register_symbol(&stack, env, temp_env, symbol_num_high);
+    if (out != PARSE_ERROR_INT_TOO_HIGH || \
+        stack->se == NULL || \
+        stack->se->car != NULL) {
+        pass = 0;
+    }
+    // passing a valid number
     char symbol_num[] = "1000";
-    register_symbol(&stack, env, temp_env, symbol_num);
-    if (stack->se == NULL || \
+    out = register_symbol(&stack, env, temp_env, symbol_num);
+    if (out != PARSE_ERROR_NONE || \
+        stack->se == NULL || \
         stack->se->car == NULL || \
         !check_typed_ptr(stack->se->car, TYPE_NUM, (tp_value){.idx=1000}) || \
         symbol_lookup_string(env, symbol_num) != NULL || \
@@ -226,8 +246,9 @@ void test_register_symbol(test_env* te) {
                                               symbol_env, \
                                               TYPE_NUM, \
                                               (tp_value){.idx=1000});
-    register_symbol(&stack, env, temp_env, symbol_env);
-    if (stack->se == NULL || \
+    out = register_symbol(&stack, env, temp_env, symbol_env);
+    if (out != PARSE_ERROR_NONE || \
+        stack->se == NULL || \
         stack->se->car == NULL || \
         !match_typed_ptrs(stack->se->car, symbol_env_tp) || \
         symbol_lookup_string(temp_env, symbol_env) != NULL) {
@@ -242,8 +263,9 @@ void test_register_symbol(test_env* te) {
                                                    symbol_temp_env, \
                                                    TYPE_NUM, \
                                                    (tp_value){.idx=1000});
-    register_symbol(&stack, env, temp_env, symbol_temp_env);
-    if (stack->se == NULL || \
+    out = register_symbol(&stack, env, temp_env, symbol_temp_env);
+    if (out != PARSE_ERROR_NONE || \
+        stack->se == NULL || \
         stack->se->car == NULL || \
         !match_typed_ptrs(stack->se->car, symbol_temp_env_tp) || \
         symbol_lookup_string(env, symbol_temp_env) != NULL) {
@@ -254,10 +276,11 @@ void test_register_symbol(test_env* te) {
     stack->se->car = NULL;
     // passing a symbol in neither environment
     char symbol_absent[] = "absent";
-    register_symbol(&stack, env, temp_env, symbol_absent);
+    out = register_symbol(&stack, env, temp_env, symbol_absent);
     Symbol_Node* sn_from_string = symbol_lookup_string(temp_env, symbol_absent);
     Symbol_Node* sn_from_index = symbol_lookup_index(temp_env, stack->se->car);
-    if (stack->se == NULL || \
+    if (out != PARSE_ERROR_NONE || \
+        stack->se == NULL || \
         stack->se->car == NULL || \
         symbol_lookup_string(env, symbol_absent) != NULL || \
         sn_from_string == NULL || \

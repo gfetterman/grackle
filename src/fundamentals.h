@@ -53,6 +53,9 @@ typedef enum {PARSE_ERROR_NONE, \
               PARSE_ERROR_BARE_SYM, \
               PARSE_ERROR_EMPTY_PAREN, \
               PARSE_ERROR_TOO_MANY, \
+              PARSE_ERROR_INT_UNSPEC, \
+              PARSE_ERROR_INT_TOO_LOW, \
+              PARSE_ERROR_INT_TOO_HIGH, \
               // ^  parsing errors above     ^
               // v  evaluation errors below  v
               EVAL_ERROR_EXIT, \

@@ -65,6 +65,15 @@ void print_error(const typed_ptr* tp) {
         case PARSE_ERROR_TOO_MANY:
             printf("parsing: too many s-expressions (only one allowed)");
             break;
+        case PARSE_ERROR_INT_UNSPEC:
+            printf("parsing: unspecified error while parsing an integer");
+            break;
+        case PARSE_ERROR_INT_TOO_LOW:
+            printf("parsing: integer literal too small to fit in fixnum");
+            break;
+        case PARSE_ERROR_INT_TOO_HIGH:
+            printf("parsing: integer literal too large to fit in fixnum");
+            break;
         case EVAL_ERROR_EXIT:
             break; // exit is handled in the REPL
         case EVAL_ERROR_NULL_S_EXPR:
