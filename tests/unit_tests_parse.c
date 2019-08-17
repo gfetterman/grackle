@@ -211,8 +211,9 @@ void test_register_symbol(test_env* te) {
     interpreter_error out;
     // passing a number too small (negative)
     char symbol_num_low[100];
-    long long lower_than_long_min = LONG_MIN - 1;
-    snprintf(symbol_num_low, 100, "%lld", lower_than_long_min);
+    snprintf(symbol_num_low, 100, "%ld", LONG_MIN);
+    symbol_num_low[strlen(symbol_num_low) + 1] = '\0';
+    symbol_num_low[strlen(symbol_num_low)] = '0';
     out = register_symbol(&stack, env, temp_env, symbol_num_low);
     if (out != PARSE_ERROR_INT_TOO_LOW || \
         stack->se == NULL || \
@@ -221,8 +222,9 @@ void test_register_symbol(test_env* te) {
     }
     // passing a number too large
     char symbol_num_high[100];
-    long long higher_than_long_max = LONG_MAX + 1;
-    snprintf(symbol_num_high, 100, "%lld", higher_than_long_max);
+    snprintf(symbol_num_high, 100, "%ld", LONG_MAX);
+    symbol_num_low[strlen(symbol_num_high) + 1] = '\0';
+    symbol_num_low[strlen(symbol_num_high)] = '0';
     out = register_symbol(&stack, env, temp_env, symbol_num_high);
     if (out != PARSE_ERROR_INT_TOO_HIGH || \
         stack->se == NULL || \
