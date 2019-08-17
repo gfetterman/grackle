@@ -70,7 +70,7 @@ void test_create_symbol_table(test_env* te) {
     if (out == NULL || \
         out->head != NULL || \
         out->length != 0 || \
-        out->symbol_number_offset != 42) {
+        out->offset != 42) {
         pass = 0;
     }
     free(out);
@@ -91,7 +91,7 @@ void test_merge_symbol_tables(test_env* te) {
         second == NULL || \
         first->head != NULL || \
         first->length != 0 || \
-        first->symbol_number_offset != 0 || \
+        first->offset != 0 || \
         second->head != NULL) {
         pass = 0;
     }
@@ -111,7 +111,7 @@ void test_merge_symbol_tables(test_env* te) {
         first->head->next != second_node2 || \
         first->head->next->next != NULL || \
         first->length != 2 || \
-        first->symbol_number_offset != 0 || \
+        first->offset != 0 || \
         second->head != NULL || \
         second->length != 0) {
         pass = 0;
@@ -130,7 +130,7 @@ void test_merge_symbol_tables(test_env* te) {
         first->head->next != first_node2 || \
         first->head->next->next != NULL || \
         first->length != 2 || \
-        first->symbol_number_offset != 0 || \
+        first->offset != 0 || \
         second->head != NULL || \
         second->length != 0) {
         pass = 0;
@@ -148,7 +148,7 @@ void test_merge_symbol_tables(test_env* te) {
         first->head->next->next->next != second_node2 || \
         first->head->next->next->next->next != NULL || \
         first->length != 4 || \
-        first->symbol_number_offset != 0 || \
+        first->offset != 0 || \
         second->head != NULL || \
         second->length != 0) {
         pass = 0;
@@ -239,7 +239,7 @@ void test_create_environment(test_env* te) {
         out->symbol_table == NULL || \
         out->symbol_table->head != NULL || \
         out->symbol_table->length != 0 || \
-        out->symbol_table->symbol_number_offset != 2 || \
+        out->symbol_table->offset != 2 || \
         out->function_table == NULL || \
         out->function_table->head != NULL || \
         out->function_table->length != 0 || \
@@ -274,7 +274,7 @@ void test_copy_environment(test_env* te) {
         copied->symbol_table == NULL || \
         copied->symbol_table == original->symbol_table || \
         copied->symbol_table->length != 3 || \
-        copied->symbol_table->symbol_number_offset != 0 || \
+        copied->symbol_table->offset != 0 || \
         copied->function_table == NULL || \
         copied->function_table != original->function_table) {
         pass = 0;

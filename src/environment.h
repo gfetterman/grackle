@@ -29,7 +29,7 @@ void delete_symbol_node_list(Symbol_Node* sn);
 typedef struct SYMBOL_TABLE {
     Symbol_Node* head;
     unsigned int length;
-    unsigned int symbol_number_offset;
+    unsigned int offset;
 } Symbol_Table;
 
 Symbol_Table* create_symbol_table(unsigned int offset);

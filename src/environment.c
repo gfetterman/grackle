@@ -40,7 +40,7 @@ Symbol_Table* create_symbol_table(unsigned int offset) {
     }
     new_st->head = NULL;
     new_st->length = 0;
-    new_st->symbol_number_offset = offset;
+    new_st->offset = offset;
     return new_st;
 }
 
@@ -219,7 +219,7 @@ typed_ptr* install_symbol(Environment* env, \
                           type type, \
                           tp_value value) {
     unsigned int symbol_idx = env->symbol_table->length + \
-                              env->symbol_table->symbol_number_offset;
+                              env->symbol_table->offset;
     Symbol_Node* found = symbol_lookup_string(env, name);
     if (found == NULL) {
         Symbol_Node* new_sn = create_symbol_node(symbol_idx, name, type, value);
