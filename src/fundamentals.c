@@ -22,7 +22,7 @@ typed_ptr* create_atom_tp(type type, long idx) {
 // The returned typed_ptr is the caller's responsibility to free; it can be
 //   safely (shallow) freed without harm to any other object.
 typed_ptr* create_s_expr_tp(s_expr* se) {
-    return create_typed_ptr(TYPE_SEXPR, (tp_value){.se_ptr=se});
+    return create_typed_ptr(TYPE_S_EXPR, (tp_value){.se_ptr=se});
 }
 
 // The returned typed_ptr is the caller's responsibility to free; it can be
@@ -62,11 +62,11 @@ s_expr* copy_s_expr(const s_expr* se) {
     s_expr* curr_se = new_se;
     while (!is_empty_list(se)) {
         curr_se->car = copy_typed_ptr(se->car);
-        if (curr_se->car->type == TYPE_SEXPR) {
+        if (curr_se->car->type == TYPE_S_EXPR) {
             curr_se->car->ptr.se_ptr = copy_s_expr(curr_se->car->ptr.se_ptr);
         } // otherwise it's atomic and a copy of the typed_ptr is enough
         curr_se->cdr = copy_typed_ptr(se->cdr);
-        if (curr_se->cdr->type == TYPE_SEXPR) {
+        if (curr_se->cdr->type == TYPE_S_EXPR) {
             curr_se->cdr->ptr.se_ptr = create_empty_s_expr();
             curr_se = s_expr_next(curr_se);
             se = s_expr_next(se);
@@ -82,11 +82,11 @@ void delete_s_expr_recursive(s_expr* se, bool delete_s_expr_cars) {
     while (curr != NULL) {
         if (delete_s_expr_cars && \
             curr->car != NULL && \
-            curr->car->type == TYPE_SEXPR) {
+            curr->car->type == TYPE_S_EXPR) {
             delete_s_expr_recursive(curr->car->ptr.se_ptr, true);
         }
         free(curr->car);
-        if (curr->cdr != NULL && curr->cdr->type == TYPE_SEXPR) {
+        if (curr->cdr != NULL && curr->cdr->type == TYPE_S_EXPR) {
             se = s_expr_next(curr);
             free(curr->cdr);
         } else {
@@ -127,5 +127,5 @@ bool is_pair(const s_expr* se) {
         printf("malformed s-expression: only cdr is NULL\n");
         exit(-1);
     }
-    return se->cdr->type != TYPE_SEXPR;
+    return se->cdr->type != TYPE_S_EXPR;
 }

@@ -21,7 +21,7 @@ void unit_tests_evaluate(test_env* te) {
     test_eval_define(te);
     test_eval_setvar(te);
     test_eval_builtin(te);
-    test_eval_sexpr(te);
+    test_eval_s_expr(te);
     test_eval_function(te);
     test_evaluate(te);
     return;
@@ -50,7 +50,7 @@ typed_ptr* symbol_tp_from_name(Environment* env, const char name[]) {
 
 bool tp_is_empty_list(const typed_ptr* tp) {
     return (tp != NULL && \
-            tp->type == TYPE_SEXPR && \
+            tp->type == TYPE_S_EXPR && \
             is_empty_list(tp->ptr.se_ptr));
 }
 
@@ -71,7 +71,7 @@ bool deep_match_typed_ptrs(typed_ptr* first, typed_ptr* second) {
         return false;
     } else {
         switch (first->type) {
-            case TYPE_SEXPR:
+            case TYPE_S_EXPR:
                 return match_s_exprs(first->ptr.se_ptr, second->ptr.se_ptr);
             default:
                 return first->ptr.idx == second->ptr.idx;
@@ -87,11 +87,11 @@ bool run_test_expect(typed_ptr* (*function)(const s_expr*, Environment*), \
     typed_ptr* out = (*function)(cmd, env);
     bool passed = deep_match_typed_ptrs(out, expected);
     delete_s_expr_recursive(cmd, true);
-    if (out != NULL && out->type == TYPE_SEXPR) {
+    if (out != NULL && out->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(out->ptr.se_ptr, true);
     }
     free(out);
-    if (expected != NULL && expected->type == TYPE_SEXPR) {
+    if (expected != NULL && expected->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(expected->ptr.se_ptr, true);
     }
     free(expected);
@@ -362,7 +362,7 @@ void test_bind_args(test_env* te) {
     bound_args = bind_args(NULL, fn_2_params, two_args);
     if (bound_args == NULL || \
         strcmp(bound_args->name, "y") || \
-        bound_args->type != TYPE_SEXPR || \
+        bound_args->type != TYPE_S_EXPR || \
         bound_args->value.se_ptr == se || \
         !is_empty_list(bound_args->value.se_ptr) || \
         bound_args->next == NULL || \
@@ -373,7 +373,7 @@ void test_bind_args(test_env* te) {
         pass = false;
     }
     for (Symbol_Node* arg = bound_args; arg != NULL; arg = arg->next) {
-        if (arg->type == TYPE_SEXPR) {
+        if (arg->type == TYPE_S_EXPR) {
             delete_s_expr_recursive(arg->value.se_ptr, true);
         }
     }
@@ -467,7 +467,7 @@ void test_make_eval_env(test_env* te) {
     s_expr* se = create_empty_s_expr();
     args->next = create_symbol_node(0, \
                                     "y", \
-                                    TYPE_SEXPR, \
+                                    TYPE_S_EXPR, \
                                     (tp_value){.se_ptr=se});
     out = make_eval_env(env, args);
     if (out == env || \
@@ -484,7 +484,7 @@ void test_make_eval_env(test_env* te) {
         symbol_lookup_string(out, "x")->type != TYPE_NUM || \
         symbol_lookup_string(out, "x")->value.idx != 2000 || \
         symbol_lookup_string(out, "y") == NULL || \
-        symbol_lookup_string(out, "y")->type != TYPE_SEXPR || \
+        symbol_lookup_string(out, "y")->type != TYPE_S_EXPR || \
         symbol_lookup_string(out, "y")->value.se_ptr != se || \
         !is_empty_list(symbol_lookup_string(out, "y")->value.se_ptr) || \
         symbol_lookup_string(out, "z") == NULL || \
@@ -579,7 +579,7 @@ void test_collect_arguments(test_env* te) {
     // one-elt arg s-expr, with min_args == 0 & max_args == 1
     out = collect_arguments(call_one_arg, env, 0, 1, true);
     if (out == NULL || \
-        out->type != TYPE_SEXPR || \
+        out->type != TYPE_S_EXPR || \
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_one_arg)) || \
         out->ptr.se_ptr->car == value_1) {
         pass = false;
@@ -589,7 +589,7 @@ void test_collect_arguments(test_env* te) {
     //    -> and without evaluate_all_args
     out = collect_arguments(call_one_arg, env, 0, 1, false);
     if (out == NULL || \
-        out->type != TYPE_SEXPR || \
+        out->type != TYPE_S_EXPR || \
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_one_arg)) || \
         out->ptr.se_ptr->car == value_1) {
         pass = false;
@@ -599,7 +599,7 @@ void test_collect_arguments(test_env* te) {
     // one-elt arg s-expr, with min_args == 0 & max_args == 2
     out = collect_arguments(call_one_arg, env, 0, 2, true);
     if (out == NULL || \
-        out->type != TYPE_SEXPR || \
+        out->type != TYPE_S_EXPR || \
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_one_arg)) || \
         out->ptr.se_ptr->car == value_1) {
         pass = false;
@@ -609,7 +609,7 @@ void test_collect_arguments(test_env* te) {
     // one-elt arg s-expr, with min_args == 0 & max_args == -1
     out = collect_arguments(call_one_arg, env, 0, -1, true);
     if (out == NULL || \
-        out->type != TYPE_SEXPR || \
+        out->type != TYPE_S_EXPR || \
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_one_arg)) || \
         out->ptr.se_ptr->car == value_1) {
         pass = false;
@@ -619,7 +619,7 @@ void test_collect_arguments(test_env* te) {
     // one-elt arg s-expr, with min_args == 1 & max_args == 1
     out = collect_arguments(call_one_arg, env, 1, 1, true);
     if (out == NULL || \
-        out->type != TYPE_SEXPR || \
+        out->type != TYPE_S_EXPR || \
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_one_arg)) || \
         out->ptr.se_ptr->car == value_1) {
         pass = false;
@@ -629,7 +629,7 @@ void test_collect_arguments(test_env* te) {
     // one-elt arg s-expr, with min_args == 1 & max_args == 2
     out = collect_arguments(call_one_arg, env, 1, 2, true);
     if (out == NULL || \
-        out->type != TYPE_SEXPR || \
+        out->type != TYPE_S_EXPR || \
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_one_arg)) || \
         out->ptr.se_ptr->car == value_1) {
         pass = false;
@@ -639,7 +639,7 @@ void test_collect_arguments(test_env* te) {
     // one-elt arg s-expr, with min_args == 1 & max_args == -1
     out = collect_arguments(call_one_arg, env, 1, -1, true);
     if (out == NULL || \
-        out->type != TYPE_SEXPR || \
+        out->type != TYPE_S_EXPR || \
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_one_arg)) || \
         out->ptr.se_ptr->car == value_1) {
         pass = false;
@@ -681,7 +681,7 @@ void test_collect_arguments(test_env* te) {
     // two-elt arg s-expr, with min_args == 0 & max_args == 2
     out = collect_arguments(call_two_args, env, 0, 2, false);
     if (out == NULL || \
-        out->type != TYPE_SEXPR || \
+        out->type != TYPE_S_EXPR || \
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_two_args)) || \
         out->ptr.se_ptr->car == value_1 || \
         s_expr_next(out->ptr.se_ptr)->car->ptr.se_ptr != value_2->ptr.se_ptr) {
@@ -692,7 +692,7 @@ void test_collect_arguments(test_env* te) {
     // two-elt arg s-expr, with min_args == 0 & max_args == 3
     out = collect_arguments(call_two_args, env, 0, 3, false);
     if (out == NULL || \
-        out->type != TYPE_SEXPR || \
+        out->type != TYPE_S_EXPR || \
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_two_args)) || \
         out->ptr.se_ptr->car == value_1 || \
         s_expr_next(out->ptr.se_ptr)->car->ptr.se_ptr != value_2->ptr.se_ptr) {
@@ -703,7 +703,7 @@ void test_collect_arguments(test_env* te) {
     // two-elt arg s-expr, with min_args == 0 & max_args == -1
     out = collect_arguments(call_two_args, env, 0, -1, false);
     if (out == NULL || \
-        out->type != TYPE_SEXPR || \
+        out->type != TYPE_S_EXPR || \
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_two_args)) || \
         out->ptr.se_ptr->car == value_1 || \
         s_expr_next(out->ptr.se_ptr)->car->ptr.se_ptr != value_2->ptr.se_ptr) {
@@ -720,7 +720,7 @@ void test_collect_arguments(test_env* te) {
     // two-elt arg s-expr, with min_args == 1 & max_args == 2
     out = collect_arguments(call_two_args, env, 1, 2, false);
     if (out == NULL || \
-        out->type != TYPE_SEXPR || \
+        out->type != TYPE_S_EXPR || \
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_two_args)) || \
         out->ptr.se_ptr->car == value_1 || \
         s_expr_next(out->ptr.se_ptr)->car->ptr.se_ptr != value_2->ptr.se_ptr) {
@@ -731,7 +731,7 @@ void test_collect_arguments(test_env* te) {
     // two-elt arg s-expr, with min_args == 1 & max_args == 3
     out = collect_arguments(call_two_args, env, 1, 3, false);
     if (out == NULL || \
-        out->type != TYPE_SEXPR || \
+        out->type != TYPE_S_EXPR || \
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_two_args)) || \
         out->ptr.se_ptr->car == value_1 || \
         s_expr_next(out->ptr.se_ptr)->car->ptr.se_ptr != value_2->ptr.se_ptr) {
@@ -742,7 +742,7 @@ void test_collect_arguments(test_env* te) {
     // two-elt arg s-expr, with min_args == 1 & max_args == -1
     out = collect_arguments(call_two_args, env, 1, -1, false);
     if (out == NULL || \
-        out->type != TYPE_SEXPR || \
+        out->type != TYPE_S_EXPR || \
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_two_args)) || \
         out->ptr.se_ptr->car == value_1 || \
         s_expr_next(out->ptr.se_ptr)->car->ptr.se_ptr != value_2->ptr.se_ptr) {
@@ -753,7 +753,7 @@ void test_collect_arguments(test_env* te) {
     // two-elt arg s-expr, with min_args == 2 & max_args == 2
     out = collect_arguments(call_two_args, env, 2, 2, false);
     if (out == NULL || \
-        out->type != TYPE_SEXPR || \
+        out->type != TYPE_S_EXPR || \
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_two_args)) || \
         out->ptr.se_ptr->car == value_1 || \
         s_expr_next(out->ptr.se_ptr)->car->ptr.se_ptr != value_2->ptr.se_ptr) {
@@ -764,7 +764,7 @@ void test_collect_arguments(test_env* te) {
     // two-elt arg s-expr, with min_args == 2 & max_args == 3
     out = collect_arguments(call_two_args, env, 2, 3, false);
     if (out == NULL || \
-        out->type != TYPE_SEXPR || \
+        out->type != TYPE_S_EXPR || \
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_two_args)) || \
         out->ptr.se_ptr->car == value_1 || \
         s_expr_next(out->ptr.se_ptr)->car->ptr.se_ptr != value_2->ptr.se_ptr) {
@@ -775,7 +775,7 @@ void test_collect_arguments(test_env* te) {
     // two-elt arg s-expr, with min_args == 2 & max_args == -1
     out = collect_arguments(call_two_args, env, 2, -1, false);
     if (out == NULL || \
-        out->type != TYPE_SEXPR || \
+        out->type != TYPE_S_EXPR || \
         !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_two_args)) || \
         out->ptr.se_ptr->car == value_1 || \
         s_expr_next(out->ptr.se_ptr)->car->ptr.se_ptr != value_2->ptr.se_ptr) {
@@ -817,7 +817,7 @@ void test_collect_arguments(test_env* te) {
     s_expr_append(expected, create_s_expr_tp(list_result));
     out = collect_arguments(call_with_eval, env, 2, 2, true);
     if (out == NULL || \
-        out->type != TYPE_SEXPR || \
+        out->type != TYPE_S_EXPR || \
         !match_s_exprs(out->ptr.se_ptr, expected)) {
         pass = false;
     }
@@ -2070,7 +2070,7 @@ typed_ptr* wrapper_eval_builtin_pred(const s_expr* se, Environment* env) {
 }
 
 typed_ptr* wrapper_eval_pair_pred(const s_expr* se, Environment* env) {
-    return eval_atom_pred(se, env, TYPE_SEXPR);
+    return eval_atom_pred(se, env, TYPE_S_EXPR);
 }
 
 typed_ptr* wrapper_eval_symbol_pred(const s_expr* se, Environment* env) {
@@ -2092,7 +2092,7 @@ void test_eval_atom_pred(test_env* te) {
     #define NUM_TYPES 9
     type type_list[NUM_TYPES] = {TYPE_UNDEF, TYPE_ERROR, TYPE_VOID, \
                                  TYPE_NUM, TYPE_BOOL, TYPE_BUILTIN, \
-                                 TYPE_SEXPR, TYPE_SYMBOL, TYPE_FUNCTION};
+                                 TYPE_S_EXPR, TYPE_SYMBOL, TYPE_FUNCTION};
     typed_ptr* (*pred_fns[NUM_TYPES])(const s_expr*, Environment*) = \
                                 {wrapper_eval_undef_pred, \
                                  wrapper_eval_error_pred, \
@@ -2164,14 +2164,14 @@ void test_eval_atom_pred(test_env* te) {
         s_expr_append(cons_subexpr, create_number_tp(1));
         s_expr_append(cons_subexpr, create_number_tp(2));
         s_expr_append(cmd, create_s_expr_tp(cons_subexpr));
-        expected = create_atom_tp(TYPE_BOOL, type_list[i] == TYPE_SEXPR);
+        expected = create_atom_tp(TYPE_BOOL, type_list[i] == TYPE_S_EXPR);
         pass = pass && run_test_expect(pred_fns[i], cmd, env, expected);
     }
     // ([any_atomic]? (list 1 2)) -> #t if [pair] else #f
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
         cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
         s_expr_append(cmd, create_s_expr_tp(list_one_two_s_expr(env)));
-        expected = create_atom_tp(TYPE_BOOL, type_list[i] == TYPE_SEXPR);
+        expected = create_atom_tp(TYPE_BOOL, type_list[i] == TYPE_S_EXPR);
         pass = pass && run_test_expect(pred_fns[i], cmd, env, expected);
     }
     // ([any_atomic]? 'x) -> #t if [symbol] else #f
@@ -2979,11 +2979,11 @@ void test_eval_setvar(test_env* te) {
     s_expr* result_list = unit_list(create_number_tp(1));
     s_expr_append(result_list, create_number_tp(2));
     if (x_value == NULL || \
-        x_value->type != TYPE_SEXPR || \
+        x_value->type != TYPE_S_EXPR || \
         !match_s_exprs(x_value->ptr.se_ptr, result_list)) {
         pass = false;
     }
-    if (x_value != NULL && x_value->type == TYPE_SEXPR) {
+    if (x_value != NULL && x_value->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(x_value->ptr.se_ptr, true);
     }
     free(x_value);
@@ -3212,8 +3212,8 @@ void test_eval_builtin(test_env* te) {
     return;
 }
 
-void test_eval_sexpr(test_env* te) {
-    print_test_announce("eval_sexpr()");
+void test_eval_s_expr(test_env* te) {
+    print_test_announce("eval_s_expr()");
     Environment* env = create_environment(0, 0);
     setup_environment(env);
     typed_ptr *x_sym, *x2_sym;
@@ -3225,7 +3225,7 @@ void test_eval_sexpr(test_env* te) {
     s_expr* nested_cmd = create_empty_s_expr();
     s_expr_append(cmd, create_s_expr_tp(nested_cmd));
     typed_ptr* expected = create_error_tp(EVAL_ERROR_MISSING_PROCEDURE);
-    pass = pass && run_test_expect(eval_sexpr, cmd, env, expected);
+    pass = pass && run_test_expect(eval_s_expr, cmd, env, expected);
     // ((/ 0) 1) -> EVAL_ERROR_DIV_ZERO
     cmd = create_empty_s_expr();
     nested_cmd = create_empty_s_expr();
@@ -3233,7 +3233,7 @@ void test_eval_sexpr(test_env* te) {
     s_expr_append(nested_cmd, create_number_tp(1));
     s_expr_append(cmd, create_s_expr_tp(nested_cmd));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
-    pass = pass && run_test_expect(eval_sexpr, cmd, env, expected);
+    pass = pass && run_test_expect(eval_s_expr, cmd, env, expected);
     // ((+ 1 1) 1) -> EVAL_ERROR_CAR_NOT_CALLABLE
     cmd = create_empty_s_expr();
     nested_cmd = create_empty_s_expr();
@@ -3241,7 +3241,7 @@ void test_eval_sexpr(test_env* te) {
     s_expr_append(nested_cmd, create_number_tp(1));
     s_expr_append(cmd, create_s_expr_tp(nested_cmd));
     expected = create_error_tp(EVAL_ERROR_CAR_NOT_CALLABLE);
-    pass = pass && run_test_expect(eval_sexpr, cmd, env, expected);
+    pass = pass && run_test_expect(eval_s_expr, cmd, env, expected);
     // ('+ 1 1) -> 2
     cmd = create_empty_s_expr();
     nested_cmd = unit_list(ADD_SYM);
@@ -3249,7 +3249,7 @@ void test_eval_sexpr(test_env* te) {
     s_expr_append(nested_cmd, create_number_tp(1));
     s_expr_append(cmd, create_s_expr_tp(nested_cmd));
     expected = create_number_tp(2);
-    pass = pass && run_test_expect(eval_sexpr, cmd, env, expected);
+    pass = pass && run_test_expect(eval_s_expr, cmd, env, expected);
     // ('x2 10) [if x2 previously defined as doubling function] -> 20
     cmd = unit_list(builtin_tp_from_name(env, "define"));
     s_expr* fn_sig = unit_list(copy_typed_ptr(x2_sym));
@@ -3266,7 +3266,7 @@ void test_eval_sexpr(test_env* te) {
     s_expr_append(nested_cmd, create_number_tp(10));
     s_expr_append(cmd, create_s_expr_tp(nested_cmd));
     expected = create_number_tp(20);
-    pass = pass && run_test_expect(eval_sexpr, cmd, env, expected);
+    pass = pass && run_test_expect(eval_s_expr, cmd, env, expected);
     // ((lambda (x) (* x 3)) 10) -> 30
     cmd = create_empty_s_expr();
     nested_cmd = create_empty_s_expr();
@@ -3280,14 +3280,14 @@ void test_eval_sexpr(test_env* te) {
     s_expr_append(nested_cmd, create_number_tp(10));
     s_expr_append(cmd, create_s_expr_tp(nested_cmd));
     expected = create_number_tp(30);
-    pass = pass && run_test_expect(eval_sexpr, cmd, env, expected);
+    pass = pass && run_test_expect(eval_s_expr, cmd, env, expected);
     // ('/ 0) -> EVAL_ERROR_DIV_ZERO
     cmd = create_empty_s_expr();
     nested_cmd = unit_list(DIVIDE_SYM);
     s_expr_append(nested_cmd, create_number_tp(0));
     s_expr_append(cmd, create_s_expr_tp(nested_cmd));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
-    pass = pass && run_test_expect(eval_sexpr, cmd, env, expected);
+    pass = pass && run_test_expect(eval_s_expr, cmd, env, expected);
     delete_environment_full(env);
     free(x_sym);
     free(x2_sym);
@@ -3387,20 +3387,20 @@ void test_evaluate(test_env* te) {
     typed_ptr *x_sym;
     x_sym = install_symbol(env, "x", TYPE_NUM, (tp_value){.idx=1});
     bool pass = true;
-    // eval[ NULL ] -> EVAL_ERROR_NULL_SEXPR
+    // eval[ NULL ] -> EVAL_ERROR_NULL_S_EXPR
     s_expr* cmd = NULL;
-    typed_ptr* expected = create_error_tp(EVAL_ERROR_NULL_SEXPR);
+    typed_ptr* expected = create_error_tp(EVAL_ERROR_NULL_S_EXPR);
     pass = pass && run_test_expect(evaluate, cmd, env, expected);
     // eval[ () ] -> EVAL_ERROR_MISSING_PROCEDURE
     cmd = create_empty_s_expr();
     expected = create_error_tp(EVAL_ERROR_MISSING_PROCEDURE);
     pass = pass && run_test_expect(evaluate, cmd, env, expected);
-    // eval[ <malformed s-expression> ] -> EVAL_ERROR_MALFORMED_SEXPR
+    // eval[ <malformed s-expression> ] -> EVAL_ERROR_MALFORMED_S_EXPR
     cmd = create_s_expr(create_number_tp(1), NULL);
-    expected = create_error_tp(EVAL_ERROR_MALFORMED_SEXPR);
+    expected = create_error_tp(EVAL_ERROR_MALFORMED_S_EXPR);
     pass = pass && run_test_expect(evaluate, cmd, env, expected);
     cmd = create_s_expr(NULL, create_number_tp(1));
-    expected = create_error_tp(EVAL_ERROR_MALFORMED_SEXPR);
+    expected = create_error_tp(EVAL_ERROR_MALFORMED_S_EXPR);
     pass = pass && run_test_expect(evaluate, cmd, env, expected);
     // eval[ <undefined> ] -> EVAL_ERROR_UNDEF_SYM
     cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));

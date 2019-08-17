@@ -7,13 +7,13 @@ static type type_list[NUM_BUILTIN_TYPES] = {TYPE_UNDEF, \
                                             TYPE_NUM, \
                                             TYPE_BOOL, \
                                             TYPE_BUILTIN, \
-                                            TYPE_SEXPR, \
+                                            TYPE_S_EXPR, \
                                             TYPE_SYMBOL, \
                                             TYPE_FUNCTION};
 #define TEST_NUM 42
-#define TEST_SEXPR (s_expr*) 0xDEADBEEF
+#define TEST_S_EXPR (s_expr*) 0xDEADBEEF
 static tp_value TEST_NUM_TP_VAL = {.idx=TEST_NUM};
-static tp_value TEST_SEXPR_TP_VAL = {.se_ptr=TEST_SEXPR};
+static tp_value TEST_S_EXPR_TP_VAL = {.se_ptr=TEST_S_EXPR};
 
 void unit_tests_fundamentals(test_env* t_env) {
     printf("# fundamentals.c #\n");
@@ -38,9 +38,9 @@ void test_create_typed_ptr(test_env* te) {
     typed_ptr* out = NULL;
     bool pass = 1;
     for (unsigned int idx = 0; pass && (idx < NUM_BUILTIN_TYPES); idx++) {
-        if (type_list[idx] == TYPE_SEXPR) {
-            out = create_typed_ptr(type_list[idx], TEST_SEXPR_TP_VAL);
-            if (!check_typed_ptr(out, TYPE_SEXPR, TEST_SEXPR_TP_VAL)) {
+        if (type_list[idx] == TYPE_S_EXPR) {
+            out = create_typed_ptr(type_list[idx], TEST_S_EXPR_TP_VAL);
+            if (!check_typed_ptr(out, TYPE_S_EXPR, TEST_S_EXPR_TP_VAL)) {
                 pass = 0;
             }
         } else {
@@ -62,7 +62,7 @@ void test_create_atom_tp(test_env* te) {
     typed_ptr* out = NULL;
     bool pass = 1;
     for (unsigned int idx = 0; pass && (idx < NUM_BUILTIN_TYPES); idx++) {
-        if (type_list[idx] == TYPE_SEXPR) {
+        if (type_list[idx] == TYPE_S_EXPR) {
             continue;
         } else {
             out = create_atom_tp(type_list[idx], TEST_NUM);
@@ -81,8 +81,8 @@ void test_create_atom_tp(test_env* te) {
 void test_create_s_expr_tp(test_env* te) {
     print_test_announce("create_s_expr_tp()");
     bool pass = 1;
-    typed_ptr* out = create_s_expr_tp(TEST_SEXPR);
-    if (!check_typed_ptr(out, TYPE_SEXPR, TEST_SEXPR_TP_VAL)) {
+    typed_ptr* out = create_s_expr_tp(TEST_S_EXPR);
+    if (!check_typed_ptr(out, TYPE_S_EXPR, TEST_S_EXPR_TP_VAL)) {
         pass = 0;
     }
     free(out);
@@ -209,7 +209,7 @@ void test_copy_s_expr(test_env* te) {
                              create_s_expr_tp(create_empty_s_expr()));
     copied = copy_s_expr(original);
     copied_tp = create_s_expr_tp(copied);
-    if (!check_sexpr(copied_tp, atom_list, 1, NULL)) {
+    if (!check_s_expr(copied_tp, atom_list, 1, NULL)) {
         pass = 0;
     }
     delete_s_expr_recursive(original, true);
@@ -225,7 +225,7 @@ void test_copy_s_expr(test_env* te) {
     original = create_s_expr(first_atom, create_s_expr_tp(original));
     copied = copy_s_expr(original);
     copied_tp = create_s_expr_tp(copied);
-    if (!check_sexpr(copied_tp, atom_list, 4, NULL)) {
+    if (!check_s_expr(copied_tp, atom_list, 4, NULL)) {
         pass = 0;
     }
     delete_s_expr_recursive(original, true);
@@ -250,8 +250,8 @@ void test_copy_s_expr(test_env* te) {
                              create_s_expr_tp(original));
     copied = copy_s_expr(original);
     if (copied == NULL || \
-        !check_sexpr(copied->car, atom_list, 2, NULL) || \
-        !check_sexpr(copied->cdr, atom_list + 2, 2, NULL)) {
+        !check_s_expr(copied->car, atom_list, 2, NULL) || \
+        !check_s_expr(copied->cdr, atom_list + 2, 2, NULL)) {
         pass = 0;
     }
     delete_s_expr_recursive(original, true);
@@ -396,7 +396,7 @@ void test_is_false_literal(test_env* te) {
     if (is_false_literal(tp)) {
         pass = 0;
     }
-    tp->type = TYPE_SEXPR;
+    tp->type = TYPE_S_EXPR;
     tp->ptr.se_ptr = NULL;
     if (is_false_literal(tp)) {
         pass = 0;

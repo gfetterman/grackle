@@ -23,10 +23,10 @@ bool check_pair(typed_ptr* tp, \
                 typed_ptr** tp_list, \
                 unsigned int tp_list_len, \
                 Environment* env);
-bool check_sexpr(typed_ptr* tp, \
-                 typed_ptr** tp_list, \
-                 unsigned int tp_list_len, \
-                 Environment* env);
+bool check_s_expr(typed_ptr* tp, \
+                  typed_ptr** tp_list, \
+                  unsigned int tp_list_len, \
+                  Environment* env);
 
 bool match_typed_ptrs(typed_ptr* first, typed_ptr* second);
 
