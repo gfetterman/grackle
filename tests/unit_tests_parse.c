@@ -223,8 +223,8 @@ void test_register_symbol(test_env* te) {
     // passing a number too large
     char symbol_num_high[100];
     snprintf(symbol_num_high, 100, "%ld", LONG_MAX);
-    symbol_num_low[strlen(symbol_num_high) + 1] = '\0';
-    symbol_num_low[strlen(symbol_num_high)] = '0';
+    symbol_num_high[strlen(symbol_num_high) + 1] = '\0';
+    symbol_num_high[strlen(symbol_num_high)] = '0';
     out = register_symbol(&stack, env, temp_env, symbol_num_high);
     if (out != PARSE_ERROR_INT_TOO_HIGH || \
         stack->se == NULL || \
