@@ -150,7 +150,6 @@ void test_collect_parameters(test_env* te) {
     s_expr_append(se_tp->ptr.se_ptr, create_atom_tp(TYPE_NUM, 1000));
     params = collect_parameters(se_tp, env);
     if (params == NULL || \
-        params->name != NULL || \
         params->type != TYPE_ERROR || \
         params->value.idx != EVAL_ERROR_NOT_ID || \
         params->next != NULL) {
@@ -162,16 +161,15 @@ void test_collect_parameters(test_env* te) {
     free(se_tp);
     // pass a list whose middle car is not a symbol
     typed_ptr *sym_1, *sym_2, *sym_3;
-    sym_1 = install_symbol(env, strdup("x"), TYPE_NUM, (tp_value){.idx=1000});
-    sym_2 = install_symbol(env, strdup("y"), TYPE_NUM, (tp_value){.idx=1000});
-    sym_3 = install_symbol(env, strdup("z"), TYPE_NUM, (tp_value){.idx=1000});
+    sym_1 = install_symbol(env, "x", TYPE_NUM, (tp_value){.idx=1000});
+    sym_2 = install_symbol(env, "y", TYPE_NUM, (tp_value){.idx=1000});
+    sym_3 = install_symbol(env, "z", TYPE_NUM, (tp_value){.idx=1000});
     se_tp = create_s_expr_tp(create_empty_s_expr());
     s_expr_append(se_tp->ptr.se_ptr, copy_typed_ptr(sym_1));
     s_expr_append(se_tp->ptr.se_ptr, create_atom_tp(TYPE_NUM, 1000));
     s_expr_append(se_tp->ptr.se_ptr, copy_typed_ptr(sym_2));
     params = collect_parameters(se_tp, env);
     if (params == NULL || \
-        params->name != NULL || \
         params->type != TYPE_ERROR || \
         params->value.idx != EVAL_ERROR_NOT_ID || \
         params->next != NULL) {
@@ -188,7 +186,6 @@ void test_collect_parameters(test_env* te) {
     s_expr_append(se_tp->ptr.se_ptr, create_atom_tp(TYPE_NUM, 1000));
     params = collect_parameters(se_tp, env);
     if (params == NULL || \
-        params->name != NULL || \
         params->type != TYPE_ERROR || \
         params->value.idx != EVAL_ERROR_NOT_ID || \
         params->next != NULL) {
@@ -203,7 +200,6 @@ void test_collect_parameters(test_env* te) {
                                            copy_typed_ptr(sym_2)));
     params = collect_parameters(se_tp, env);
     if (params == NULL || \
-        params->name != NULL || \
         params->type != TYPE_ERROR || \
         params->value.idx != EVAL_ERROR_BAD_ARG_TYPE || \
         params->next != NULL) {
@@ -232,7 +228,6 @@ void test_collect_parameters(test_env* te) {
     s_expr_append(se_tp->ptr.se_ptr, create_atom_tp(TYPE_SYMBOL, 1000));
     params = collect_parameters(se_tp, env);
     if (params == NULL || \
-        params->name != NULL || \
         params->type != TYPE_ERROR || \
         params->value.idx != EVAL_ERROR_BAD_SYMBOL || \
         params->next != NULL) {
@@ -420,9 +415,9 @@ void test_make_eval_env(test_env* te) {
     bool pass = true;
     // empty list of bound args
     Environment* env = create_environment(0, 0);
-    blind_install_symbol_atom(env, strdup("x"), TYPE_UNDEF, 0);
-    blind_install_symbol_atom(env, strdup("y"), TYPE_UNDEF, 0);
-    blind_install_symbol_atom(env, strdup("z"), TYPE_UNDEF, 0);
+    blind_install_symbol_atom(env, "x", TYPE_UNDEF, 0);
+    blind_install_symbol_atom(env, "y", TYPE_UNDEF, 0);
+    blind_install_symbol_atom(env, "z", TYPE_UNDEF, 0);
     Symbol_Node* args = NULL;
     Environment* out = make_eval_env(env, args);
     if (out == env || \
@@ -1625,7 +1620,7 @@ void test_eval_and_or(test_env* te) {
     typed_ptr* define_sym = symbol_tp_from_name(env, "define");
     typed_ptr* boolpred_sym = symbol_tp_from_name(env, "boolean?");
     typed_ptr* x_sym;
-    x_sym = install_symbol(env, strdup("x"), TYPE_UNDEF, (tp_value){.idx=0});
+    x_sym = install_symbol(env, "x", TYPE_UNDEF, (tp_value){.idx=0});
     bool pass = true;
     // (and) -> #t
     s_expr* cmd = unit_list(copy_typed_ptr(and_builtin));
@@ -2092,7 +2087,7 @@ void test_eval_atom_pred(test_env* te) {
     setup_environment(env);
     typed_ptr* cons_sym = symbol_tp_from_name(env, "cons");
    typed_ptr* x_sym;
-    x_sym = install_symbol(env, strdup("x"), TYPE_FUNCTION, (tp_value){.idx=0});
+    x_sym = install_symbol(env, "x", TYPE_FUNCTION, (tp_value){.idx=0});
     bool pass = true;
     #define NUM_TYPES 9
     type type_list[NUM_TYPES] = {TYPE_UNDEF, TYPE_ERROR, TYPE_VOID, \
@@ -2221,8 +2216,8 @@ void test_eval_lambda(test_env* te) {
     setup_environment(env);
     typed_ptr* lambda_builtin = builtin_tp_from_name(env, "lambda");
     typed_ptr *x_sym, *y_sym;
-    x_sym = install_symbol(env, strdup("x"), TYPE_UNDEF, (tp_value){.idx=0});
-    y_sym = install_symbol(env, strdup("y"), TYPE_UNDEF, (tp_value){.idx=0});
+    x_sym = install_symbol(env, "x", TYPE_UNDEF, (tp_value){.idx=0});
+    y_sym = install_symbol(env, "y", TYPE_UNDEF, (tp_value){.idx=0});
     bool pass = true;
     // (lambda) -> EVAL_ERROR_FEW_ARGS
     s_expr* cmd = unit_list(copy_typed_ptr(lambda_builtin));
@@ -2689,9 +2684,9 @@ void test_eval_define(test_env* te) {
     setup_environment(env);
     typed_ptr* define_builtin = builtin_tp_from_name(env, "define");
     typed_ptr *x_sym, *y_sym, *z_sym;
-    x_sym = install_symbol(env, strdup("x"), TYPE_UNDEF, (tp_value){.idx=0});
-    y_sym = install_symbol(env, strdup("y"), TYPE_UNDEF, (tp_value){.idx=0});
-    z_sym = install_symbol(env, strdup("z"), TYPE_UNDEF, (tp_value){.idx=0});
+    x_sym = install_symbol(env, "x", TYPE_UNDEF, (tp_value){.idx=0});
+    y_sym = install_symbol(env, "y", TYPE_UNDEF, (tp_value){.idx=0});
+    z_sym = install_symbol(env, "z", TYPE_UNDEF, (tp_value){.idx=0});
     bool pass = true;
     // (define) -> EVAL_ERROR_FEW_ARGS
     s_expr* cmd = unit_list(copy_typed_ptr(define_builtin));
@@ -2904,7 +2899,7 @@ void test_eval_setvar(test_env* te) {
     setup_environment(env);
     typed_ptr* setvar_builtin = builtin_tp_from_name(env, "set!");
     typed_ptr *x_sym;
-    x_sym = install_symbol(env, strdup("x"), TYPE_UNDEF, (tp_value){.idx=0});
+    x_sym = install_symbol(env, "x", TYPE_UNDEF, (tp_value){.idx=0});
     bool pass = true;
     // (set!) -> EVAL_ERROR_FEW_ARGS
     s_expr* cmd = unit_list(copy_typed_ptr(setvar_builtin));
@@ -3020,7 +3015,7 @@ void test_eval_builtin(test_env* te) {
     setup_environment(env);
     typed_ptr* else_sym = symbol_tp_from_name(env, "else");
     typed_ptr *x_sym;
-    x_sym = install_symbol(env, strdup("x"), TYPE_UNDEF, (tp_value){.idx=0});
+    x_sym = install_symbol(env, "x", TYPE_UNDEF, (tp_value){.idx=0});
     bool pass = true;
     // (+ 1 1) -> 2
     s_expr* cmd = unit_list(create_atom_tp(TYPE_BUILTIN, BUILTIN_ADD));
@@ -3222,8 +3217,8 @@ void test_eval_sexpr(test_env* te) {
     Environment* env = create_environment(0, 0);
     setup_environment(env);
     typed_ptr *x_sym, *x2_sym;
-    x_sym = install_symbol(env, strdup("x"), TYPE_UNDEF, (tp_value){.idx=0});
-    x2_sym = install_symbol(env, strdup("x2"), TYPE_UNDEF, (tp_value){.idx=0});
+    x_sym = install_symbol(env, "x", TYPE_UNDEF, (tp_value){.idx=0});
+    x2_sym = install_symbol(env, "x2", TYPE_UNDEF, (tp_value){.idx=0});
     bool pass = true;
     // () -> EVAL_ERROR_MISSING_PROCEDURE
     s_expr* cmd = create_empty_s_expr();
@@ -3307,10 +3302,10 @@ void test_eval_function(test_env* te) {
     Environment* env = create_environment(0, 0);
     setup_environment(env);
     typed_ptr *x_sym, *y_sym, *my_fun;
-    x_sym = install_symbol(env, strdup("x"), TYPE_UNDEF, (tp_value){.idx=0});
-    y_sym = install_symbol(env, strdup("y"), TYPE_UNDEF, (tp_value){.idx=0});
+    x_sym = install_symbol(env, "x", TYPE_UNDEF, (tp_value){.idx=0});
+    y_sym = install_symbol(env, "y", TYPE_UNDEF, (tp_value){.idx=0});
     char mf[] = "my-fun";
-    my_fun = install_symbol(env, strdup(mf), TYPE_UNDEF, (tp_value){.idx=0});
+    my_fun = install_symbol(env, mf, TYPE_UNDEF, (tp_value){.idx=0});
     bool pass = true;
     // given my-fun, a two-parameter function that doubles its first argument
     //   and prepends it to its second
@@ -3390,7 +3385,7 @@ void test_evaluate(test_env* te) {
     Environment* env = create_environment(0, 0);
     setup_environment(env);
     typed_ptr *x_sym;
-    x_sym = install_symbol(env, strdup("x"), TYPE_NUM, (tp_value){.idx=1});
+    x_sym = install_symbol(env, "x", TYPE_NUM, (tp_value){.idx=1});
     bool pass = true;
     // eval[ NULL ] -> EVAL_ERROR_NULL_SEXPR
     s_expr* cmd = NULL;

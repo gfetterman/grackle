@@ -223,7 +223,7 @@ void test_register_symbol(test_env* te) {
     // passing a symbol already in env
     char symbol_env[] = "in-env";
     typed_ptr* symbol_env_tp = install_symbol(env, \
-                                              strdup(symbol_env), \
+                                              symbol_env, \
                                               TYPE_NUM, \
                                               (tp_value){.idx=1000});
     register_symbol(&stack, env, temp_env, strdup(symbol_env));
@@ -239,7 +239,7 @@ void test_register_symbol(test_env* te) {
     // passing a symbol already in temp_env
     char symbol_temp_env[] = "in-temp-env";
     typed_ptr* symbol_temp_env_tp = install_symbol(temp_env, \
-                                                   strdup(symbol_temp_env), \
+                                                   symbol_temp_env, \
                                                    TYPE_NUM, \
                                                    (tp_value){.idx=1000});
     register_symbol(&stack, env, temp_env, strdup(symbol_temp_env));

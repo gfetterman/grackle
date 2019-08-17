@@ -350,7 +350,7 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
                 if (arg->type == TYPE_ERROR) {
                     result = arg;
                 } else {
-                    char* name = strdup(sym_entry->name);
+                    char* name = sym_entry->name;
                     result = install_symbol(env, name, arg->type, arg->ptr);
                     free(arg);
                     free(result);
@@ -392,12 +392,12 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
                         delete_s_expr_recursive(arg_list->ptr.se_ptr, true);
                         delete_s_expr_recursive(dummy_lam, false);
                         blind_install_symbol_atom(env, \
-                                                  strdup(sym_entry->name), \
+                                                  sym_entry->name, \
                                                   fn->type, \
                                                   fn->ptr.idx);
                         Function_Node* fn_fn = function_lookup_index(env, fn);
                         blind_install_symbol_atom(fn_fn->closure_env, \
-                                                  strdup(sym_entry->name), \
+                                                  sym_entry->name, \
                                                   fn->type, \
                                                   fn->ptr.idx);
                         free(fn);
@@ -448,7 +448,7 @@ typed_ptr* eval_set_variable(const s_expr* se, Environment* env) {
                 if (arg->type == TYPE_ERROR) {
                     result = arg;
                 } else {
-                    char* name = strdup(sym_entry->name);
+                    char* name = sym_entry->name;
                     result = install_symbol(env, name, arg->type, arg->ptr);
                     free(arg);
                     free(result);

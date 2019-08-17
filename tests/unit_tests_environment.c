@@ -37,7 +37,7 @@ void test_create_symbol_node(test_env* te) {
         out->next != NULL) {
         pass = 0;
     }
-    free(out);
+    delete_symbol_node_list(out);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -50,13 +50,13 @@ void test_create_error_symbol_node(test_env* te) {
     bool pass = 1;
     if (out == NULL || \
         out->symbol_idx != 0 || \
-        out->name != NULL || \
+        strcmp(out->name, "") || \
         out->type != TYPE_ERROR || \
         out->value.idx != EVAL_ERROR_EXIT || \
         out->next != NULL) {
         pass = 0;
     }
-    free(out);
+    delete_symbol_node_list(out);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -97,10 +97,10 @@ void test_merge_symbol_tables(test_env* te) {
     }
     // first empty
     Symbol_Node *first_node1, *first_node2, *second_node1, *second_node2;
-    first_node1 = create_symbol_node(0, NULL, TYPE_NUM, TEST_NUM_TP_VAL);
-    first_node2 = create_symbol_node(1, NULL, TYPE_NUM, TEST_NUM_TP_VAL);
-    second_node1 = create_symbol_node(10, NULL, TYPE_NUM, TEST_NUM_TP_VAL);
-    second_node2 = create_symbol_node(11, NULL, TYPE_NUM, TEST_NUM_TP_VAL);
+    first_node1 = create_symbol_node(0, "x", TYPE_NUM, TEST_NUM_TP_VAL);
+    first_node2 = create_symbol_node(1, "y", TYPE_NUM, TEST_NUM_TP_VAL);
+    second_node1 = create_symbol_node(10, "z", TYPE_NUM, TEST_NUM_TP_VAL);
+    second_node2 = create_symbol_node(11, "w", TYPE_NUM, TEST_NUM_TP_VAL);
     second->head = second_node1;
     second_node1->next = second_node2;
     second->length = 2;
@@ -153,10 +153,7 @@ void test_merge_symbol_tables(test_env* te) {
         second->length != 0) {
         pass = 0;
     }
-    free(first_node1);
-    free(first_node2);
-    free(second_node1);
-    free(second_node2);
+    delete_symbol_node_list(first->head);
     free(first);
     free(second);
     print_test_result(pass);
@@ -169,10 +166,10 @@ void test_merge_symbol_tables(test_env* te) {
 void test_delete_symbol_node_list(test_env* te) {
     print_test_announce("delete_symbol_node_list()");
     Symbol_Node *first_node, *second_node, *third_node, *lone_node;
-    first_node = create_symbol_node(0, NULL, TYPE_NUM, TEST_NUM_TP_VAL);
-    second_node = create_symbol_node(1, NULL, TYPE_NUM, TEST_NUM_TP_VAL);
-    third_node = create_symbol_node(10, NULL, TYPE_NUM, TEST_NUM_TP_VAL);
-    lone_node = create_symbol_node(11, NULL, TYPE_NUM, TEST_NUM_TP_VAL);
+    first_node = create_symbol_node(0, "x", TYPE_NUM, TEST_NUM_TP_VAL);
+    second_node = create_symbol_node(1, "y", TYPE_NUM, TEST_NUM_TP_VAL);
+    third_node = create_symbol_node(10, "z", TYPE_NUM, TEST_NUM_TP_VAL);
+    lone_node = create_symbol_node(11, "w", TYPE_NUM, TEST_NUM_TP_VAL);
     first_node->next = second_node;
     second_node->next = third_node;
     // NULL
@@ -189,8 +186,8 @@ void test_delete_symbol_node_list(test_env* te) {
 
 void test_create_function_node(test_env* te) {
     print_test_announce("create_function_node()");
-    Symbol_Node* args = create_symbol_node(0, NULL, TYPE_NUM, TEST_NUM_TP_VAL);
-    args->next = create_symbol_node(1, NULL, TYPE_NUM, TEST_NUM_TP_VAL);
+    Symbol_Node* args = create_symbol_node(0, "x", TYPE_NUM, TEST_NUM_TP_VAL);
+    args->next = create_symbol_node(1, "y", TYPE_NUM, TEST_NUM_TP_VAL);
     Environment* closure = create_environment(0, 0);
     typed_ptr* body = create_s_expr_tp(create_empty_s_expr());
     Function_Node* out = create_function_node(0, args, closure, body);
@@ -256,14 +253,14 @@ void test_create_environment(test_env* te) {
 void test_copy_environment(test_env* te) {
     print_test_announce("copy_environment()");
     Environment* original = create_environment(0, 0);
-    blind_install_symbol_atom(original, strdup("test_atom_1"), TYPE_NUM, 64);
-    blind_install_symbol_atom(original, strdup("test_atom_2"), TYPE_NUM, 128);
+    blind_install_symbol_atom(original, "test_atom_1", TYPE_NUM, 64);
+    blind_install_symbol_atom(original, "test_atom_2", TYPE_NUM, 128);
     s_expr* se = create_empty_s_expr();
     se = create_s_expr(create_atom_tp(TYPE_NUM, 512), create_s_expr_tp(se));
     se = create_s_expr(create_atom_tp(TYPE_NUM, 256), create_s_expr_tp(se));
-    blind_install_symbol_sexpr(original, strdup("test_se_1"), se);
-    Symbol_Node* args = create_symbol_node(0, NULL, TYPE_NUM, TEST_NUM_TP_VAL);
-    args->next = create_symbol_node(1, NULL, TYPE_NUM, TEST_NUM_TP_VAL);
+    blind_install_symbol_sexpr(original, "test_se_1", se);
+    Symbol_Node* args = create_symbol_node(0, "x", TYPE_NUM, TEST_NUM_TP_VAL);
+    args->next = create_symbol_node(1, "y", TYPE_NUM, TEST_NUM_TP_VAL);
     Environment* closure = create_environment(0, 0);
     typed_ptr* body = create_s_expr_tp(create_empty_s_expr());
     typed_ptr* out = install_function(original, args, closure, body);
@@ -307,14 +304,14 @@ void test_copy_environment(test_env* te) {
 void test_delete_environment_shared_full(test_env* te) {
     print_test_announce("delete_environment_shared/full()");
     Environment* original = create_environment(0, 0);
-    blind_install_symbol_atom(original, strdup("test_atom_1"), TYPE_NUM, 64);
-    blind_install_symbol_atom(original, strdup("test_atom_2"), TYPE_NUM, 128);
+    blind_install_symbol_atom(original, "test_atom_1", TYPE_NUM, 64);
+    blind_install_symbol_atom(original, "test_atom_2", TYPE_NUM, 128);
     s_expr* se = create_empty_s_expr();
     se = create_s_expr(create_atom_tp(TYPE_NUM, 512), create_s_expr_tp(se));
     se = create_s_expr(create_atom_tp(TYPE_NUM, 256), create_s_expr_tp(se));
-    blind_install_symbol_sexpr(original, strdup("test_se_1"), se);
-    Symbol_Node* args = create_symbol_node(0, NULL, TYPE_NUM, TEST_NUM_TP_VAL);
-    args->next = create_symbol_node(1, NULL, TYPE_NUM, TEST_NUM_TP_VAL);
+    blind_install_symbol_sexpr(original, "test_se_1", se);
+    Symbol_Node* args = create_symbol_node(0, "x", TYPE_NUM, TEST_NUM_TP_VAL);
+    args->next = create_symbol_node(1, "y", TYPE_NUM, TEST_NUM_TP_VAL);
     Environment* closure = create_environment(0, 0);
     typed_ptr* body = create_s_expr_tp(create_empty_s_expr());
     typed_ptr* out = install_function(original, args, closure, body);
@@ -337,7 +334,7 @@ void test_install_symbol_regular_and_blind(test_env* te) {
     char name3[] = "test_sym_3";
     char name4[] = "test_sym_4";
     typed_ptr* out;
-    out = install_symbol(env, strdup(name1), TYPE_NUM, TEST_NUM_TP_VAL);
+    out = install_symbol(env, name1, TYPE_NUM, TEST_NUM_TP_VAL);
     bool pass = 1;
     if (out == NULL || \
         out->type != TYPE_SYMBOL || \
@@ -345,16 +342,16 @@ void test_install_symbol_regular_and_blind(test_env* te) {
         pass = 0;
     }
     free(out);
-    out = install_symbol(env, strdup(name2), TYPE_BOOL, TEST_NUM_TP_VAL);
+    out = install_symbol(env, name2, TYPE_BOOL, TEST_NUM_TP_VAL);
     if (out == NULL || \
         out->type != TYPE_SYMBOL || \
         out->ptr.idx != symbol_lookup_string(env, name2)->symbol_idx) {
         pass = 0;
     }
     free(out);
-    blind_install_symbol_atom(env, strdup(name3), TYPE_ERROR, EVAL_ERROR_EXIT);
+    blind_install_symbol_atom(env, name3, TYPE_ERROR, EVAL_ERROR_EXIT);
     s_expr* se = create_empty_s_expr();
-    blind_install_symbol_sexpr(env, strdup(name4), se);
+    blind_install_symbol_sexpr(env, name4, se);
     if (env->symbol_table->length != 4) {
         pass = 0;
     }
@@ -392,11 +389,9 @@ void test_install_symbol_regular_and_blind(test_env* te) {
 void test_install_function(test_env* te) {
     print_test_announce("install_function()");
     Environment* env = create_environment(0, 0);
-    char x[] = "x";
-    char y[] = "y";
     Symbol_Node* args;
-    args = create_symbol_node(0, strdup(x), TYPE_NUM, TEST_NUM_TP_VAL);
-    args->next = create_symbol_node(1, strdup(y), TYPE_BOOL, TEST_NUM_TP_VAL);
+    args = create_symbol_node(0, "x", TYPE_NUM, TEST_NUM_TP_VAL);
+    args->next = create_symbol_node(1, "y", TYPE_BOOL, TEST_NUM_TP_VAL);
     Environment* closure = create_environment(0, 0);
     typed_ptr* body = create_s_expr_tp(create_empty_s_expr());
     typed_ptr* out = install_function(env, args, closure, body);
@@ -425,9 +420,9 @@ void test_symbol_lookup_string(test_env* te) {
     char name2[] = "test_symbol_2";
     char name3[] = "test_symbol_3";
     char absent_name[] = "test_absent_symbol";
-    blind_install_symbol_atom(env, strdup(name1), TYPE_NUM, TEST_NUM);
-    blind_install_symbol_atom(env, strdup(name2), TYPE_BOOL, TEST_NUM);
-    blind_install_symbol_atom(env, strdup(name3), TYPE_ERROR, EVAL_ERROR_EXIT);
+    blind_install_symbol_atom(env, name1, TYPE_NUM, TEST_NUM);
+    blind_install_symbol_atom(env, name2, TYPE_BOOL, TEST_NUM);
+    blind_install_symbol_atom(env, name3, TYPE_ERROR, EVAL_ERROR_EXIT);
     bool pass = 1;
     if (symbol_lookup_string(env, name1) == NULL || \
         strcmp(symbol_lookup_string(env, name1)->name, name1) || \
@@ -461,9 +456,9 @@ void test_symbol_lookup_index(test_env* te) {
     char name2[] = "test_symbol_2";
     char name3[] = "test_symbol_3";
     typed_ptr *symbol_1, *symbol_2, *symbol_3;
-    symbol_1 = install_symbol(env, strdup(name1), TYPE_NUM, TEST_NUM_TP_VAL);
-    symbol_2 = install_symbol(env, strdup(name2), TYPE_BOOL, TEST_NUM_TP_VAL);
-    symbol_3 = install_symbol(env, strdup(name3), TYPE_ERROR, TEST_NUM_TP_VAL);
+    symbol_1 = install_symbol(env, name1, TYPE_NUM, TEST_NUM_TP_VAL);
+    symbol_2 = install_symbol(env, name2, TYPE_BOOL, TEST_NUM_TP_VAL);
+    symbol_3 = install_symbol(env, name3, TYPE_ERROR, TEST_NUM_TP_VAL);
     typed_ptr* absent_symbol = create_atom_tp(TYPE_SYMBOL, 1000);
     typed_ptr* not_a_symbol = create_atom_tp(TYPE_NUM, 1000);
     bool pass = 1;
@@ -512,9 +507,9 @@ void test_builtin_lookup_index(test_env* te) {
     typed_ptr* bi_ptr_3 = create_atom_tp(TYPE_BUILTIN, builtin_3);
     typed_ptr* bi_ptr_absent = create_atom_tp(TYPE_BUILTIN, absent_builtin);
     typed_ptr* not_a_builtin = create_atom_tp(TYPE_NUM, 1000);
-    blind_install_symbol_atom(env, strdup("bi_1"), TYPE_BUILTIN, builtin_1);
-    blind_install_symbol_atom(env, strdup("bi_2"), TYPE_BUILTIN, builtin_2);
-    blind_install_symbol_atom(env, strdup("bi_3"), TYPE_BUILTIN, builtin_3);
+    blind_install_symbol_atom(env, "bi_1", TYPE_BUILTIN, builtin_1);
+    blind_install_symbol_atom(env, "bi_2", TYPE_BUILTIN, builtin_2);
+    blind_install_symbol_atom(env, "bi_3", TYPE_BUILTIN, builtin_3);
     bool pass = 1;
     if (builtin_lookup_index(env, bi_ptr_1) == NULL || \
         strcmp(builtin_lookup_index(env, bi_ptr_1)->name, "bi_1") || \
@@ -552,10 +547,10 @@ void test_builtin_lookup_index(test_env* te) {
 void test_value_lookup_index(test_env* te) {
     print_test_announce("value_lookup_index()");
     Environment* env = create_environment(0, 0);
-    char* name_num = strdup("test_symbol_num");
-    char* name_bool = strdup("test_symbol_bool");
-    char* name_se = strdup("test_symbol_se");
-    char* name_undef = strdup("test_symbol_undef");
+    char name_num[] = "test_symbol_num";
+    char name_bool[] = "test_symbol_bool";
+    char name_se[] = "test_symbol_se";
+    char name_undef[] = "test_symbol_undef";
     typed_ptr *symbol_num, *symbol_bool, *symbol_undef, *symbol_se;
     symbol_num = install_symbol(env, name_num, TYPE_NUM, TEST_NUM_TP_VAL);
     symbol_bool = install_symbol(env, name_bool, TYPE_BOOL, TEST_NUM_TP_VAL);
@@ -622,11 +617,9 @@ void test_value_lookup_index(test_env* te) {
 void test_function_lookup_index(test_env* te) {
     print_test_announce("function_lookup_index()");
     Environment* env = create_environment(0, 0);
-    char* x = "x-param";
-    char* y = "y-param";
     Symbol_Node* args;
-    args = create_symbol_node(0, strdup(x), TYPE_NUM, (tp_value){.idx=TEST_NUM});
-    args->next = create_symbol_node(1, strdup(y), TYPE_BOOL, (tp_value){.idx=TEST_NUM});
+    args = create_symbol_node(0, "x", TYPE_NUM, (tp_value){.idx=TEST_NUM});
+    args->next = create_symbol_node(1, "y", TYPE_BOOL, (tp_value){.idx=TEST_NUM});
     //Environment* closure = create_environment(0, 0);
     Environment* closure = create_environment(0, 0);
     typed_ptr* body = create_s_expr_tp(create_empty_s_expr());
