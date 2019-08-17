@@ -238,8 +238,8 @@ void test_register_symbol(test_env* te) {
         stack->se == NULL || \
         stack->se->car == NULL || \
         !check_typed_ptr(stack->se->car, TYPE_NUM, (tp_value){.idx=1000}) || \
-        symbol_lookup_string(env, symbol_num) != NULL || \
-        symbol_lookup_string(temp_env, symbol_num) != NULL) {
+        symbol_lookup_name(env, symbol_num) != NULL || \
+        symbol_lookup_name(temp_env, symbol_num) != NULL) {
         pass = 0;
     }
     free(stack->se->car);
@@ -255,7 +255,7 @@ void test_register_symbol(test_env* te) {
         stack->se == NULL || \
         stack->se->car == NULL || \
         !match_typed_ptrs(stack->se->car, symbol_env_tp) || \
-        symbol_lookup_string(temp_env, symbol_env) != NULL) {
+        symbol_lookup_name(temp_env, symbol_env) != NULL) {
         pass = 0;
     }
     free(symbol_env_tp);
@@ -272,7 +272,7 @@ void test_register_symbol(test_env* te) {
         stack->se == NULL || \
         stack->se->car == NULL || \
         !match_typed_ptrs(stack->se->car, symbol_temp_env_tp) || \
-        symbol_lookup_string(env, symbol_temp_env) != NULL) {
+        symbol_lookup_name(env, symbol_temp_env) != NULL) {
         pass = 0;
     }
     free(symbol_temp_env_tp);
@@ -281,12 +281,12 @@ void test_register_symbol(test_env* te) {
     // passing a symbol in neither environment
     char symbol_absent[] = "absent";
     out = register_symbol(&stack, env, temp_env, symbol_absent);
-    Symbol_Node* sn_from_string = symbol_lookup_string(temp_env, symbol_absent);
+    Symbol_Node* sn_from_string = symbol_lookup_name(temp_env, symbol_absent);
     Symbol_Node* sn_from_index = symbol_lookup_index(temp_env, stack->se->car);
     if (out != PARSE_ERROR_NONE || \
         stack->se == NULL || \
         stack->se->car == NULL || \
-        symbol_lookup_string(env, symbol_absent) != NULL || \
+        symbol_lookup_name(env, symbol_absent) != NULL || \
         sn_from_string == NULL || \
         sn_from_string != sn_from_index || \
         strcmp(sn_from_index->name, symbol_absent) || \
@@ -607,8 +607,8 @@ void test_parse(test_env* te) {
     // "(a)"
     out = parse("(a)", env);
     if (env->symbol_table->length != 1 || \
-        symbol_lookup_string(env, "a") == NULL || \
-        symbol_lookup_string(env, "a")->type != TYPE_UNDEF) {
+        symbol_lookup_name(env, "a") == NULL || \
+        symbol_lookup_name(env, "a")->type != TYPE_UNDEF) {
         pass = 0;
     }
     if (out != NULL && out->type == TYPE_S_EXPR) {
@@ -618,10 +618,10 @@ void test_parse(test_env* te) {
     // "(a b)"
     out = parse("(a b)", env);
     if (env->symbol_table->length != 2 || \
-        symbol_lookup_string(env, "a") == NULL || \
-        symbol_lookup_string(env, "a")->type != TYPE_UNDEF || \
-        symbol_lookup_string(env, "b") == NULL || \
-        symbol_lookup_string(env, "b")->type != TYPE_UNDEF) {
+        symbol_lookup_name(env, "a") == NULL || \
+        symbol_lookup_name(env, "a")->type != TYPE_UNDEF || \
+        symbol_lookup_name(env, "b") == NULL || \
+        symbol_lookup_name(env, "b")->type != TYPE_UNDEF) {
         pass = 0;
     }
     if (out != NULL && out->type == TYPE_S_EXPR) {
@@ -631,10 +631,10 @@ void test_parse(test_env* te) {
     // "(a b c"
     out = parse("(a b c", env);
     if (env->symbol_table->length != 2 || \
-        symbol_lookup_string(env, "a") == NULL || \
-        symbol_lookup_string(env, "a")->type != TYPE_UNDEF || \
-        symbol_lookup_string(env, "b") == NULL || \
-        symbol_lookup_string(env, "b")->type != TYPE_UNDEF) {
+        symbol_lookup_name(env, "a") == NULL || \
+        symbol_lookup_name(env, "a")->type != TYPE_UNDEF || \
+        symbol_lookup_name(env, "b") == NULL || \
+        symbol_lookup_name(env, "b")->type != TYPE_UNDEF) {
         pass = 0;
     }
     if (out != NULL && out->type == TYPE_S_EXPR) {

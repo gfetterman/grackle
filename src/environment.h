@@ -96,7 +96,7 @@ void setup_symbol_table(Environment* env);
 
 // looking things up in an environment
 
-Symbol_Node* symbol_lookup_string(const Environment* env, const char* name);
+Symbol_Node* symbol_lookup_name(const Environment* env, const char* name);
 Symbol_Node* symbol_lookup_index(const Environment* env, const typed_ptr* tp);
 Symbol_Node* builtin_lookup_index(const Environment* env, const typed_ptr* tp);
 typed_ptr* value_lookup_index(const Environment* env, const typed_ptr* tp);

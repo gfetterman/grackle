@@ -34,7 +34,7 @@ s_expr* unit_list(typed_ptr* tp) {
 }
 
 typed_ptr* builtin_tp_from_name(Environment* env, const char name[]) {
-    Symbol_Node* found = symbol_lookup_string(env, name);
+    Symbol_Node* found = symbol_lookup_name(env, name);
     if (found == NULL || found->type != TYPE_BUILTIN) {
         return NULL;
     } else {
@@ -43,7 +43,7 @@ typed_ptr* builtin_tp_from_name(Environment* env, const char name[]) {
 }
 
 typed_ptr* symbol_tp_from_name(Environment* env, const char name[]) {
-    Symbol_Node* found = symbol_lookup_string(env, name);
+    Symbol_Node* found = symbol_lookup_name(env, name);
     return (found == NULL) ? NULL : \
                              create_atom_tp(TYPE_SYMBOL, found->symbol_idx);
 }
@@ -421,21 +421,21 @@ void test_make_eval_env(test_env* te) {
     Symbol_Node* args = NULL;
     Environment* out = make_eval_env(env, args);
     if (out == env || \
-        symbol_lookup_string(env, "x") == symbol_lookup_string(out, "x") || \
-        symbol_lookup_string(env, "y") == symbol_lookup_string(out, "y") || \
-        symbol_lookup_string(env, "z") == symbol_lookup_string(out, "z") || \
-        symbol_lookup_string(env, "x") == NULL || \
-        symbol_lookup_string(env, "x")->type != TYPE_UNDEF || \
-        symbol_lookup_string(env, "y") == NULL || \
-        symbol_lookup_string(env, "y")->type != TYPE_UNDEF || \
-        symbol_lookup_string(env, "z") == NULL || \
-        symbol_lookup_string(env, "z")->type != TYPE_UNDEF || \
-        symbol_lookup_string(out, "x") == NULL || \
-        symbol_lookup_string(out, "x")->type != TYPE_UNDEF || \
-        symbol_lookup_string(out, "y") == NULL || \
-        symbol_lookup_string(out, "y")->type != TYPE_UNDEF || \
-        symbol_lookup_string(out, "z") == NULL || \
-        symbol_lookup_string(out, "z")->type != TYPE_UNDEF) {
+        symbol_lookup_name(env, "x") == symbol_lookup_name(out, "x") || \
+        symbol_lookup_name(env, "y") == symbol_lookup_name(out, "y") || \
+        symbol_lookup_name(env, "z") == symbol_lookup_name(out, "z") || \
+        symbol_lookup_name(env, "x") == NULL || \
+        symbol_lookup_name(env, "x")->type != TYPE_UNDEF || \
+        symbol_lookup_name(env, "y") == NULL || \
+        symbol_lookup_name(env, "y")->type != TYPE_UNDEF || \
+        symbol_lookup_name(env, "z") == NULL || \
+        symbol_lookup_name(env, "z")->type != TYPE_UNDEF || \
+        symbol_lookup_name(out, "x") == NULL || \
+        symbol_lookup_name(out, "x")->type != TYPE_UNDEF || \
+        symbol_lookup_name(out, "y") == NULL || \
+        symbol_lookup_name(out, "y")->type != TYPE_UNDEF || \
+        symbol_lookup_name(out, "z") == NULL || \
+        symbol_lookup_name(out, "z")->type != TYPE_UNDEF) {
         pass = false;
     }
     delete_environment_shared(out);
@@ -443,22 +443,22 @@ void test_make_eval_env(test_env* te) {
     args = create_symbol_node(0, "x", TYPE_NUM, (tp_value){.idx=1000});
     out = make_eval_env(env, args);
     if (out == env || \
-        symbol_lookup_string(env, "x") == symbol_lookup_string(out, "x") || \
-        symbol_lookup_string(env, "y") == symbol_lookup_string(out, "y") || \
-        symbol_lookup_string(env, "z") == symbol_lookup_string(out, "z") || \
-        symbol_lookup_string(env, "x") == NULL || \
-        symbol_lookup_string(env, "x")->type != TYPE_UNDEF || \
-        symbol_lookup_string(env, "y") == NULL || \
-        symbol_lookup_string(env, "y")->type != TYPE_UNDEF || \
-        symbol_lookup_string(env, "z") == NULL || \
-        symbol_lookup_string(env, "z")->type != TYPE_UNDEF || \
-        symbol_lookup_string(out, "x") == NULL || \
-        symbol_lookup_string(out, "x")->type != TYPE_NUM || \
-        symbol_lookup_string(out, "x")->value.idx != 1000 || \
-        symbol_lookup_string(out, "y") == NULL || \
-        symbol_lookup_string(out, "y")->type != TYPE_UNDEF || \
-        symbol_lookup_string(out, "z") == NULL || \
-        symbol_lookup_string(out, "z")->type != TYPE_UNDEF) {
+        symbol_lookup_name(env, "x") == symbol_lookup_name(out, "x") || \
+        symbol_lookup_name(env, "y") == symbol_lookup_name(out, "y") || \
+        symbol_lookup_name(env, "z") == symbol_lookup_name(out, "z") || \
+        symbol_lookup_name(env, "x") == NULL || \
+        symbol_lookup_name(env, "x")->type != TYPE_UNDEF || \
+        symbol_lookup_name(env, "y") == NULL || \
+        symbol_lookup_name(env, "y")->type != TYPE_UNDEF || \
+        symbol_lookup_name(env, "z") == NULL || \
+        symbol_lookup_name(env, "z")->type != TYPE_UNDEF || \
+        symbol_lookup_name(out, "x") == NULL || \
+        symbol_lookup_name(out, "x")->type != TYPE_NUM || \
+        symbol_lookup_name(out, "x")->value.idx != 1000 || \
+        symbol_lookup_name(out, "y") == NULL || \
+        symbol_lookup_name(out, "y")->type != TYPE_UNDEF || \
+        symbol_lookup_name(out, "z") == NULL || \
+        symbol_lookup_name(out, "z")->type != TYPE_UNDEF) {
         pass = false;
     }
     delete_environment_shared(out);
@@ -471,24 +471,24 @@ void test_make_eval_env(test_env* te) {
                                     (tp_value){.se_ptr=se});
     out = make_eval_env(env, args);
     if (out == env || \
-        symbol_lookup_string(env, "x") == symbol_lookup_string(out, "x") || \
-        symbol_lookup_string(env, "y") == symbol_lookup_string(out, "y") || \
-        symbol_lookup_string(env, "z") == symbol_lookup_string(out, "z") || \
-        symbol_lookup_string(env, "x") == NULL || \
-        symbol_lookup_string(env, "x")->type != TYPE_UNDEF || \
-        symbol_lookup_string(env, "y") == NULL || \
-        symbol_lookup_string(env, "y")->type != TYPE_UNDEF || \
-        symbol_lookup_string(env, "z") == NULL || \
-        symbol_lookup_string(env, "z")->type != TYPE_UNDEF || \
-        symbol_lookup_string(out, "x") == NULL || \
-        symbol_lookup_string(out, "x")->type != TYPE_NUM || \
-        symbol_lookup_string(out, "x")->value.idx != 2000 || \
-        symbol_lookup_string(out, "y") == NULL || \
-        symbol_lookup_string(out, "y")->type != TYPE_S_EXPR || \
-        symbol_lookup_string(out, "y")->value.se_ptr != se || \
-        !is_empty_list(symbol_lookup_string(out, "y")->value.se_ptr) || \
-        symbol_lookup_string(out, "z") == NULL || \
-        symbol_lookup_string(out, "z")->type != TYPE_UNDEF) {
+        symbol_lookup_name(env, "x") == symbol_lookup_name(out, "x") || \
+        symbol_lookup_name(env, "y") == symbol_lookup_name(out, "y") || \
+        symbol_lookup_name(env, "z") == symbol_lookup_name(out, "z") || \
+        symbol_lookup_name(env, "x") == NULL || \
+        symbol_lookup_name(env, "x")->type != TYPE_UNDEF || \
+        symbol_lookup_name(env, "y") == NULL || \
+        symbol_lookup_name(env, "y")->type != TYPE_UNDEF || \
+        symbol_lookup_name(env, "z") == NULL || \
+        symbol_lookup_name(env, "z")->type != TYPE_UNDEF || \
+        symbol_lookup_name(out, "x") == NULL || \
+        symbol_lookup_name(out, "x")->type != TYPE_NUM || \
+        symbol_lookup_name(out, "x")->value.idx != 2000 || \
+        symbol_lookup_name(out, "y") == NULL || \
+        symbol_lookup_name(out, "y")->type != TYPE_S_EXPR || \
+        symbol_lookup_name(out, "y")->value.se_ptr != se || \
+        !is_empty_list(symbol_lookup_name(out, "y")->value.se_ptr) || \
+        symbol_lookup_name(out, "z") == NULL || \
+        symbol_lookup_name(out, "z")->type != TYPE_UNDEF) {
         pass = false;
     }
     delete_environment_shared(out);

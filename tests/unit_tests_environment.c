@@ -17,7 +17,7 @@ void unit_tests_environment(test_env* te) {
     test_delete_environment_shared_full(te);
     test_install_symbol_regular_and_blind(te);
     test_install_function(te);
-    test_symbol_lookup_string(te);
+    test_symbol_lookup_name(te);
     test_symbol_lookup_index(te);
     test_builtin_lookup_index(te);
     test_value_lookup_index(te);
@@ -279,7 +279,7 @@ void test_copy_environment(test_env* te) {
     for (Symbol_Node* osn = original->symbol_table->head; \
          pass && osn != NULL; \
          osn = osn->next) {
-        Symbol_Node* csn = symbol_lookup_string(copied, osn->name);
+        Symbol_Node* csn = symbol_lookup_name(copied, osn->name);
         if (csn == NULL || \
             osn == csn || \
             osn->symbol_idx != csn->symbol_idx || \
@@ -338,14 +338,14 @@ void test_install_symbol_regular_and_blind(test_env* te) {
     bool pass = 1;
     if (out == NULL || \
         out->type != TYPE_SYMBOL || \
-        out->ptr.idx != symbol_lookup_string(env, name1)->symbol_idx) {
+        out->ptr.idx != symbol_lookup_name(env, name1)->symbol_idx) {
         pass = 0;
     }
     free(out);
     out = install_symbol(env, name2, TYPE_BOOL, TEST_NUM_TP_VAL);
     if (out == NULL || \
         out->type != TYPE_SYMBOL || \
-        out->ptr.idx != symbol_lookup_string(env, name2)->symbol_idx) {
+        out->ptr.idx != symbol_lookup_name(env, name2)->symbol_idx) {
         pass = 0;
     }
     free(out);
@@ -355,28 +355,28 @@ void test_install_symbol_regular_and_blind(test_env* te) {
     if (env->symbol_table->length != 4) {
         pass = 0;
     }
-    if (symbol_lookup_string(env, name1) == NULL || \
-        strcmp(symbol_lookup_string(env, name1)->name, name1) || \
-        symbol_lookup_string(env, name1)->type != TYPE_NUM || \
-        symbol_lookup_string(env, name1)->value.idx != TEST_NUM) {
+    if (symbol_lookup_name(env, name1) == NULL || \
+        strcmp(symbol_lookup_name(env, name1)->name, name1) || \
+        symbol_lookup_name(env, name1)->type != TYPE_NUM || \
+        symbol_lookup_name(env, name1)->value.idx != TEST_NUM) {
         pass = 0;
     }
-    if (symbol_lookup_string(env, name2) == NULL || \
-        strcmp(symbol_lookup_string(env, name2)->name, name2) || \
-        symbol_lookup_string(env, name2)->type != TYPE_BOOL || \
-        symbol_lookup_string(env, name2)->value.idx != TEST_NUM) {
+    if (symbol_lookup_name(env, name2) == NULL || \
+        strcmp(symbol_lookup_name(env, name2)->name, name2) || \
+        symbol_lookup_name(env, name2)->type != TYPE_BOOL || \
+        symbol_lookup_name(env, name2)->value.idx != TEST_NUM) {
         pass = 0;
     }
-    if (symbol_lookup_string(env, name3) == NULL || \
-        strcmp(symbol_lookup_string(env, name3)->name, name3) || \
-        symbol_lookup_string(env, name3)->type != TYPE_ERROR || \
-        symbol_lookup_string(env, name3)->value.idx != EVAL_ERROR_EXIT) {
+    if (symbol_lookup_name(env, name3) == NULL || \
+        strcmp(symbol_lookup_name(env, name3)->name, name3) || \
+        symbol_lookup_name(env, name3)->type != TYPE_ERROR || \
+        symbol_lookup_name(env, name3)->value.idx != EVAL_ERROR_EXIT) {
         pass = 0;
     }
-    if (symbol_lookup_string(env, name4) == NULL || \
-        strcmp(symbol_lookup_string(env, name4)->name, name4) || \
-        symbol_lookup_string(env, name4)->type != TYPE_S_EXPR || \
-        symbol_lookup_string(env, name4)->value.se_ptr != se) {
+    if (symbol_lookup_name(env, name4) == NULL || \
+        strcmp(symbol_lookup_name(env, name4)->name, name4) || \
+        symbol_lookup_name(env, name4)->type != TYPE_S_EXPR || \
+        symbol_lookup_name(env, name4)->value.se_ptr != se) {
         pass = 0;
     }
     delete_environment_full(env);
@@ -413,8 +413,8 @@ void test_install_function(test_env* te) {
     return;
 }
 
-void test_symbol_lookup_string(test_env* te) {
-    print_test_announce("symbol_lookup_string()");
+void test_symbol_lookup_name(test_env* te) {
+    print_test_announce("symbol_lookup_name()");
     Environment* env = create_environment(0, 0);
     char name1[] = "test_symbol_1";
     char name2[] = "test_symbol_2";
@@ -424,22 +424,22 @@ void test_symbol_lookup_string(test_env* te) {
     blind_install_symbol_atom(env, name2, TYPE_BOOL, TEST_NUM);
     blind_install_symbol_atom(env, name3, TYPE_ERROR, EVAL_ERROR_EXIT);
     bool pass = 1;
-    if (symbol_lookup_string(env, name1) == NULL || \
-        strcmp(symbol_lookup_string(env, name1)->name, name1) || \
-        symbol_lookup_string(env, name1)->type != TYPE_NUM || \
-        symbol_lookup_string(env, name1)->value.idx != TEST_NUM || \
-        symbol_lookup_string(env, name2) == NULL || \
-        strcmp(symbol_lookup_string(env, name2)->name, name2) || \
-        symbol_lookup_string(env, name2)->type != TYPE_BOOL || \
-        symbol_lookup_string(env, name2)->value.idx != TEST_NUM || \
-        symbol_lookup_string(env, name3) == NULL || \
-        strcmp(symbol_lookup_string(env, name3)->name, name3) || \
-        symbol_lookup_string(env, name3)->type != TYPE_ERROR || \
-        symbol_lookup_string(env, name3)->value.idx != EVAL_ERROR_EXIT || \
-        symbol_lookup_string(env, absent_name) != NULL) {
+    if (symbol_lookup_name(env, name1) == NULL || \
+        strcmp(symbol_lookup_name(env, name1)->name, name1) || \
+        symbol_lookup_name(env, name1)->type != TYPE_NUM || \
+        symbol_lookup_name(env, name1)->value.idx != TEST_NUM || \
+        symbol_lookup_name(env, name2) == NULL || \
+        strcmp(symbol_lookup_name(env, name2)->name, name2) || \
+        symbol_lookup_name(env, name2)->type != TYPE_BOOL || \
+        symbol_lookup_name(env, name2)->value.idx != TEST_NUM || \
+        symbol_lookup_name(env, name3) == NULL || \
+        strcmp(symbol_lookup_name(env, name3)->name, name3) || \
+        symbol_lookup_name(env, name3)->type != TYPE_ERROR || \
+        symbol_lookup_name(env, name3)->value.idx != EVAL_ERROR_EXIT || \
+        symbol_lookup_name(env, absent_name) != NULL) {
         pass = 0;
     }
-    if (symbol_lookup_string(env, NULL) != NULL) {
+    if (symbol_lookup_name(env, NULL) != NULL) {
         pass = 0;
     }
     delete_environment_full(env);

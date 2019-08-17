@@ -215,7 +215,7 @@ typed_ptr* install_symbol(Environment* env, \
                           tp_value value) {
     unsigned int symbol_idx = env->symbol_table->length + \
                               env->symbol_table->offset;
-    Symbol_Node* found = symbol_lookup_string(env, name);
+    Symbol_Node* found = symbol_lookup_name(env, name);
     if (found == NULL) {
         Symbol_Node* new_sn = create_symbol_node(symbol_idx, name, type, value);
         new_sn->next = env->symbol_table->head;
@@ -320,7 +320,7 @@ void setup_environment(Environment* env) {
 
 // The returned Symbol_Node should (usually) not be freed.
 // If the given name does not match any symbol table entry, NULL is returned.
-Symbol_Node* symbol_lookup_string(const Environment* env, const char* name) {
+Symbol_Node* symbol_lookup_name(const Environment* env, const char* name) {
     if (name == NULL) {
         return NULL;
     }
