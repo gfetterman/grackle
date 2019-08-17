@@ -2244,8 +2244,8 @@ void test_eval_lambda(test_env* te) {
     pass = pass && run_test_expect(eval_lambda, cmd, env, expected);
     // (lambda (<weird symbol number>) 1) -> EVAL_ERROR_BAD_SYMBOL
     cmd = unit_list(copy_typed_ptr(lambda_builtin));
-    s_expr* arg_list = unit_list(create_atom_tp(TYPE_SYMBOL, 1000));
-    s_expr_append(cmd, create_s_expr_tp(arg_list));
+    s_expr* param_list = unit_list(create_atom_tp(TYPE_SYMBOL, 1000));
+    s_expr_append(cmd, create_s_expr_tp(param_list));
     s_expr_append(cmd, create_number_tp(1));
     expected = create_error_tp(EVAL_ERROR_BAD_SYMBOL);
     pass = pass && run_test_expect(eval_lambda, cmd, env, expected);
@@ -2283,9 +2283,9 @@ void test_eval_lambda(test_env* te) {
     Function_Node* resulting_fn = function_lookup_index(env, expected);
     if (env->function_table->length != 1 || \
         resulting_fn == NULL || \
-        resulting_fn->arg_list == NULL || \
-        strcmp(resulting_fn->arg_list->name, "x") || \
-        resulting_fn->arg_list->next != NULL || \
+        resulting_fn->param_list == NULL || \
+        strcmp(resulting_fn->param_list->name, "x") || \
+        resulting_fn->param_list->next != NULL || \
         resulting_fn->closure_env == NULL || \
         !deep_match_typed_ptrs(resulting_fn->body, body)) {
         pass = false;
@@ -2306,7 +2306,7 @@ void test_eval_lambda(test_env* te) {
     resulting_fn = function_lookup_index(env, expected);
     if (env->function_table->length != 2 || \
         resulting_fn == NULL || \
-        resulting_fn->arg_list != NULL || \
+        resulting_fn->param_list != NULL || \
         resulting_fn->closure_env == NULL || \
         !deep_match_typed_ptrs(resulting_fn->body, body)) {
         pass = false;
@@ -2331,11 +2331,11 @@ void test_eval_lambda(test_env* te) {
     resulting_fn = function_lookup_index(env, expected);
     if (env->function_table->length != 3 || \
         resulting_fn == NULL || \
-        resulting_fn->arg_list == NULL || \
-        strcmp(resulting_fn->arg_list->name, "x") || \
-        resulting_fn->arg_list->next == NULL || \
-        strcmp(resulting_fn->arg_list->next->name, "y") || \
-        resulting_fn->arg_list->next->next != NULL || \
+        resulting_fn->param_list == NULL || \
+        strcmp(resulting_fn->param_list->name, "x") || \
+        resulting_fn->param_list->next == NULL || \
+        strcmp(resulting_fn->param_list->next->name, "y") || \
+        resulting_fn->param_list->next->next != NULL || \
         resulting_fn->closure_env == NULL || \
         !deep_match_typed_ptrs(resulting_fn->body, body)) {
         pass = false;
@@ -2359,9 +2359,9 @@ void test_eval_lambda(test_env* te) {
     resulting_fn = function_lookup_index(env, expected);
     if (env->function_table->length != 4 || \
         resulting_fn == NULL || \
-        resulting_fn->arg_list == NULL || \
-        strcmp(resulting_fn->arg_list->name, "x") || \
-        resulting_fn->arg_list->next != NULL || \
+        resulting_fn->param_list == NULL || \
+        strcmp(resulting_fn->param_list->name, "x") || \
+        resulting_fn->param_list->next != NULL || \
         resulting_fn->closure_env == NULL || \
         !deep_match_typed_ptrs(resulting_fn->body, body)) {
         pass = false;
@@ -2383,7 +2383,7 @@ void test_eval_lambda(test_env* te) {
     resulting_fn = function_lookup_index(env, expected);
     if (env->function_table->length != 5 || \
         resulting_fn == NULL || \
-        resulting_fn->arg_list != NULL || \
+        resulting_fn->param_list != NULL || \
         resulting_fn->closure_env == NULL || \
         !deep_match_typed_ptrs(resulting_fn->body, body)) {
         pass = false;
@@ -2798,7 +2798,7 @@ void test_eval_define(test_env* te) {
     x_value = value_lookup_index(env, x_sym);
     Function_Node* x_fn = function_lookup_index(env, x_value);
     if (x_fn == NULL || \
-        x_fn->arg_list != NULL || \
+        x_fn->param_list != NULL || \
         x_fn->closure_env == NULL || \
         !deep_match_typed_ptrs(x_fn->body, body)) {
         pass = false;
@@ -2816,7 +2816,7 @@ void test_eval_define(test_env* te) {
     x_fn = function_lookup_index(env, x_value);
     body = create_s_expr_tp(add_one_one_s_expr(env));
     if (x_fn == NULL || \
-        x_fn->arg_list != NULL || \
+        x_fn->param_list != NULL || \
         x_fn->closure_env == NULL || \
         !deep_match_typed_ptrs(x_fn->body, body)) {
         pass = false;
@@ -2851,11 +2851,11 @@ void test_eval_define(test_env* te) {
     s_expr_append(add_y_z, copy_typed_ptr(z_sym));
     body = create_s_expr_tp(add_y_z);
     if (x_fn == NULL || \
-        x_fn->arg_list == NULL || \
-        strcmp(x_fn->arg_list->name, "y") || \
-        x_fn->arg_list->next == NULL || \
-        strcmp(x_fn->arg_list->next->name, "z") || \
-        x_fn->arg_list->next->next != NULL || \
+        x_fn->param_list == NULL || \
+        strcmp(x_fn->param_list->name, "y") || \
+        x_fn->param_list->next == NULL || \
+        strcmp(x_fn->param_list->next->name, "z") || \
+        x_fn->param_list->next->next != NULL || \
         x_fn->closure_env == NULL || \
         !deep_match_typed_ptrs(x_fn->body, body)) {
         pass = false;
@@ -2874,7 +2874,7 @@ void test_eval_define(test_env* te) {
     x_fn = function_lookup_index(env, x_value);
     body = create_s_expr_tp(divide_zero_s_expr(env));
     if (x_fn == NULL || \
-        x_fn->arg_list != NULL || \
+        x_fn->param_list != NULL || \
         x_fn->closure_env == NULL || \
         !deep_match_typed_ptrs(x_fn->body, body)) {
         pass = false;
@@ -3186,7 +3186,7 @@ void test_eval_builtin(test_env* te) {
     expected = create_atom_tp(TYPE_FUNCTION, 0);
     Function_Node* fn = function_lookup_index(env, expected);
     if (fn == NULL || \
-        fn->arg_list != NULL || \
+        fn->param_list != NULL || \
         fn->closure_env == NULL || \
         !match_typed_ptrs(fn->body, body)) {
         pass = false;

@@ -41,7 +41,7 @@ struct ENVIRONMENT;
 
 typedef struct FUNCTION_NODE {
     unsigned int function_idx;
-    Symbol_Node* arg_list;
+    Symbol_Node* param_list;
     struct ENVIRONMENT* closure_env;
     typed_ptr* body;
     struct FUNCTION_NODE* next;

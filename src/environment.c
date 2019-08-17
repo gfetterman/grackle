@@ -75,7 +75,7 @@ void delete_symbol_node_list(Symbol_Node* sn) {
 //   function table node, but the body points to an s-expression that is
 //   represented elsewhere (and so cannot be safely freed using this pointer).
 Function_Node* create_function_node(unsigned int function_idx, \
-                                    Symbol_Node* arg_list, \
+                                    Symbol_Node* param_list, \
                                     Environment* closure_env, \
                                     typed_ptr* body) {
     Function_Node* new_fn = malloc(sizeof(Function_Node));
@@ -84,7 +84,7 @@ Function_Node* create_function_node(unsigned int function_idx, \
         exit(-1);
     }
     new_fn->function_idx = function_idx;
-    new_fn->arg_list = arg_list;
+    new_fn->param_list = param_list;
     new_fn->closure_env = closure_env;
     new_fn->body = body;
     new_fn->next = NULL;
@@ -179,13 +179,13 @@ void delete_environment_full(Environment* env) {
     Function_Node* curr_fn = env->function_table->head;
     while (curr_fn != NULL) {
         Function_Node* next_fn = curr_fn->next;
-        // free argument list
-        Symbol_Node* curr_arg_sn = curr_fn->arg_list;
-        while (curr_arg_sn != NULL) {
-            Symbol_Node* next_arg_sn = curr_arg_sn->next;
-            free(curr_arg_sn->name);
-            free(curr_arg_sn);
-            curr_arg_sn = next_arg_sn;
+        // free parameter list
+        Symbol_Node* curr_param_sn = curr_fn->param_list;
+        while (curr_param_sn != NULL) {
+            Symbol_Node* next_param_sn = curr_param_sn->next;
+            free(curr_param_sn->name);
+            free(curr_param_sn);
+            curr_param_sn = next_param_sn;
         }
         // free closure environment
         delete_environment_shared(curr_fn->closure_env);

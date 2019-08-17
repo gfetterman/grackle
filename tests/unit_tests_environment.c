@@ -186,21 +186,21 @@ void test_delete_symbol_node_list(test_env* te) {
 
 void test_create_function_node(test_env* te) {
     print_test_announce("create_function_node()");
-    Symbol_Node* args = create_symbol_node(0, "x", TYPE_NUM, TEST_NUM_TP_VAL);
-    args->next = create_symbol_node(1, "y", TYPE_NUM, TEST_NUM_TP_VAL);
+    Symbol_Node* params = create_symbol_node(0, "x", TYPE_NUM, TEST_NUM_TP_VAL);
+    params->next = create_symbol_node(1, "y", TYPE_NUM, TEST_NUM_TP_VAL);
     Environment* closure = create_environment(0, 0);
     typed_ptr* body = create_s_expr_tp(create_empty_s_expr());
-    Function_Node* out = create_function_node(0, args, closure, body);
+    Function_Node* out = create_function_node(0, params, closure, body);
     bool pass = 1;
     if (out == NULL || \
         out->function_idx != 0 || \
-        out->arg_list != args || \
+        out->param_list != params || \
         out->closure_env != closure || \
         out->body != body || \
         out->next != NULL) {
         pass = 0;
     }
-    delete_symbol_node_list(args);
+    delete_symbol_node_list(params);
     delete_environment_full(closure);
     free(body->ptr.se_ptr);
     free(body);
@@ -259,11 +259,11 @@ void test_copy_environment(test_env* te) {
     se = create_s_expr(create_atom_tp(TYPE_NUM, 512), create_s_expr_tp(se));
     se = create_s_expr(create_atom_tp(TYPE_NUM, 256), create_s_expr_tp(se));
     blind_install_symbol_s_expr(original, "test_se_1", se);
-    Symbol_Node* args = create_symbol_node(0, "x", TYPE_NUM, TEST_NUM_TP_VAL);
-    args->next = create_symbol_node(1, "y", TYPE_NUM, TEST_NUM_TP_VAL);
+    Symbol_Node* params = create_symbol_node(0, "x", TYPE_NUM, TEST_NUM_TP_VAL);
+    params->next = create_symbol_node(1, "y", TYPE_NUM, TEST_NUM_TP_VAL);
     Environment* closure = create_environment(0, 0);
     typed_ptr* body = create_s_expr_tp(create_empty_s_expr());
-    typed_ptr* out = install_function(original, args, closure, body);
+    typed_ptr* out = install_function(original, params, closure, body);
     free(out);
     Environment* copied = copy_environment(original);
     bool pass = 1;
@@ -310,11 +310,11 @@ void test_delete_environment_shared_full(test_env* te) {
     se = create_s_expr(create_atom_tp(TYPE_NUM, 512), create_s_expr_tp(se));
     se = create_s_expr(create_atom_tp(TYPE_NUM, 256), create_s_expr_tp(se));
     blind_install_symbol_s_expr(original, "test_se_1", se);
-    Symbol_Node* args = create_symbol_node(0, "x", TYPE_NUM, TEST_NUM_TP_VAL);
-    args->next = create_symbol_node(1, "y", TYPE_NUM, TEST_NUM_TP_VAL);
+    Symbol_Node* params = create_symbol_node(0, "x", TYPE_NUM, TEST_NUM_TP_VAL);
+    params->next = create_symbol_node(1, "y", TYPE_NUM, TEST_NUM_TP_VAL);
     Environment* closure = create_environment(0, 0);
     typed_ptr* body = create_s_expr_tp(create_empty_s_expr());
-    typed_ptr* out = install_function(original, args, closure, body);
+    typed_ptr* out = install_function(original, params, closure, body);
     free(out);
     Environment* copied = copy_environment(original);
     free(closure->function_table);
@@ -389,17 +389,17 @@ void test_install_symbol_regular_and_blind(test_env* te) {
 void test_install_function(test_env* te) {
     print_test_announce("install_function()");
     Environment* env = create_environment(0, 0);
-    Symbol_Node* args;
-    args = create_symbol_node(0, "x", TYPE_NUM, TEST_NUM_TP_VAL);
-    args->next = create_symbol_node(1, "y", TYPE_BOOL, TEST_NUM_TP_VAL);
+    Symbol_Node* params;
+    params = create_symbol_node(0, "x", TYPE_NUM, TEST_NUM_TP_VAL);
+    params->next = create_symbol_node(1, "y", TYPE_BOOL, TEST_NUM_TP_VAL);
     Environment* closure = create_environment(0, 0);
     typed_ptr* body = create_s_expr_tp(create_empty_s_expr());
-    typed_ptr* out = install_function(env, args, closure, body);
+    typed_ptr* out = install_function(env, params, closure, body);
     bool pass = 1;
     if (out == NULL || \
         out->type != TYPE_FUNCTION || \
         out->ptr.idx != env->function_table->head->function_idx || \
-        function_lookup_index(env, out)->arg_list != args || \
+        function_lookup_index(env, out)->param_list != params || \
         function_lookup_index(env, out)->closure_env != closure || \
         function_lookup_index(env, out)->body != body) {
         pass = 0;
@@ -617,17 +617,17 @@ void test_value_lookup_index(test_env* te) {
 void test_function_lookup_index(test_env* te) {
     print_test_announce("function_lookup_index()");
     Environment* env = create_environment(0, 0);
-    Symbol_Node* args;
-    args = create_symbol_node(0, "x", TYPE_NUM, (tp_value){.idx=TEST_NUM});
-    args->next = create_symbol_node(1, "y", TYPE_BOOL, (tp_value){.idx=TEST_NUM});
+    Symbol_Node* params;
+    params = create_symbol_node(0, "x", TYPE_NUM, (tp_value){.idx=TEST_NUM});
+    params->next = create_symbol_node(1, "y", TYPE_BOOL, (tp_value){.idx=TEST_NUM});
     //Environment* closure = create_environment(0, 0);
     Environment* closure = create_environment(0, 0);
     typed_ptr* body = create_s_expr_tp(create_empty_s_expr());
-    typed_ptr* out = install_function(env, args, closure, body);
+    typed_ptr* out = install_function(env, params, closure, body);
     bool pass = 1;
     if (function_lookup_index(env, out) == NULL || \
         function_lookup_index(env, out)->function_idx != out->ptr.idx || \
-        function_lookup_index(env, out)->arg_list != args || \
+        function_lookup_index(env, out)->param_list != params || \
         function_lookup_index(env, out)->closure_env != closure || \
         function_lookup_index(env, out)->body != body) {
         pass = 0;

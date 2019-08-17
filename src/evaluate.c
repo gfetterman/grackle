@@ -368,8 +368,8 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
                 if (sym_entry == NULL) {
                     result = create_error_tp(EVAL_ERROR_BAD_SYMBOL);
                 } else {
-                    // create a dummy (lambda arg-list body) s-expression
-                    typed_ptr* arg_list = arg->ptr.se_ptr->cdr;
+                    // create a dummy (lambda param-list body) s-expression
+                    typed_ptr* param_list = arg->ptr.se_ptr->cdr;
                     s_expr* empty = create_empty_s_expr();
                     arg->ptr.se_ptr->cdr = create_s_expr_tp(empty);
                     typed_ptr* fn_body = s_expr_next(args_tp->ptr.se_ptr)->car;
@@ -381,15 +381,16 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
                     s_expr* fn_body_se = create_s_expr(fn_body, \
                                                        create_s_expr_tp(empty));
                     typed_ptr* fn_body_tp = create_s_expr_tp(fn_body_se);
-                    s_expr* arg_list_se = create_s_expr(arg_list, fn_body_tp);
-                    typed_ptr* arg_list_tp = create_s_expr_tp(arg_list_se);
-                    s_expr* dummy_lam = create_s_expr(lam, arg_list_tp);
+                    s_expr* param_list_se = create_s_expr(param_list, \
+                                                          fn_body_tp);
+                    typed_ptr* param_list_tp = create_s_expr_tp(param_list_se);
+                    s_expr* dummy_lam = create_s_expr(lam, param_list_tp);
                     typed_ptr* fn = eval_lambda(dummy_lam, env);
                     if (fn->type == TYPE_ERROR) {
                         delete_s_expr_recursive(dummy_lam, true);
                         result = fn;
                     } else {
-                        delete_s_expr_recursive(arg_list->ptr.se_ptr, true);
+                        delete_s_expr_recursive(param_list->ptr.se_ptr, true);
                         delete_s_expr_recursive(dummy_lam, false);
                         blind_install_symbol_atom(env, \
                                                   sym_entry->name, \
@@ -861,14 +862,14 @@ Symbol_Node* collect_parameters(typed_ptr* tp, Environment* env) {
 // In all cases, the Symbol_Node list returned is the caller's responsibility
 //   to free, and may be safely (shallow) freed.
 Symbol_Node* bind_args(Environment* env, Function_Node* fn, typed_ptr* args) {
-    if (fn->arg_list == NULL && is_empty_list(args->ptr.se_ptr)) {
+    if (fn->param_list == NULL && is_empty_list(args->ptr.se_ptr)) {
         return NULL;
     } else if (is_empty_list(args->ptr.se_ptr)) {
         return create_error_symbol_node(EVAL_ERROR_FEW_ARGS);
-    } else if (fn->arg_list == NULL) {
+    } else if (fn->param_list == NULL) {
         return create_error_symbol_node(EVAL_ERROR_MANY_ARGS);
     } else {
-        Symbol_Node* curr_param = fn->arg_list;
+        Symbol_Node* curr_param = fn->param_list;
         s_expr* arg_se = args->ptr.se_ptr;
         Symbol_Node* bound_args = NULL;
         bound_args = create_symbol_node(0, \
