@@ -210,7 +210,7 @@ void test_register_symbol(test_env* te) {
     bool pass = 1;
     // passing a number
     char symbol_num[] = "1000";
-    register_symbol(&stack, env, temp_env, strdup(symbol_num));
+    register_symbol(&stack, env, temp_env, symbol_num);
     if (stack->se == NULL || \
         stack->se->car == NULL || \
         !check_typed_ptr(stack->se->car, TYPE_NUM, (tp_value){.idx=1000}) || \
@@ -226,7 +226,7 @@ void test_register_symbol(test_env* te) {
                                               symbol_env, \
                                               TYPE_NUM, \
                                               (tp_value){.idx=1000});
-    register_symbol(&stack, env, temp_env, strdup(symbol_env));
+    register_symbol(&stack, env, temp_env, symbol_env);
     if (stack->se == NULL || \
         stack->se->car == NULL || \
         !match_typed_ptrs(stack->se->car, symbol_env_tp) || \
@@ -242,7 +242,7 @@ void test_register_symbol(test_env* te) {
                                                    symbol_temp_env, \
                                                    TYPE_NUM, \
                                                    (tp_value){.idx=1000});
-    register_symbol(&stack, env, temp_env, strdup(symbol_temp_env));
+    register_symbol(&stack, env, temp_env, symbol_temp_env);
     if (stack->se == NULL || \
         stack->se->car == NULL || \
         !match_typed_ptrs(stack->se->car, symbol_temp_env_tp) || \
@@ -254,7 +254,7 @@ void test_register_symbol(test_env* te) {
     stack->se->car = NULL;
     // passing a symbol in neither environment
     char symbol_absent[] = "absent";
-    register_symbol(&stack, env, temp_env, strdup(symbol_absent));
+    register_symbol(&stack, env, temp_env, symbol_absent);
     Symbol_Node* sn_from_string = symbol_lookup_string(temp_env, symbol_absent);
     Symbol_Node* sn_from_index = symbol_lookup_index(temp_env, stack->se->car);
     if (stack->se == NULL || \

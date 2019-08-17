@@ -293,7 +293,7 @@ void test_bind_args(test_env* te) {
     delete_symbol_node_list(bound_args);
     // one param, no args
     Symbol_Node* one_param = create_symbol_node(0, \
-                                                strdup("x"), \
+                                                "x", \
                                                 TYPE_UNDEF, \
                                                 (tp_value){.idx=0});
     Function_Node* fn_1_param = create_function_node(0, one_param, NULL, NULL);
@@ -330,11 +330,11 @@ void test_bind_args(test_env* te) {
     delete_symbol_node_list(bound_args);
     // two params, no args
     Symbol_Node* two_params = create_symbol_node(0, \
-                                                 strdup("x"), \
+                                                 "x", \
                                                  TYPE_UNDEF, \
                                                  (tp_value){.idx=0});
     two_params->next = create_symbol_node(0, \
-                                          strdup("y"), \
+                                          "y", \
                                           TYPE_UNDEF, \
                                           (tp_value){.idx=0});
     Function_Node* fn_2_params = create_function_node(0, \
@@ -440,7 +440,7 @@ void test_make_eval_env(test_env* te) {
     }
     delete_environment_shared(out);
     // one bound arg
-    args = create_symbol_node(0, strdup("x"), TYPE_NUM, (tp_value){.idx=1000});
+    args = create_symbol_node(0, "x", TYPE_NUM, (tp_value){.idx=1000});
     out = make_eval_env(env, args);
     if (out == env || \
         symbol_lookup_string(env, "x") == symbol_lookup_string(out, "x") || \
@@ -466,7 +466,7 @@ void test_make_eval_env(test_env* te) {
     args->value.idx = 2000;
     s_expr* se = create_empty_s_expr();
     args->next = create_symbol_node(0, \
-                                    strdup("y"), \
+                                    "y", \
                                     TYPE_SEXPR, \
                                     (tp_value){.se_ptr=se});
     out = make_eval_env(env, args);

@@ -127,7 +127,7 @@ Environment* copy_environment(Environment* env) {
     Symbol_Node* curr_sn = env->symbol_table->head;
     while (curr_sn != NULL) {
         Symbol_Node* new_sn = create_symbol_node(curr_sn->symbol_idx, \
-                                                 strdup(curr_sn->name), \
+                                                 curr_sn->name, \
                                                  curr_sn->type, \
                                                  curr_sn->value);
         if (new_sn->type == TYPE_SEXPR) {

@@ -815,7 +815,7 @@ Symbol_Node* collect_parameters(typed_ptr* tp, Environment* env) {
             params = create_error_symbol_node(EVAL_ERROR_BAD_SYMBOL);
         } else {
             params = create_symbol_node(0, \
-                                        strdup(found->name), \
+                                        found->name, \
                                         TYPE_UNDEF, \
                                         (tp_value){.idx=0});
             Symbol_Node* curr = params;
@@ -838,7 +838,7 @@ Symbol_Node* collect_parameters(typed_ptr* tp, Environment* env) {
                     break;
                 }
                 curr->next = create_symbol_node(0, \
-                                                strdup(found->name), \
+                                                found->name, \
                                                 TYPE_UNDEF, \
                                                 (tp_value){.idx=0});
                 curr = curr->next;
@@ -872,7 +872,7 @@ Symbol_Node* bind_args(Environment* env, Function_Node* fn, typed_ptr* args) {
         s_expr* arg_se = args->ptr.se_ptr;
         Symbol_Node* bound_args = NULL;
         bound_args = create_symbol_node(0, \
-                                        strdup(curr_param->name), \
+                                        curr_param->name, \
                                         arg_se->car->type, \
                                         arg_se->car->ptr);
         if (bound_args->type == TYPE_SEXPR) {
@@ -887,7 +887,7 @@ Symbol_Node* bind_args(Environment* env, Function_Node* fn, typed_ptr* args) {
                 break;
             }
             Symbol_Node* new_arg = create_symbol_node(0, \
-                                                      strdup(curr_param->name),\
+                                                      curr_param->name,\
                                                       arg_se->car->type, \
                                                       arg_se->car->ptr);
             if (new_arg->type == TYPE_SEXPR) {
