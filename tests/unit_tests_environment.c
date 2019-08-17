@@ -258,7 +258,7 @@ void test_copy_environment(test_env* te) {
     s_expr* se = create_empty_s_expr();
     se = create_s_expr(create_atom_tp(TYPE_NUM, 512), create_s_expr_tp(se));
     se = create_s_expr(create_atom_tp(TYPE_NUM, 256), create_s_expr_tp(se));
-    blind_install_symbol_sexpr(original, "test_se_1", se);
+    blind_install_symbol_s_expr(original, "test_se_1", se);
     Symbol_Node* args = create_symbol_node(0, "x", TYPE_NUM, TEST_NUM_TP_VAL);
     args->next = create_symbol_node(1, "y", TYPE_NUM, TEST_NUM_TP_VAL);
     Environment* closure = create_environment(0, 0);
@@ -284,9 +284,9 @@ void test_copy_environment(test_env* te) {
             osn == csn || \
             osn->symbol_idx != csn->symbol_idx || \
             osn->type != csn->type || \
-            (osn->type == TYPE_SEXPR && \
+            (osn->type == TYPE_S_EXPR && \
              osn->value.se_ptr == csn->value.se_ptr) || \
-            (osn->type != TYPE_SEXPR && \
+            (osn->type != TYPE_S_EXPR && \
              osn->value.idx != csn->value.idx)) {
             pass = 0;
         }
@@ -309,7 +309,7 @@ void test_delete_environment_shared_full(test_env* te) {
     s_expr* se = create_empty_s_expr();
     se = create_s_expr(create_atom_tp(TYPE_NUM, 512), create_s_expr_tp(se));
     se = create_s_expr(create_atom_tp(TYPE_NUM, 256), create_s_expr_tp(se));
-    blind_install_symbol_sexpr(original, "test_se_1", se);
+    blind_install_symbol_s_expr(original, "test_se_1", se);
     Symbol_Node* args = create_symbol_node(0, "x", TYPE_NUM, TEST_NUM_TP_VAL);
     args->next = create_symbol_node(1, "y", TYPE_NUM, TEST_NUM_TP_VAL);
     Environment* closure = create_environment(0, 0);
@@ -351,7 +351,7 @@ void test_install_symbol_regular_and_blind(test_env* te) {
     free(out);
     blind_install_symbol_atom(env, name3, TYPE_ERROR, EVAL_ERROR_EXIT);
     s_expr* se = create_empty_s_expr();
-    blind_install_symbol_sexpr(env, name4, se);
+    blind_install_symbol_s_expr(env, name4, se);
     if (env->symbol_table->length != 4) {
         pass = 0;
     }
@@ -375,7 +375,7 @@ void test_install_symbol_regular_and_blind(test_env* te) {
     }
     if (symbol_lookup_string(env, name4) == NULL || \
         strcmp(symbol_lookup_string(env, name4)->name, name4) || \
-        symbol_lookup_string(env, name4)->type != TYPE_SEXPR || \
+        symbol_lookup_string(env, name4)->type != TYPE_S_EXPR || \
         symbol_lookup_string(env, name4)->value.se_ptr != se) {
         pass = 0;
     }
@@ -556,7 +556,7 @@ void test_value_lookup_index(test_env* te) {
     symbol_bool = install_symbol(env, name_bool, TYPE_BOOL, TEST_NUM_TP_VAL);
     s_expr* se = create_empty_s_expr();
     tp_value tpv_se = {.se_ptr=se};
-    symbol_se = install_symbol(env, name_se, TYPE_SEXPR, tpv_se);
+    symbol_se = install_symbol(env, name_se, TYPE_S_EXPR, tpv_se);
     symbol_undef = install_symbol(env, name_undef, TYPE_UNDEF, TEST_NUM_TP_VAL);
     typed_ptr* absent_symbol = create_atom_tp(TYPE_SYMBOL, 1000);
     typed_ptr* not_a_symbol = create_atom_tp(TYPE_NUM, 1000);
@@ -577,7 +577,7 @@ void test_value_lookup_index(test_env* te) {
     free(out);
     out = value_lookup_index(env, symbol_se);
     if (out == NULL || \
-        out->type != TYPE_SEXPR || \
+        out->type != TYPE_S_EXPR || \
         !is_empty_list(out->ptr.se_ptr) || \
         out->ptr.se_ptr == se) {
         pass = 0;

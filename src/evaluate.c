@@ -10,11 +10,11 @@
 typed_ptr* evaluate(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
     if (se == NULL) {
-        result = create_error_tp(EVAL_ERROR_NULL_SEXPR);
+        result = create_error_tp(EVAL_ERROR_NULL_S_EXPR);
     } else if (is_empty_list(se)) {
         result = create_error_tp(EVAL_ERROR_MISSING_PROCEDURE);
     } else if (se->car == NULL || se->cdr == NULL) {
-        result = create_error_tp(EVAL_ERROR_MALFORMED_SEXPR);
+        result = create_error_tp(EVAL_ERROR_MALFORMED_S_EXPR);
     } else {
         switch (se->car->type) {
             case TYPE_UNDEF:
@@ -29,8 +29,8 @@ typed_ptr* evaluate(const s_expr* se, Environment* env) {
             case TYPE_BUILTIN: 
                 result = eval_builtin(se, env);
                 break;
-            case TYPE_SEXPR: 
-                result = eval_sexpr(se, env);
+            case TYPE_S_EXPR: 
+                result = eval_s_expr(se, env);
                 break;
             case TYPE_SYMBOL:
                 result = value_lookup_index(env, se->car);
@@ -95,7 +95,7 @@ typed_ptr* eval_builtin(const s_expr* se, Environment* env) {
             result = eval_list_pred(se, env);
             break;
         case BUILTIN_PAIRPRED:
-            result = eval_atom_pred(se, env, TYPE_SEXPR);
+            result = eval_atom_pred(se, env, TYPE_S_EXPR);
             break;
         case BUILTIN_NUMBERPRED:
             result = eval_atom_pred(se, env, TYPE_NUM);
@@ -116,7 +116,7 @@ typed_ptr* eval_builtin(const s_expr* se, Environment* env) {
     return result;
 }
 
-typed_ptr* eval_sexpr(const s_expr* se, Environment* env) {
+typed_ptr* eval_s_expr(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
     s_expr* se_to_eval = se->car->ptr.se_ptr;
     if (is_empty_list(se_to_eval)) {
@@ -357,7 +357,7 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
                     result = create_atom_tp(TYPE_VOID, 0);
                 }
             }
-        } else if (arg->type == TYPE_SEXPR) {
+        } else if (arg->type == TYPE_S_EXPR) {
             if (is_empty_list(arg->ptr.se_ptr)) {
                 result = create_error_tp(EVAL_ERROR_BAD_SYNTAX);
             } else if (arg->ptr.se_ptr->car->type != TYPE_SYMBOL) {
@@ -496,7 +496,7 @@ typed_ptr* eval_cons(const s_expr* se, Environment* env) {
 // Evaluates an s-expression whose car is in the set
 //   {BUILTIN_xxx | xxx in {CAR, CDR}}.
 // This function takes exactly one argument, which is evaluated.
-// The first argument is expected to be TYPE_SEXPR.
+// The first argument is expected to be TYPE_S_EXPR.
 // Returns a typed_ptr containing an error code (if the evaluation failed) or
 //   the resulting object (if it succeeded).
 // In either case, the returned typed_ptr is the caller's responsibility to
@@ -509,7 +509,7 @@ typed_ptr* eval_car_cdr(const s_expr* se, Environment* env) {
         result = args_tp;
     } else {
         typed_ptr* arg = args_tp->ptr.se_ptr->car;
-        if (arg->type != TYPE_SEXPR || is_empty_list(arg->ptr.se_ptr)) {
+        if (arg->type != TYPE_S_EXPR || is_empty_list(arg->ptr.se_ptr)) {
             result = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
         } else if (se->car->ptr.idx == BUILTIN_CAR) {
             result = arg->ptr.se_ptr->car;
@@ -617,7 +617,7 @@ typed_ptr* eval_cond(const s_expr* se, Environment* env) {
         bool pred_true = false;
         s_expr* then_bodies = NULL;
         while (!is_empty_list(arg_se)) {
-            if (arg_se->car->type != TYPE_SEXPR) {
+            if (arg_se->car->type != TYPE_S_EXPR) {
                 free(eval_interm);
                 eval_interm = create_error_tp(EVAL_ERROR_BAD_SYNTAX);
                 break;
@@ -666,7 +666,7 @@ typed_ptr* eval_cond(const s_expr* se, Environment* env) {
             }
         } else {
             while (!is_empty_list(then_bodies)) {
-                if (eval_interm->type == TYPE_SEXPR) {
+                if (eval_interm->type == TYPE_S_EXPR) {
                     delete_s_expr_recursive(eval_interm->ptr.se_ptr, true);
                 }
                 free(eval_interm);
@@ -701,12 +701,12 @@ typed_ptr* eval_list_pred(const s_expr* se, Environment* env) {
     } else {
         typed_ptr* arg = args_tp->ptr.se_ptr->car;
         result = create_atom_tp(TYPE_BOOL, 1);
-        if (arg->type != TYPE_SEXPR) {
+        if (arg->type != TYPE_S_EXPR) {
             result->ptr.idx = 0;
         } else {
             s_expr* arg_se = arg->ptr.se_ptr;
             while (!is_empty_list(arg_se)) {
-                if (arg_se->cdr->type != TYPE_SEXPR) {
+                if (arg_se->cdr->type != TYPE_S_EXPR) {
                     result->ptr.idx = 0;
                     break;
                 }
@@ -738,7 +738,7 @@ typed_ptr* eval_atom_pred(const s_expr* se, Environment* env, type t) {
     } else {
         typed_ptr* arg = args_tp->ptr.se_ptr->car;
         result = create_atom_tp(TYPE_BOOL, (arg->type == t) ? 1 : 0);
-        if (arg->type == TYPE_SEXPR && is_empty_list(arg->ptr.se_ptr)) {
+        if (arg->type == TYPE_S_EXPR && is_empty_list(arg->ptr.se_ptr)) {
             result->ptr.idx = 0;
         }
         delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
@@ -767,7 +767,7 @@ typed_ptr* eval_lambda(const s_expr* se, Environment* env) {
     } else {
         typed_ptr* first = args_tp->ptr.se_ptr->car;
         typed_ptr* second = s_expr_next(args_tp->ptr.se_ptr)->car;
-        if (first->type != TYPE_SEXPR) {
+        if (first->type != TYPE_S_EXPR) {
             result = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
         } else {
             Symbol_Node* params = collect_parameters(first, env);
@@ -777,7 +777,7 @@ typed_ptr* eval_lambda(const s_expr* se, Environment* env) {
             } else {
                 Environment* closure_env = copy_environment(env);
                 typed_ptr* body = copy_typed_ptr(second);
-                if (body->type == TYPE_SEXPR) {
+                if (body->type == TYPE_S_EXPR) {
                     body->ptr.se_ptr = copy_s_expr(body->ptr.se_ptr);
                 }
                 result = install_function(env, params, closure_env, body);
@@ -807,7 +807,7 @@ Symbol_Node* collect_parameters(typed_ptr* tp, Environment* env) {
     }
     if (se->car == NULL || se->car->type != TYPE_SYMBOL) {
         params = create_error_symbol_node(EVAL_ERROR_NOT_ID);
-    } else if (se->cdr == NULL || se->cdr->type != TYPE_SEXPR) {
+    } else if (se->cdr == NULL || se->cdr->type != TYPE_S_EXPR) {
         params = create_error_symbol_node(EVAL_ERROR_BAD_ARG_TYPE);
     } else {
         Symbol_Node* found = symbol_lookup_index(env, se->car);
@@ -821,7 +821,7 @@ Symbol_Node* collect_parameters(typed_ptr* tp, Environment* env) {
             Symbol_Node* curr = params;
             se = s_expr_next(se);
             while (!is_empty_list(se)) {
-                if (se->cdr == NULL || se->cdr->type != TYPE_SEXPR) {
+                if (se->cdr == NULL || se->cdr->type != TYPE_S_EXPR) {
                     delete_symbol_node_list(params);
                     params = create_error_symbol_node(EVAL_ERROR_BAD_ARG_TYPE);
                     break;
@@ -875,7 +875,7 @@ Symbol_Node* bind_args(Environment* env, Function_Node* fn, typed_ptr* args) {
                                         curr_param->name, \
                                         arg_se->car->type, \
                                         arg_se->car->ptr);
-        if (bound_args->type == TYPE_SEXPR) {
+        if (bound_args->type == TYPE_S_EXPR) {
             bound_args->value.se_ptr = copy_s_expr(bound_args->value.se_ptr);
         }
         curr_param = curr_param->next;
@@ -890,7 +890,7 @@ Symbol_Node* bind_args(Environment* env, Function_Node* fn, typed_ptr* args) {
                                                       curr_param->name,\
                                                       arg_se->car->type, \
                                                       arg_se->car->ptr);
-            if (new_arg->type == TYPE_SEXPR) {
+            if (new_arg->type == TYPE_S_EXPR) {
                 new_arg->value.se_ptr = copy_s_expr(new_arg->value.se_ptr);
             }
             new_arg->next = bound_args;

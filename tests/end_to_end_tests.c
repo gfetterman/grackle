@@ -12,7 +12,7 @@ void e2e_atom_test(char cmd[], type t, long val, test_env* te) {
     printf("test command: %-40s", cmd);
     typed_ptr* output = parse_and_evaluate(cmd, te->env);
     bool pass = check_typed_ptr(output, t, (tp_value){.idx=val});
-    if (output->type == TYPE_SEXPR) {
+    if (output->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(output->ptr.se_ptr, true);
     }
     free(output);
@@ -29,7 +29,7 @@ void e2e_pair_test(char cmd[], \
     printf("test command: %-40s", cmd);
     typed_ptr* output = parse_and_evaluate(cmd, te->env);
     bool pass = check_pair(output, tp_list, tp_list_len, te->env);
-    if (output->type == TYPE_SEXPR) {
+    if (output->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(output->ptr.se_ptr, true);
     }
     free(output);
@@ -39,14 +39,14 @@ void e2e_pair_test(char cmd[], \
     return;
 }
 
-void e2e_sexpr_test(char cmd[], \
-                    typed_ptr** tp_list, \
-                    unsigned int tp_list_len, \
-                    test_env* te) {
+void e2e_s_expr_test(char cmd[], \
+                     typed_ptr** tp_list, \
+                     unsigned int tp_list_len, \
+                     test_env* te) {
     printf("test command: %-40s", cmd);
     typed_ptr* output = parse_and_evaluate(cmd, te->env);
-    bool pass = check_sexpr(output, tp_list, tp_list_len, te->env);
-    if (output->type == TYPE_SEXPR) {
+    bool pass = check_s_expr(output, tp_list, tp_list_len, te->env);
+    if (output->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(output->ptr.se_ptr, true);
     }
     free(output);
@@ -333,8 +333,8 @@ void end_to_end_cons_tests(test_env* t_env) {
     e2e_atom_test("(cons)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(cons 1)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_pair_test("(cons 1 2)", cons_test_num_pair, 2, t_env);
-    e2e_sexpr_test("(cons 1 null)", cons_test_num_pair, 1, t_env);
-    e2e_sexpr_test("(cons 1 (cons 2 null))", cons_test_num_pair, 2, t_env);
+    e2e_s_expr_test("(cons 1 null)", cons_test_num_pair, 1, t_env);
+    e2e_s_expr_test("(cons 1 (cons 2 null))", cons_test_num_pair, 2, t_env);
     e2e_atom_test("(cons 1 2 3)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("(cons (-) 2)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(cons 1 (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
@@ -348,9 +348,9 @@ void end_to_end_list_tests(test_env* t_env) {
     typed_ptr* num_2 = create_atom_tp(TYPE_NUM, 2);
     typed_ptr* list_test_num_pair[] = {num_1, num_2};
     printf("# list #\n");
-    e2e_sexpr_test("(list)", list_test_num_pair, 0, t_env);
-    e2e_sexpr_test("(list 1)", list_test_num_pair, 1, t_env);
-    e2e_sexpr_test("(list (- 3 2) (+ 1 1))", list_test_num_pair, 2, t_env);
+    e2e_s_expr_test("(list)", list_test_num_pair, 0, t_env);
+    e2e_s_expr_test("(list 1)", list_test_num_pair, 1, t_env);
+    e2e_s_expr_test("(list (- 3 2) (+ 1 1))", list_test_num_pair, 2, t_env);
     e2e_atom_test("(list (-) 2 3)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(list 1 (-) 3)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     free(num_1);
@@ -436,8 +436,8 @@ void end_to_end_define_tests(test_env* t_env) {
     char* fnx_call_arg_error = "(x (+ 2 null))";
     char* def_call_fnx_zero_param_zero_arg[] = {def_fnx_zero_param, \
                                                 fnx_call_zero_arg};
-    char* def_call_fnx_zero_param_sexpr_zero_arg[] = {def_fnx_zero_param_se, \
-                                                      fnx_call_zero_arg};
+    char* def_call_fnx_zero_param_s_expr_zero_arg[] = {def_fnx_zero_param_se, \
+                                                       fnx_call_zero_arg};
     char* def_call_fnx_zero_param_one_arg[] = {def_fnx_zero_param_se, \
                                                fnx_call_one_arg};
     char* def_call_fnx_one_param_zero_arg[] = {def_fnx_one_param, \
@@ -468,7 +468,7 @@ void end_to_end_define_tests(test_env* t_env) {
                             TYPE_NUM, \
                             10, \
                             t_env);
-    e2e_multiline_atom_test(def_call_fnx_zero_param_sexpr_zero_arg, \
+    e2e_multiline_atom_test(def_call_fnx_zero_param_s_expr_zero_arg, \
                             2, \
                             TYPE_NUM, \
                             3, \

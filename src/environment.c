@@ -130,7 +130,7 @@ Environment* copy_environment(Environment* env) {
                                                  curr_sn->name, \
                                                  curr_sn->type, \
                                                  curr_sn->value);
-        if (new_sn->type == TYPE_SEXPR) {
+        if (new_sn->type == TYPE_S_EXPR) {
             new_sn->value.se_ptr = copy_s_expr(new_sn->value.se_ptr);
         }
         new_sn->next = new_env->symbol_table->head;
@@ -152,7 +152,7 @@ void delete_environment_shared(Environment* env) {
     while (curr != NULL) {
         Symbol_Node* next = curr->next;
         free(curr->name);
-        if (curr->type == TYPE_SEXPR) {
+        if (curr->type == TYPE_S_EXPR) {
             delete_s_expr_recursive(curr->value.se_ptr, true);
         }
         free(curr);
@@ -169,7 +169,7 @@ void delete_environment_full(Environment* env) {
     while (curr_sn != NULL) {
         Symbol_Node* next_sn = curr_sn->next;
         free(curr_sn->name);
-        if (curr_sn->type == TYPE_SEXPR) {
+        if (curr_sn->type == TYPE_S_EXPR) {
             delete_s_expr_recursive(curr_sn->value.se_ptr, true);
         }
         free(curr_sn);
@@ -190,7 +190,7 @@ void delete_environment_full(Environment* env) {
         // free closure environment
         delete_environment_shared(curr_fn->closure_env);
         // free body s-expression
-        if (curr_fn->body->type == TYPE_SEXPR) {
+        if (curr_fn->body->type == TYPE_S_EXPR) {
             delete_s_expr_recursive(curr_fn->body->ptr.se_ptr, true);
         }
         free(curr_fn->body);
@@ -247,10 +247,10 @@ void blind_install_symbol_atom(Environment* env, \
 // All considerations attendant upon the function "install_symbol()" above apply
 //   here.
 // This is a convenience function for use in initial symbol table setup.
-void blind_install_symbol_sexpr(Environment* env, char* name, s_expr* value) {
+void blind_install_symbol_s_expr(Environment* env, char* name, s_expr* value) {
     typed_ptr* tp = install_symbol(env, \
                                    name, \
-                                   TYPE_SEXPR, \
+                                   TYPE_S_EXPR, \
                                    (tp_value){.se_ptr=value});
     free(tp);
     return;
@@ -307,7 +307,7 @@ void setup_symbol_table(Environment* env) {
     blind_install_symbol_atom(env, "<=", tbi, BUILTIN_NUMBERLE);
     blind_install_symbol_atom(env, "lambda", tbi, BUILTIN_LAMBDA);
     blind_install_symbol_atom(env, "else", TYPE_UNDEF, 0);
-    blind_install_symbol_sexpr(env, "null", create_empty_s_expr());
+    blind_install_symbol_s_expr(env, "null", create_empty_s_expr());
     blind_install_symbol_atom(env, "#t", TYPE_BOOL, 1);
     blind_install_symbol_atom(env, "#f", TYPE_BOOL, 0);
     return;
@@ -378,7 +378,7 @@ typed_ptr* value_lookup_index(const Environment* env, const typed_ptr* tp) {
         if (curr->symbol_idx == tp->ptr.idx) {
             if (curr->type == TYPE_UNDEF) {
                 return create_error_tp(EVAL_ERROR_UNDEF_SYM);
-            } else if (curr->type == TYPE_SEXPR) {
+            } else if (curr->type == TYPE_S_EXPR) {
                 return create_s_expr_tp(copy_s_expr(curr->value.se_ptr));
             } else {
                 return create_typed_ptr(curr->type, curr->value);

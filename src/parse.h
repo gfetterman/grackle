@@ -8,7 +8,7 @@
 #include "environment.h"
 
 typedef enum PARSE_STATE {PARSE_START, \
-                          PARSE_NEW_SEXPR, \
+                          PARSE_NEW_S_EXPR, \
                           PARSE_READY, \
                           PARSE_READ_SYMBOL, \
                           PARSE_FINISH, \

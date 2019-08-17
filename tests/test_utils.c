@@ -14,7 +14,7 @@ typed_ptr* parse_and_evaluate(char command[], Environment* env) {
 bool check_typed_ptr(typed_ptr* tp, type t, tp_value ptr) {
     if (tp == NULL) {
         return false;
-    } else if (tp->type == TYPE_SEXPR) {
+    } else if (tp->type == TYPE_S_EXPR) {
         return tp->type == t && tp->ptr.se_ptr == ptr.se_ptr;
     } else {
         return tp->type == t && tp->ptr.idx == ptr.idx;
@@ -25,7 +25,7 @@ bool check_pair(typed_ptr* tp, \
                 typed_ptr** tp_list, \
                 unsigned int tp_list_len, \
                 Environment* env) {
-    if (tp == NULL || tp->type != TYPE_SEXPR || tp_list_len != 2) {
+    if (tp == NULL || tp->type != TYPE_S_EXPR || tp_list_len != 2) {
         return false;
     }
     s_expr* se = tp->ptr.se_ptr;
@@ -39,12 +39,12 @@ bool check_pair(typed_ptr* tp, \
     }
 }
 
-bool check_sexpr(typed_ptr* tp, \
-                 typed_ptr** tp_list, \
-                 unsigned int tp_list_len, \
-                 Environment* env) {
+bool check_s_expr(typed_ptr* tp, \
+                  typed_ptr** tp_list, \
+                  unsigned int tp_list_len, \
+                  Environment* env) {
     // doesn't currently handle nested lists, but that's ok for now
-    if (tp == NULL || tp->type != TYPE_SEXPR) {
+    if (tp == NULL || tp->type != TYPE_S_EXPR) {
         return false;
     }
     s_expr* curr_se = tp->ptr.se_ptr;
@@ -63,9 +63,9 @@ bool check_sexpr(typed_ptr* tp, \
             }
             typed_ptr* curr_check = tp_list[curr_check_idx];
             if (curr_se->car->type != curr_check->type || \
-                (curr_check->type == TYPE_SEXPR && \
+                (curr_check->type == TYPE_S_EXPR && \
                  curr_se->car->ptr.se_ptr != curr_check->ptr.se_ptr) || \
-                (curr_check->type != TYPE_SEXPR && \
+                (curr_check->type != TYPE_S_EXPR && \
                  curr_se->car->ptr.idx != curr_check->ptr.idx)) {
                     return false;
             }
@@ -86,7 +86,7 @@ bool match_typed_ptrs(typed_ptr* first, typed_ptr* second) {
         return false;
     } else if (first->type != second->type) {
         return false;
-    } else if (first->type == TYPE_SEXPR) {
+    } else if (first->type == TYPE_S_EXPR) {
         return first->ptr.se_ptr == second->ptr.se_ptr;
     } else {
         return first->ptr.idx == second->ptr.idx;
@@ -121,7 +121,7 @@ bool match_s_exprs(const s_expr* first, const s_expr* second) {
             bool ok = true;
             if (first->car->type != second->car->type) {
                 return false;
-            } else if (first->car->type == TYPE_SEXPR) {
+            } else if (first->car->type == TYPE_S_EXPR) {
                 ok = ok && match_s_exprs(first->car->ptr.se_ptr, \
                                          second->car->ptr.se_ptr);
             } else {
@@ -129,7 +129,7 @@ bool match_s_exprs(const s_expr* first, const s_expr* second) {
             }
             if (first->cdr->type != second->cdr->type) {
                 return false;
-            } else if (first->cdr->type == TYPE_SEXPR) {
+            } else if (first->cdr->type == TYPE_S_EXPR) {
                 return ok && match_s_exprs(first->cdr->ptr.se_ptr, \
                                            second->cdr->ptr.se_ptr);
             } else {

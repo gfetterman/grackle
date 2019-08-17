@@ -404,16 +404,16 @@ bool test_parse_output(const char cmd[], typed_ptr* expected) {
     bool pass = 1;
     if (out == NULL || \
         out->type != expected->type || \
-        (out->type == TYPE_SEXPR && \
+        (out->type == TYPE_S_EXPR && \
          !match_s_exprs(out->ptr.se_ptr, expected->ptr.se_ptr)) || \
-        (out->type != TYPE_SEXPR && \
+        (out->type != TYPE_S_EXPR && \
          !match_typed_ptrs(out, expected))) {
         pass = 0;
     }
-    if (out->type == TYPE_SEXPR) {
+    if (out->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(out->ptr.se_ptr, true);
     }
-    if (expected->type == TYPE_SEXPR) {
+    if (expected->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(expected->ptr.se_ptr, true);
     }
     free(out);
@@ -563,7 +563,7 @@ void test_parse(test_env* te) {
         env->symbol_table->head != NULL) {
         pass = 0;
     }
-    if (out != NULL && out->type == TYPE_SEXPR) {
+    if (out != NULL && out->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(out->ptr.se_ptr, true);
     }
     free(out);
@@ -573,7 +573,7 @@ void test_parse(test_env* te) {
         env->symbol_table->head != NULL) {
         pass = 0;
     }
-    if (out != NULL && out->type == TYPE_SEXPR) {
+    if (out != NULL && out->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(out->ptr.se_ptr, true);
     }
     free(out);
@@ -584,7 +584,7 @@ void test_parse(test_env* te) {
         symbol_lookup_string(env, "a")->type != TYPE_UNDEF) {
         pass = 0;
     }
-    if (out != NULL && out->type == TYPE_SEXPR) {
+    if (out != NULL && out->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(out->ptr.se_ptr, true);
     }
     free(out);
@@ -597,7 +597,7 @@ void test_parse(test_env* te) {
         symbol_lookup_string(env, "b")->type != TYPE_UNDEF) {
         pass = 0;
     }
-    if (out != NULL && out->type == TYPE_SEXPR) {
+    if (out != NULL && out->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(out->ptr.se_ptr, true);
     }
     free(out);
@@ -610,7 +610,7 @@ void test_parse(test_env* te) {
         symbol_lookup_string(env, "b")->type != TYPE_UNDEF) {
         pass = 0;
     }
-    if (out != NULL && out->type == TYPE_SEXPR) {
+    if (out != NULL && out->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(out->ptr.se_ptr, true);
     }
     free(out);

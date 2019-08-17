@@ -21,7 +21,7 @@ void print_typed_ptr(const typed_ptr* tp, const Environment* env) {
         case TYPE_NUM:
             printf("%ld", tp->ptr.idx);
             break;
-        case TYPE_SEXPR:
+        case TYPE_S_EXPR:
             print_s_expr(tp->ptr.se_ptr, env);
             break;
         case TYPE_SYMBOL:
@@ -67,10 +67,10 @@ void print_error(const typed_ptr* tp) {
             break;
         case EVAL_ERROR_EXIT:
             break; // exit is handled in the REPL
-        case EVAL_ERROR_NULL_SEXPR:
+        case EVAL_ERROR_NULL_S_EXPR:
             printf("evaluation: an s-expression was NULL");
             break;
-        case EVAL_ERROR_MALFORMED_SEXPR:
+        case EVAL_ERROR_MALFORMED_S_EXPR:
             printf("evaluation: NULL car or cdr in a non-empty s-expression");
             break;
         case EVAL_ERROR_UNDEF_SYM:
@@ -138,7 +138,7 @@ void print_error(const typed_ptr* tp) {
 
 void print_s_expr(const s_expr* se, const Environment* env) {
     if (se == NULL) {
-        typed_ptr* err = create_error_tp(EVAL_ERROR_NULL_SEXPR);
+        typed_ptr* err = create_error_tp(EVAL_ERROR_NULL_S_EXPR);
         print_error(err);
         free(err);
         return;
@@ -146,7 +146,7 @@ void print_s_expr(const s_expr* se, const Environment* env) {
     printf("'(");
     while (!is_empty_list(se)) {
         print_typed_ptr(se->car, env);
-        if (se->cdr->type == TYPE_SEXPR) { // list
+        if (se->cdr->type == TYPE_S_EXPR) { // list
             se = se->cdr->ptr.se_ptr;
             if (!is_empty_list(se)) {
                 printf(" ");

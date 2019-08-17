@@ -83,7 +83,7 @@ void blind_install_symbol_atom(Environment* env, \
                                char* symbol, \
                                type type, \
                                long value);
-void blind_install_symbol_sexpr(Environment* env, \
+void blind_install_symbol_s_expr(Environment* env, \
                                 char* symbol, \
                                 s_expr* value);
 typed_ptr* install_function(Environment* env, \

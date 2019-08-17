@@ -29,7 +29,7 @@ typed_ptr* parse(const char str[], Environment* env) {
                         break;
                     case '(':
                         s_expr_stack_push(&stack, head);
-                        state = PARSE_NEW_SEXPR;
+                        state = PARSE_NEW_S_EXPR;
                         break;
                     case ')':
                         state = PARSE_ERROR;
@@ -41,7 +41,7 @@ typed_ptr* parse(const char str[], Environment* env) {
                         break;
                 }
                 break;
-            case PARSE_NEW_SEXPR:
+            case PARSE_NEW_S_EXPR:
                 switch (str[curr]) {
                     case ' ': // ignore leading whitespace
                         break;
@@ -64,7 +64,7 @@ typed_ptr* parse(const char str[], Environment* env) {
                     case '(':
                         extend_s_expr(&stack);
                         init_new_s_expr(&stack);
-                        state = PARSE_NEW_SEXPR;
+                        state = PARSE_NEW_S_EXPR;
                         break;
                     case ')':
                         state = terminate_s_expr(&stack, &error);
@@ -90,7 +90,7 @@ typed_ptr* parse(const char str[], Environment* env) {
                     case '(':
                         extend_s_expr(&stack);
                         init_new_s_expr(&stack);
-                        state = PARSE_NEW_SEXPR;
+                        state = PARSE_NEW_S_EXPR;
                         break;
                     case ')':
                         state = terminate_s_expr(&stack, &error);

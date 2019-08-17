@@ -13,7 +13,7 @@ typedef enum {TYPE_UNDEF, \
               TYPE_NUM, \
               TYPE_BOOL, \
               TYPE_BUILTIN, \
-              TYPE_SEXPR, \
+              TYPE_S_EXPR, \
               TYPE_SYMBOL, \
               TYPE_FUNCTION} type;
 
@@ -56,8 +56,8 @@ typedef enum {PARSE_ERROR_NONE, \
               // ^  parsing errors above     ^
               // v  evaluation errors below  v
               EVAL_ERROR_EXIT, \
-              EVAL_ERROR_NULL_SEXPR, \
-              EVAL_ERROR_MALFORMED_SEXPR, \
+              EVAL_ERROR_NULL_S_EXPR, \
+              EVAL_ERROR_MALFORMED_S_EXPR, \
               EVAL_ERROR_UNDEF_SYM, \
               EVAL_ERROR_UNDEF_TYPE, \
               EVAL_ERROR_UNDEF_BUILTIN, \
