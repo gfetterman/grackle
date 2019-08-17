@@ -3,6 +3,8 @@
 
 #include<stdlib.h>
 #include<stdio.h>
+#include<errno.h>
+#include<limits.h>
 
 #include "fundamentals.h"
 #include "environment.h"
@@ -30,10 +32,10 @@ typed_ptr* parse(const char str[], Environment* env);
 void init_new_s_expr(s_expr_stack** stack);
 void extend_s_expr(s_expr_stack** stack);
 Parse_State terminate_s_expr(s_expr_stack** stack, interpreter_error* error);
-void register_symbol(s_expr_stack** stack, \
-                     Environment* env, \
-                     Environment* temp_env, \
-                     char* name);
+interpreter_error register_symbol(s_expr_stack** stack, \
+                                  Environment* env, \
+                                  Environment* temp_env, \
+                                  char* name);
 char* substring(const char* str, unsigned int start, unsigned int end);
 bool string_is_number(const char str[]);
 
