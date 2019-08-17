@@ -29,7 +29,7 @@ void delete_symbol_node_list(Symbol_Node* sn);
 typedef struct SYMBOL_TABLE {
     Symbol_Node* head;
     unsigned int length;
-    unsigned int symbol_number_offset;
+    unsigned int offset;
 } Symbol_Table;
 
 Symbol_Table* create_symbol_table(unsigned int offset);
@@ -85,7 +85,6 @@ void blind_install_symbol_atom(Environment* env, \
                                long value);
 void blind_install_symbol_sexpr(Environment* env, \
                                 char* symbol, \
-                                type type, \
                                 s_expr* value);
 typed_ptr* install_function(Environment* env, \
                             Symbol_Node* arg_list, \

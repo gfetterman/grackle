@@ -80,6 +80,7 @@ typed_ptr* parse(const char str[], Environment* env) {
                 if (str[curr] == ' ' || str[curr] == '(' || str[curr] == ')') {
                     new_symbol = substring(str, symbol_start, curr);
                     register_symbol(&stack, env, temp_env, new_symbol);
+                    free(new_symbol);
                     new_symbol = NULL;
                 }
                 switch (str[curr]) {
@@ -177,7 +178,6 @@ void register_symbol(s_expr_stack** stack, \
     typed_ptr* tp = NULL;
     if (string_is_number(name)) {
         long value = atol(name);
-        free(name);
         tp = create_atom_tp(TYPE_NUM, value);
     } else {
         Symbol_Node* found = symbol_lookup_string(env, name);
@@ -185,7 +185,6 @@ void register_symbol(s_expr_stack** stack, \
         if (found == NULL) {
             tp = install_symbol(temp_env, name, TYPE_UNDEF, (tp_value){.idx=0});
         } else {
-            free(name);
             tp = create_atom_tp(TYPE_SYMBOL, found->symbol_idx);
         }
     }
