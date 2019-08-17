@@ -261,7 +261,7 @@ void test_copy_environment(test_env* te) {
     s_expr* se = create_empty_s_expr();
     se = create_s_expr(create_atom_tp(TYPE_NUM, 512), create_s_expr_tp(se));
     se = create_s_expr(create_atom_tp(TYPE_NUM, 256), create_s_expr_tp(se));
-    blind_install_symbol_sexpr(original, strdup("test_se_1"), TYPE_SEXPR, se);
+    blind_install_symbol_sexpr(original, strdup("test_se_1"), se);
     Symbol_Node* args = create_symbol_node(0, NULL, TYPE_NUM, TEST_NUM_TP_VAL);
     args->next = create_symbol_node(1, NULL, TYPE_NUM, TEST_NUM_TP_VAL);
     Environment* closure = create_environment(0, 0);
@@ -312,7 +312,7 @@ void test_delete_environment_shared_full(test_env* te) {
     s_expr* se = create_empty_s_expr();
     se = create_s_expr(create_atom_tp(TYPE_NUM, 512), create_s_expr_tp(se));
     se = create_s_expr(create_atom_tp(TYPE_NUM, 256), create_s_expr_tp(se));
-    blind_install_symbol_sexpr(original, strdup("test_se_1"), TYPE_SEXPR, se);
+    blind_install_symbol_sexpr(original, strdup("test_se_1"), se);
     Symbol_Node* args = create_symbol_node(0, NULL, TYPE_NUM, TEST_NUM_TP_VAL);
     args->next = create_symbol_node(1, NULL, TYPE_NUM, TEST_NUM_TP_VAL);
     Environment* closure = create_environment(0, 0);
@@ -354,7 +354,7 @@ void test_install_symbol_regular_and_blind(test_env* te) {
     free(out);
     blind_install_symbol_atom(env, strdup(name3), TYPE_ERROR, EVAL_ERROR_EXIT);
     s_expr* se = create_empty_s_expr();
-    blind_install_symbol_sexpr(env, strdup(name4), TYPE_SEXPR, se);
+    blind_install_symbol_sexpr(env, strdup(name4), se);
     if (env->symbol_table->length != 4) {
         pass = 0;
     }

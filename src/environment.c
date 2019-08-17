@@ -253,13 +253,10 @@ void blind_install_symbol_atom(Environment* env, \
 // All considerations attendant upon the function "install_symbol()" above apply
 //   here.
 // This is a convenience function for use in initial symbol table setup.
-void blind_install_symbol_sexpr(Environment* env, \
-                                char* name, \
-                                type type, \
-                                s_expr* value) {
+void blind_install_symbol_sexpr(Environment* env, char* name, s_expr* value) {
     typed_ptr* tp = install_symbol(env, \
                                    name, \
-                                   type, \
+                                   TYPE_SEXPR, \
                                    (tp_value){.se_ptr=value});
     free(tp);
     return;
@@ -315,10 +312,7 @@ void setup_symbol_table(Environment* env) {
     blind_install_symbol_atom(env, strdup(">="), tbi, BUILTIN_NUMBERGE);
     blind_install_symbol_atom(env, strdup("<="), tbi, BUILTIN_NUMBERLE);
     blind_install_symbol_atom(env, strdup("lambda"), tbi, BUILTIN_LAMBDA);
-    blind_install_symbol_sexpr(env, \
-                               strdup("null"), \
-                               TYPE_SEXPR, \
-                               create_empty_s_expr());
+    blind_install_symbol_sexpr(env, strdup("null"), create_empty_s_expr());
     blind_install_symbol_atom(env, strdup("#t"), TYPE_BOOL, 1);
     blind_install_symbol_atom(env, strdup("#f"), TYPE_BOOL, 0);
     blind_install_symbol_atom(env, strdup("else"), TYPE_UNDEF, 0);
