@@ -590,6 +590,9 @@ typed_ptr* eval_and_or(const s_expr* se, Environment* env) {
         s_expr* curr_se = arg_se;
         typed_ptr* evaluated_arg = copy_typed_ptr(start_tp);
         while (!is_empty_list(curr_se)) {
+            if (evaluated_arg->type == TYPE_S_EXPR) {
+                delete_s_expr_recursive(evaluated_arg->ptr.se_ptr, true);
+            }
             free(evaluated_arg);
             evaluated_arg = evaluate(curr_se, env);
             if (evaluated_arg->type == TYPE_ERROR || \
@@ -599,6 +602,8 @@ typed_ptr* eval_and_or(const s_expr* se, Environment* env) {
             curr_se = s_expr_next(curr_se);
         }
         result = evaluated_arg;
+        delete_s_expr_recursive(args_tp->ptr.se_ptr, false);
+        free(args_tp);
         free(arg_se->car);
         free(arg_se);
     }
