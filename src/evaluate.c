@@ -22,7 +22,7 @@ typed_ptr* evaluate(const s_expr* se, Environment* env) {
                 break;
             case TYPE_ERROR: // fall-through
             case TYPE_VOID: // fall-through
-            case TYPE_NUM:  // fall-through
+            case TYPE_FIXNUM:  // fall-through
             case TYPE_BOOL:
                 result = copy_typed_ptr(se->car);
                 break;
@@ -98,7 +98,7 @@ typed_ptr* eval_builtin(const s_expr* se, Environment* env) {
             result = eval_atom_pred(se, env, TYPE_S_EXPR);
             break;
         case BUILTIN_NUMBERPRED:
-            result = eval_atom_pred(se, env, TYPE_NUM);
+            result = eval_atom_pred(se, env, TYPE_FIXNUM);
             break;
         case BUILTIN_BOOLPRED:
             result = eval_atom_pred(se, env, TYPE_BOOL);
@@ -198,62 +198,99 @@ typed_ptr* eval_function(const s_expr* se, Environment* env) {
 //   area, or any other object.
 typed_ptr* eval_arithmetic(const s_expr* se, Environment* env) {
     builtin_code op = se->car->ptr.idx;
-    typed_ptr* result = NULL;
     int min_args = (op == BUILTIN_ADD || op == BUILTIN_MUL) ? 0 : 1;
     typed_ptr* args_tp = collect_arguments(se, env, min_args, -1, true);
     if (args_tp->type == TYPE_ERROR) {
-        result = args_tp;
-    } else {
-        long initial = (op == BUILTIN_ADD || op == BUILTIN_SUB) ? 0 : 1;
-        result = create_atom_tp(TYPE_NUM, initial);
-        s_expr* arg = args_tp->ptr.se_ptr;
-        if ((op == BUILTIN_SUB || op == BUILTIN_DIV) && \
-            !is_empty_list(s_expr_next(arg))) {
-            if (arg->car->type != TYPE_NUM) {
-                free(result);
-                result = create_error_tp(EVAL_ERROR_NEED_NUM);
-            } else {
-                result->ptr.idx = arg->car->ptr.idx;
-                arg = s_expr_next(arg);
-            }
-        }
-        while (!is_empty_list(arg)) {
-            if (arg->car->type != TYPE_NUM) {
-                free(result);
-                result = create_error_tp(EVAL_ERROR_NEED_NUM);
-                break;
-            }
-            switch (op) {
-                case BUILTIN_ADD:
-                    result->ptr.idx += arg->car->ptr.idx;
-                    break;
-                case BUILTIN_SUB:
-                    result->ptr.idx -= arg->car->ptr.idx;
-                    break;
-                case BUILTIN_MUL:
-                    result->ptr.idx *= arg->car->ptr.idx;
-                    break;
-                case BUILTIN_DIV:
-                    if (arg->car->ptr.idx == 0) {
-                        free(result);
-                        result = create_error_tp(EVAL_ERROR_DIV_ZERO);
-                    } else {
-                        result->ptr.idx /= arg->car->ptr.idx;
-                    }
-                    break;
-                default:
-                    free(result);
-                    result = create_error_tp(EVAL_ERROR_UNDEF_BUILTIN);
-                    break;
-            }
-            if (result->type == TYPE_ERROR) {
-                break;
-            }
+        return args_tp;
+    }
+    long initial = (op == BUILTIN_ADD || op == BUILTIN_SUB) ? 0 : 1;
+    typed_ptr* result = create_atom_tp(TYPE_FIXNUM, initial);
+    s_expr* arg = args_tp->ptr.se_ptr;
+    if ((op == BUILTIN_SUB || op == BUILTIN_DIV) && \
+        !is_empty_list(s_expr_next(arg))) {
+        if (arg->car->type != TYPE_FIXNUM) {
+            free(result);
+            result = create_error_tp(EVAL_ERROR_NEED_NUM);
+        } else {
+            result->ptr.idx = arg->car->ptr.idx;
             arg = s_expr_next(arg);
         }
-        delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
-        free(args_tp);
     }
+    while (result->type != TYPE_ERROR && !is_empty_list(arg)) {
+        if (arg->car->type != TYPE_FIXNUM) {
+            free(result);
+            result = create_error_tp(EVAL_ERROR_NEED_NUM);
+            break;
+        }
+        switch (op) {
+            case BUILTIN_ADD:
+                if (arg->car->ptr.idx < 0 && \
+                    result->ptr.idx < (LONG_MIN - arg->car->ptr.idx)) {
+                    free(result);
+                    result = create_error_tp(EVAL_ERROR_FIXNUM_UNDER);
+                } else if (arg->car->ptr.idx > 0 && \
+                           result->ptr.idx > (LONG_MAX - arg->car->ptr.idx)) {
+                    free(result);
+                    result = create_error_tp(EVAL_ERROR_FIXNUM_OVER);
+                } else {
+                    result->ptr.idx += arg->car->ptr.idx;
+                }
+                break;
+            case BUILTIN_SUB:
+                if (arg->car->ptr.idx > 0 && \
+                    result->ptr.idx < (LONG_MIN + arg->car->ptr.idx)) {
+                    free(result);
+                    result = create_error_tp(EVAL_ERROR_FIXNUM_UNDER);
+                } else if (arg->car->ptr.idx < 0 && \
+                           result->ptr.idx > (LONG_MAX + arg->car->ptr.idx)) {
+                    free(result);
+                    result = create_error_tp(EVAL_ERROR_FIXNUM_OVER);
+                } else {
+                    result->ptr.idx -= arg->car->ptr.idx;
+                }
+                break;
+            case BUILTIN_MUL:
+                if ((result->ptr.idx < 0 && \
+                     arg->car->ptr.idx > 0 && \
+                     result->ptr.idx < LONG_MIN / arg->car->ptr.idx) || \
+                    (result->ptr.idx > 0 && \
+                     arg->car->ptr.idx < 0 && \
+                     arg->car->ptr.idx < LONG_MIN / result->ptr.idx)) {
+                    free(result);
+                    result = create_error_tp(EVAL_ERROR_FIXNUM_UNDER);
+                } else if ((result->ptr.idx < 0 && \
+                            arg->car->ptr.idx < 0 && \
+                            arg->car->ptr.idx < LONG_MAX / result->ptr.idx) || \
+                           (result->ptr.idx > 0 && \
+                            arg->car->ptr.idx > 0 && \
+                            result->ptr.idx > LONG_MAX / arg->car->ptr.idx)) {
+                    free(result);
+                    result = create_error_tp(EVAL_ERROR_FIXNUM_OVER);
+                } else {
+                    result->ptr.idx *= arg->car->ptr.idx;
+                }
+                break;
+            case BUILTIN_DIV:
+                if (arg->car->ptr.idx == 0) {
+                    free(result);
+                    result = create_error_tp(EVAL_ERROR_DIV_ZERO);
+                } else if (result->ptr.idx == LONG_MIN && \
+                           arg->car->ptr.idx == -1) {
+                    free(result);
+                    result = create_error_tp(EVAL_ERROR_FIXNUM_OVER);
+                } else {
+                    result->ptr.idx /= arg->car->ptr.idx;
+                }
+                break;
+            default:
+                free(result);
+                result = create_error_tp(EVAL_ERROR_UNDEF_BUILTIN);
+                break;
+        }
+        arg = s_expr_next(arg);
+    }
+    delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
+    free(args_tp);
     return result;
 }
 
@@ -275,14 +312,14 @@ typed_ptr* eval_comparison(const s_expr* se, Environment* env) {
         result = args_tp;
     } else {
         s_expr* arg_se = args_tp->ptr.se_ptr;
-        if (arg_se->car->type != TYPE_NUM) {
+        if (arg_se->car->type != TYPE_FIXNUM) {
             result = create_error_tp(EVAL_ERROR_NEED_NUM);
         } else {
             long truth = true;
             long last_num = arg_se->car->ptr.idx;
             arg_se = s_expr_next(arg_se);
             while (!is_empty_list(arg_se) && truth == true) {
-                if (arg_se->car->type != TYPE_NUM) {
+                if (arg_se->car->type != TYPE_FIXNUM) {
                     result = create_error_tp(EVAL_ERROR_NEED_NUM);
                     break;
                 }

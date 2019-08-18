@@ -190,7 +190,7 @@ interpreter_error register_symbol(s_expr_stack** stack, \
         } else if (value == LONG_MAX && errno == ERANGE) {
             return PARSE_ERROR_INT_TOO_HIGH;
         } else {
-            tp = create_atom_tp(TYPE_NUM, value);
+            tp = create_atom_tp(TYPE_FIXNUM, value);
         }
     } else {
         Symbol_Node* found = symbol_lookup_name(env, name);

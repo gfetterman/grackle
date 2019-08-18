@@ -18,7 +18,7 @@ void print_typed_ptr(const typed_ptr* tp, const Environment* env) {
         case TYPE_ERROR:
             print_error(tp);
             break;
-        case TYPE_NUM:
+        case TYPE_FIXNUM:
             printf("%ld", tp->ptr.idx);
             break;
         case TYPE_S_EXPR:
@@ -105,6 +105,12 @@ void print_error(const typed_ptr* tp) {
         case EVAL_ERROR_NEED_NUM:
             printf("evaluation: function or special form takes only number ");
             printf("arguments");
+            break;
+        case EVAL_ERROR_FIXNUM_UNDER:
+            printf("evaluation: fixnum integer underflow");
+            break;
+        case EVAL_ERROR_FIXNUM_OVER:
+            printf("evaluation: fixnum integer overflow");
             break;
         case EVAL_ERROR_DIV_ZERO:
             printf("evaluation: cannot divide by zero");

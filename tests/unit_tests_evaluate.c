@@ -55,7 +55,7 @@ bool tp_is_empty_list(const typed_ptr* tp) {
 }
 
 typed_ptr* create_number_tp(long value) {
-    return create_typed_ptr(TYPE_NUM, (tp_value){.idx=value});
+    return create_typed_ptr(TYPE_FIXNUM, (tp_value){.idx=value});
 }
 
 bool match_error(const typed_ptr* tp, interpreter_error err) {
@@ -147,7 +147,7 @@ void test_collect_parameters(test_env* te) {
         pass = false;
     }
     // pass a list whose first car is not a symbol
-    s_expr_append(se_tp->ptr.se_ptr, create_atom_tp(TYPE_NUM, 1000));
+    s_expr_append(se_tp->ptr.se_ptr, create_atom_tp(TYPE_FIXNUM, 1000));
     params = collect_parameters(se_tp, env);
     if (params == NULL || \
         params->type != TYPE_ERROR || \
@@ -161,12 +161,12 @@ void test_collect_parameters(test_env* te) {
     free(se_tp);
     // pass a list whose middle car is not a symbol
     typed_ptr *sym_1, *sym_2, *sym_3;
-    sym_1 = install_symbol(env, "x", TYPE_NUM, (tp_value){.idx=1000});
-    sym_2 = install_symbol(env, "y", TYPE_NUM, (tp_value){.idx=1000});
-    sym_3 = install_symbol(env, "z", TYPE_NUM, (tp_value){.idx=1000});
+    sym_1 = install_symbol(env, "x", TYPE_FIXNUM, (tp_value){.idx=1000});
+    sym_2 = install_symbol(env, "y", TYPE_FIXNUM, (tp_value){.idx=1000});
+    sym_3 = install_symbol(env, "z", TYPE_FIXNUM, (tp_value){.idx=1000});
     se_tp = create_s_expr_tp(create_empty_s_expr());
     s_expr_append(se_tp->ptr.se_ptr, copy_typed_ptr(sym_1));
-    s_expr_append(se_tp->ptr.se_ptr, create_atom_tp(TYPE_NUM, 1000));
+    s_expr_append(se_tp->ptr.se_ptr, create_atom_tp(TYPE_FIXNUM, 1000));
     s_expr_append(se_tp->ptr.se_ptr, copy_typed_ptr(sym_2));
     params = collect_parameters(se_tp, env);
     if (params == NULL || \
@@ -183,7 +183,7 @@ void test_collect_parameters(test_env* te) {
     se_tp = create_s_expr_tp(create_empty_s_expr());
     s_expr_append(se_tp->ptr.se_ptr, copy_typed_ptr(sym_1));
     s_expr_append(se_tp->ptr.se_ptr, copy_typed_ptr(sym_2));
-    s_expr_append(se_tp->ptr.se_ptr, create_atom_tp(TYPE_NUM, 1000));
+    s_expr_append(se_tp->ptr.se_ptr, create_atom_tp(TYPE_FIXNUM, 1000));
     params = collect_parameters(se_tp, env);
     if (params == NULL || \
         params->type != TYPE_ERROR || \
@@ -282,7 +282,7 @@ void test_bind_args(test_env* te) {
     delete_symbol_node_list(bound_args);
     // no params, one arg
     typed_ptr* one_arg = create_s_expr_tp(create_empty_s_expr());
-    s_expr_append(one_arg->ptr.se_ptr, create_atom_tp(TYPE_NUM, 1000));
+    s_expr_append(one_arg->ptr.se_ptr, create_atom_tp(TYPE_FIXNUM, 1000));
     bound_args = bind_args(NULL, fn_no_params, one_arg);
     if (bound_args == NULL || \
         bound_args->type != TYPE_ERROR || \
@@ -309,7 +309,7 @@ void test_bind_args(test_env* te) {
     bound_args = bind_args(NULL, fn_1_param, one_arg);
     if (bound_args == NULL || \
         strcmp(bound_args->name, "x") || \
-        bound_args->type != TYPE_NUM || \
+        bound_args->type != TYPE_FIXNUM || \
         bound_args->value.idx != 1000 || \
         bound_args->next != NULL) {
         pass = false;
@@ -317,7 +317,7 @@ void test_bind_args(test_env* te) {
     delete_symbol_node_list(bound_args);
     // one param, two args
     typed_ptr* two_args = create_s_expr_tp(create_empty_s_expr());
-    s_expr_append(two_args->ptr.se_ptr, create_atom_tp(TYPE_NUM, 1000));
+    s_expr_append(two_args->ptr.se_ptr, create_atom_tp(TYPE_FIXNUM, 1000));
     s_expr* se = create_empty_s_expr();
     s_expr_append(two_args->ptr.se_ptr, create_s_expr_tp(se));
     bound_args = bind_args(NULL, fn_1_param, two_args);
@@ -367,7 +367,7 @@ void test_bind_args(test_env* te) {
         !is_empty_list(bound_args->value.se_ptr) || \
         bound_args->next == NULL || \
         strcmp(bound_args->next->name, "x") || \
-        bound_args->next->type != TYPE_NUM || \
+        bound_args->next->type != TYPE_FIXNUM || \
         bound_args->next->value.idx != 1000 || \
         bound_args->next->next != NULL) {
         pass = false;
@@ -380,9 +380,9 @@ void test_bind_args(test_env* te) {
     delete_symbol_node_list(bound_args);
     // two params, three args
     typed_ptr* three_args = create_s_expr_tp(create_empty_s_expr());
-    s_expr_append(three_args->ptr.se_ptr, create_atom_tp(TYPE_NUM, 1000));
+    s_expr_append(three_args->ptr.se_ptr, create_atom_tp(TYPE_FIXNUM, 1000));
     s_expr_append(three_args->ptr.se_ptr, create_atom_tp(TYPE_BOOL, true));
-    s_expr_append(three_args->ptr.se_ptr, create_atom_tp(TYPE_NUM, 2000));
+    s_expr_append(three_args->ptr.se_ptr, create_atom_tp(TYPE_FIXNUM, 2000));
     bound_args = bind_args(NULL, fn_2_params, three_args);
     if (bound_args == NULL || \
         bound_args->type != TYPE_ERROR || \
@@ -440,7 +440,7 @@ void test_make_eval_env(test_env* te) {
     }
     delete_environment_shared(out);
     // one bound arg
-    args = create_symbol_node(0, "x", TYPE_NUM, (tp_value){.idx=1000});
+    args = create_symbol_node(0, "x", TYPE_FIXNUM, (tp_value){.idx=1000});
     out = make_eval_env(env, args);
     if (out == env || \
         symbol_lookup_name(env, "x") == symbol_lookup_name(out, "x") || \
@@ -453,7 +453,7 @@ void test_make_eval_env(test_env* te) {
         symbol_lookup_name(env, "z") == NULL || \
         symbol_lookup_name(env, "z")->type != TYPE_UNDEF || \
         symbol_lookup_name(out, "x") == NULL || \
-        symbol_lookup_name(out, "x")->type != TYPE_NUM || \
+        symbol_lookup_name(out, "x")->type != TYPE_FIXNUM || \
         symbol_lookup_name(out, "x")->value.idx != 1000 || \
         symbol_lookup_name(out, "y") == NULL || \
         symbol_lookup_name(out, "y")->type != TYPE_UNDEF || \
@@ -481,7 +481,7 @@ void test_make_eval_env(test_env* te) {
         symbol_lookup_name(env, "z") == NULL || \
         symbol_lookup_name(env, "z")->type != TYPE_UNDEF || \
         symbol_lookup_name(out, "x") == NULL || \
-        symbol_lookup_name(out, "x")->type != TYPE_NUM || \
+        symbol_lookup_name(out, "x")->type != TYPE_FIXNUM || \
         symbol_lookup_name(out, "x")->value.idx != 2000 || \
         symbol_lookup_name(out, "y") == NULL || \
         symbol_lookup_name(out, "y")->type != TYPE_S_EXPR || \
@@ -507,7 +507,7 @@ void test_collect_arguments(test_env* te) {
     setup_environment(env);
     // arg s-expr is a pair -> error
     s_expr* call_pair = create_s_expr(create_atom_tp(TYPE_BUILTIN, 0), \
-                                      create_atom_tp(TYPE_NUM, 1000));
+                                      create_atom_tp(TYPE_FIXNUM, 1000));
     typed_ptr* out = collect_arguments(call_pair, env, 0, -1, true);
     if (!match_error(out, EVAL_ERROR_ILLEGAL_PAIR)) {
         pass = false;
@@ -517,8 +517,8 @@ void test_collect_arguments(test_env* te) {
     // arg s-expr ends in a pair
     s_expr* call_bad_list = create_empty_s_expr();
     s_expr_append(call_bad_list, create_atom_tp(TYPE_BUILTIN, 0));
-    s_expr_next(call_bad_list)->car = create_atom_tp(TYPE_NUM, 1000);
-    s_expr_next(call_bad_list)->cdr = create_atom_tp(TYPE_NUM, 2000);
+    s_expr_next(call_bad_list)->car = create_atom_tp(TYPE_FIXNUM, 1000);
+    s_expr_next(call_bad_list)->cdr = create_atom_tp(TYPE_FIXNUM, 2000);
     out = collect_arguments(call_bad_list, env, 0, -1, true);
     if (!match_error(out, EVAL_ERROR_ILLEGAL_PAIR)) {
         pass = false;
@@ -569,7 +569,7 @@ void test_collect_arguments(test_env* te) {
     // one-elt arg s-expr, with min_args == 0 & max_args == 0
     s_expr* call_one_arg = create_empty_s_expr();
     s_expr_append(call_one_arg, create_atom_tp(TYPE_BUILTIN, 0));
-    typed_ptr* value_1 = create_atom_tp(TYPE_NUM, 1000);
+    typed_ptr* value_1 = create_atom_tp(TYPE_FIXNUM, 1000);
     s_expr_append(call_one_arg, value_1);
     out = collect_arguments(call_one_arg, env, 0, 0, true);
     if (!match_error(out, EVAL_ERROR_MANY_ARGS)) {
@@ -662,7 +662,7 @@ void test_collect_arguments(test_env* te) {
     // two-elt arg s-expr, with min_args == 0 & max_args == 0
     s_expr* call_two_args = create_empty_s_expr();
     s_expr_append(call_two_args, create_atom_tp(TYPE_BUILTIN, 0));
-    value_1 = create_atom_tp(TYPE_NUM, 1000);
+    value_1 = create_atom_tp(TYPE_FIXNUM, 1000);
     s_expr_append(call_two_args, value_1);
     typed_ptr* value_2 = create_s_expr_tp(create_empty_s_expr());
     s_expr_append(value_2->ptr.se_ptr, create_atom_tp(TYPE_BOOL, true));
@@ -799,8 +799,8 @@ void test_collect_arguments(test_env* te) {
     // and with evaluating
     s_expr* addition_arg = create_empty_s_expr();
     s_expr_append(addition_arg, symbol_tp_from_name(env, "+"));
-    s_expr_append(addition_arg, create_atom_tp(TYPE_NUM, 1));
-    s_expr_append(addition_arg, create_atom_tp(TYPE_NUM, 2));
+    s_expr_append(addition_arg, create_atom_tp(TYPE_FIXNUM, 1));
+    s_expr_append(addition_arg, create_atom_tp(TYPE_FIXNUM, 2));
     s_expr* list_arg = create_empty_s_expr();
     s_expr_append(list_arg, symbol_tp_from_name(env, "list"));
     s_expr_append(list_arg, create_atom_tp(TYPE_BOOL, false));
@@ -810,7 +810,7 @@ void test_collect_arguments(test_env* te) {
     s_expr_append(call_with_eval, create_s_expr_tp(addition_arg));
     s_expr_append(call_with_eval, create_s_expr_tp(list_arg));
     s_expr* expected = create_empty_s_expr();
-    s_expr_append(expected, create_atom_tp(TYPE_NUM, 3));
+    s_expr_append(expected, create_atom_tp(TYPE_FIXNUM, 3));
     s_expr* list_result = create_empty_s_expr();
     s_expr_append(list_result, create_atom_tp(TYPE_BOOL, false));
     s_expr_append(list_result, create_atom_tp(TYPE_BOOL, true));
@@ -827,7 +827,7 @@ void test_collect_arguments(test_env* te) {
     // with evaluating but an error
     s_expr* plus_error = create_empty_s_expr();
     s_expr_append(plus_error, symbol_tp_from_name(env, "+"));
-    s_expr_append(plus_error, create_atom_tp(TYPE_NUM, 1));
+    s_expr_append(plus_error, create_atom_tp(TYPE_FIXNUM, 1));
     s_expr_append(plus_error, create_atom_tp(TYPE_BOOL, false));
     s_expr_append(call_with_eval, create_s_expr_tp(plus_error));
     out = collect_arguments(call_with_eval, env, 3, 3, true);
@@ -1037,6 +1037,96 @@ void test_eval_arithmetic(test_env* te) {
     s_expr_append(cmd, create_number_tp(2));
     s_expr_append(cmd, create_number_tp(0));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
+    // (+ 0 <LONG_MIN>) -> <LONG_MIN>
+    cmd = unit_list(ADD);
+    s_expr_append(cmd, create_number_tp(0));
+    s_expr_append(cmd, create_number_tp(LONG_MIN));
+    expected = create_number_tp(LONG_MIN);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
+    // (+ 0 <LONG_MAX>) -> <LONG_MAX>
+    cmd = unit_list(ADD);
+    s_expr_append(cmd, create_number_tp(0));
+    s_expr_append(cmd, create_number_tp(LONG_MAX));
+    expected = create_number_tp(LONG_MAX);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
+    // (+ -1 <LONG_MIN>) -> EVAL_ERROR_FIXNUM_UNDER
+    cmd = unit_list(ADD);
+    s_expr_append(cmd, create_number_tp(-1));
+    s_expr_append(cmd, create_number_tp(LONG_MIN));
+    expected = create_error_tp(EVAL_ERROR_FIXNUM_UNDER);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
+    // (+ 1 <LONG_MAX>) -> EVAL_ERROR_FIXNUM_OVER
+    cmd = unit_list(ADD);
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, create_number_tp(LONG_MAX));
+    expected = create_error_tp(EVAL_ERROR_FIXNUM_OVER);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
+    // (- <LONG_MIN> 0) -> <LONG_MIN>
+    cmd = unit_list(SUBTRACT);
+    s_expr_append(cmd, create_number_tp(LONG_MIN));
+    s_expr_append(cmd, create_number_tp(0));
+    expected = create_number_tp(LONG_MIN);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
+    // (- <LONG_MAX> 0) -> <LONG_MAX>
+    cmd = unit_list(SUBTRACT);
+    s_expr_append(cmd, create_number_tp(LONG_MAX));
+    s_expr_append(cmd, create_number_tp(0));
+    expected = create_number_tp(LONG_MAX);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
+    // (- <LONG_MIN> 1) -> EVAL_ERROR_FIXNUM_UNDER
+    cmd = unit_list(SUBTRACT);
+    s_expr_append(cmd, create_number_tp(LONG_MIN));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_error_tp(EVAL_ERROR_FIXNUM_UNDER);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
+    // (- <LONG_MAX> -1) -> EVAL_ERROR_FIXNUM_OVER
+    cmd = unit_list(SUBTRACT);
+    s_expr_append(cmd, create_number_tp(LONG_MAX));
+    s_expr_append(cmd, create_number_tp(-1));
+    expected = create_error_tp(EVAL_ERROR_FIXNUM_OVER);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
+    // (* <LONG_MIN> 1) -> <LONG_MIN>
+    cmd = unit_list(MULTIPLY);
+    s_expr_append(cmd, create_number_tp(LONG_MIN));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_number_tp(LONG_MIN);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
+    // (* <LONG_MAX> 1) -> <LONG_MAX>
+    cmd = unit_list(MULTIPLY);
+    s_expr_append(cmd, create_number_tp(LONG_MAX));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_number_tp(LONG_MAX);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
+    // (* ((<LONG_MIN> / 2) - 1) 2) -> EVAL_ERROR_FIXNUM_UNDER
+    cmd = unit_list(MULTIPLY);
+    s_expr_append(cmd, create_number_tp((LONG_MIN / 2) - 1));
+    s_expr_append(cmd, create_number_tp(2));
+    expected = create_error_tp(EVAL_ERROR_FIXNUM_UNDER);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
+    // (* ((<LONG_MAX> / 2) + 1) 2) -> EVAL_ERROR_FIXNUM_OVER
+    cmd = unit_list(MULTIPLY);
+    s_expr_append(cmd, create_number_tp((LONG_MAX / 2) + 1));
+    s_expr_append(cmd, create_number_tp(2));
+    expected = create_error_tp(EVAL_ERROR_FIXNUM_OVER);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
+    // (* ((<LONG_MIN> / 2) - 1) -2) -> EVAL_ERROR_FIXNUM_OVER
+    cmd = unit_list(MULTIPLY);
+    s_expr_append(cmd, create_number_tp((LONG_MIN / 2) - 1));
+    s_expr_append(cmd, create_number_tp(-2));
+    expected = create_error_tp(EVAL_ERROR_FIXNUM_OVER);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
+    // (* ((<LONG_MAX> / 2) + 1) -2) -> EVAL_ERROR_FIXNUM_UNDER
+    cmd = unit_list(MULTIPLY);
+    s_expr_append(cmd, create_number_tp((LONG_MAX / 2) + 2));
+    s_expr_append(cmd, create_number_tp(-2));
+    expected = create_error_tp(EVAL_ERROR_FIXNUM_UNDER);
+    pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
+    // (/ <LONG_MIN> -1) -> EVAL_ERROR_FIXNUM_OVER
+    cmd = unit_list(DIVIDE);
+    s_expr_append(cmd, create_number_tp(LONG_MIN));
+    s_expr_append(cmd, create_number_tp(-1));
+    expected = create_error_tp(EVAL_ERROR_FIXNUM_OVER);
     pass = pass && run_test_expect(eval_arithmetic, cmd, env, expected);
     // (<arith op> 1 #t) -> EVAL_ERROR_NEED_NUM
     // (<arith op> #t 1) -> EVAL_ERROR_NEED_NUM
@@ -1733,7 +1823,7 @@ void test_eval_and_or(test_env* te) {
     pass = pass && run_test_expect(eval_and_or, cmd, env, expected);
     typed_ptr* curr_x_val = value_lookup_index(env, x_sym);
     if (curr_x_val == NULL || \
-        curr_x_val->type != TYPE_NUM || \
+        curr_x_val->type != TYPE_FIXNUM || \
         curr_x_val->ptr.idx != 2) {
         pass = false;
     }
@@ -1753,7 +1843,7 @@ void test_eval_and_or(test_env* te) {
     pass = pass && run_test_expect(eval_and_or, cmd, env, expected);
     curr_x_val = value_lookup_index(env, x_sym);
     if (curr_x_val == NULL || \
-        curr_x_val->type != TYPE_NUM || \
+        curr_x_val->type != TYPE_FIXNUM || \
         curr_x_val->ptr.idx != 4) {
         pass = false;
     }
@@ -1872,7 +1962,7 @@ void test_eval_and_or(test_env* te) {
     pass = pass && run_test_expect(eval_and_or, cmd, env, expected);
     curr_x_val = value_lookup_index(env, x_sym);
     if (curr_x_val == NULL || \
-        curr_x_val->type != TYPE_NUM || \
+        curr_x_val->type != TYPE_FIXNUM || \
         curr_x_val->ptr.idx != 6) {
         pass = false;
     }
@@ -1891,7 +1981,7 @@ void test_eval_and_or(test_env* te) {
     pass = pass && run_test_expect(eval_and_or, cmd, env, expected);
     curr_x_val = value_lookup_index(env, x_sym);
     if (curr_x_val == NULL || \
-        curr_x_val->type != TYPE_NUM || \
+        curr_x_val->type != TYPE_FIXNUM || \
         curr_x_val->ptr.idx != 8) {
         pass = false;
     }
@@ -2058,7 +2148,7 @@ typed_ptr* wrapper_eval_void_pred(const s_expr* se, Environment* env) {
 }
 
 typed_ptr* wrapper_eval_num_pred(const s_expr* se, Environment* env) {
-    return eval_atom_pred(se, env, TYPE_NUM);
+    return eval_atom_pred(se, env, TYPE_FIXNUM);
 }
 
 typed_ptr* wrapper_eval_bool_pred(const s_expr* se, Environment* env) {
@@ -2091,7 +2181,7 @@ void test_eval_atom_pred(test_env* te) {
     bool pass = true;
     #define NUM_TYPES 9
     type type_list[NUM_TYPES] = {TYPE_UNDEF, TYPE_ERROR, TYPE_VOID, \
-                                 TYPE_NUM, TYPE_BOOL, TYPE_BUILTIN, \
+                                 TYPE_FIXNUM, TYPE_BOOL, TYPE_BUILTIN, \
                                  TYPE_S_EXPR, TYPE_SYMBOL, TYPE_FUNCTION};
     typed_ptr* (*pred_fns[NUM_TYPES])(const s_expr*, Environment*) = \
                                 {wrapper_eval_undef_pred, \
@@ -2140,7 +2230,7 @@ void test_eval_atom_pred(test_env* te) {
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
         cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
         s_expr_append(cmd, create_number_tp(1));
-        expected = create_atom_tp(TYPE_BOOL, type_list[i] == TYPE_NUM);
+        expected = create_atom_tp(TYPE_BOOL, type_list[i] == TYPE_FIXNUM);
         pass = pass && run_test_expect(pred_fns[i], cmd, env, expected);
     }
     // ([any_atomic]? #f) -> #t if [bool] else #f
@@ -2951,7 +3041,7 @@ void test_eval_setvar(test_env* te) {
     pass = pass && run_test_expect(eval_set_variable, cmd, env, expected);
     typed_ptr* x_value = value_lookup_index(env, x_sym);
     if (x_value == NULL || \
-        x_value->type != TYPE_NUM || \
+        x_value->type != TYPE_FIXNUM || \
         x_value->ptr.idx != 1) {
         pass = false;
     }
@@ -2964,7 +3054,7 @@ void test_eval_setvar(test_env* te) {
     pass = pass && run_test_expect(eval_set_variable, cmd, env, expected);
     x_value = value_lookup_index(env, x_sym);
     if (x_value == NULL || \
-        x_value->type != TYPE_NUM || \
+        x_value->type != TYPE_FIXNUM || \
         x_value->ptr.idx != 2) {
         pass = false;
     }
@@ -3385,7 +3475,7 @@ void test_evaluate(test_env* te) {
     Environment* env = create_environment(0, 0);
     setup_environment(env);
     typed_ptr *x_sym;
-    x_sym = install_symbol(env, "x", TYPE_NUM, (tp_value){.idx=1});
+    x_sym = install_symbol(env, "x", TYPE_FIXNUM, (tp_value){.idx=1});
     bool pass = true;
     // eval[ NULL ] -> EVAL_ERROR_NULL_S_EXPR
     s_expr* cmd = NULL;
@@ -3447,7 +3537,7 @@ void test_evaluate(test_env* te) {
     // eval[ (<procedure from above> 2) ] -> 20
     cmd = unit_list(create_atom_tp(TYPE_FUNCTION, 0));
     s_expr_append(cmd, create_number_tp(2));
-    expected = create_atom_tp(TYPE_NUM, 20);
+    expected = create_atom_tp(TYPE_FIXNUM, 20);
     pass = pass && run_test_expect(evaluate, cmd, env, expected);
     // eval[ <undefined type> ] -> EVAL_ERROR_UNDEF_TYPE
     cmd = unit_list(create_atom_tp(1000, 1));

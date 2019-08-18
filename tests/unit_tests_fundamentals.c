@@ -4,7 +4,7 @@
 static type type_list[NUM_BUILTIN_TYPES] = {TYPE_UNDEF, \
                                             TYPE_ERROR, \
                                             TYPE_VOID, \
-                                            TYPE_NUM, \
+                                            TYPE_FIXNUM, \
                                             TYPE_BOOL, \
                                             TYPE_BUILTIN, \
                                             TYPE_S_EXPR, \
@@ -108,7 +108,7 @@ void test_create_error_tp(test_env* te) {
 
 void test_copy_typed_ptr(test_env* te) {
     print_test_announce("copy_typed_ptr()");
-    typed_ptr* original = create_atom_tp(TYPE_NUM, TEST_NUM);
+    typed_ptr* original = create_atom_tp(TYPE_FIXNUM, TEST_NUM);
     typed_ptr* copied = copy_typed_ptr(original);
     bool pass = true;
     if (!match_typed_ptrs(original, copied)) {
@@ -128,8 +128,8 @@ void test_copy_typed_ptr(test_env* te) {
 
 void test_create_s_expr(test_env* te) {
     print_test_announce("create_s_expr()");
-    typed_ptr* input_car = create_atom_tp(TYPE_NUM, TEST_NUM);
-    typed_ptr* input_cdr = create_atom_tp(TYPE_NUM, 100);
+    typed_ptr* input_car = create_atom_tp(TYPE_FIXNUM, TEST_NUM);
+    typed_ptr* input_cdr = create_atom_tp(TYPE_FIXNUM, 100);
     s_expr* out = create_s_expr(input_car, input_cdr);
     bool pass = true;
     if (out == NULL || \
@@ -186,10 +186,10 @@ void test_copy_s_expr(test_env* te) {
     int second_value = 128;
     int third_value = 256;
     int fourth_value = 512;
-    typed_ptr* first_atom = create_atom_tp(TYPE_NUM, first_value);
-    typed_ptr* second_atom = create_atom_tp(TYPE_NUM, second_value);
-    typed_ptr* third_atom = create_atom_tp(TYPE_NUM, third_value);
-    typed_ptr* fourth_atom = create_atom_tp(TYPE_NUM, fourth_value);
+    typed_ptr* first_atom = create_atom_tp(TYPE_FIXNUM, first_value);
+    typed_ptr* second_atom = create_atom_tp(TYPE_FIXNUM, second_value);
+    typed_ptr* third_atom = create_atom_tp(TYPE_FIXNUM, third_value);
+    typed_ptr* fourth_atom = create_atom_tp(TYPE_FIXNUM, fourth_value);
     typed_ptr* atom_list[] = {first_atom, second_atom, third_atom, fourth_atom};
     original = create_s_expr(first_atom, second_atom);
     copied = copy_s_expr(original);
@@ -201,8 +201,8 @@ void test_copy_s_expr(test_env* te) {
     delete_s_expr_recursive(copied, true);
     free(copied_tp);
     // copy(one-atomic-element list) -> new one-atomic-element list
-    first_atom = create_atom_tp(TYPE_NUM, first_value);
-    second_atom = create_atom_tp(TYPE_NUM, second_value);
+    first_atom = create_atom_tp(TYPE_FIXNUM, first_value);
+    second_atom = create_atom_tp(TYPE_FIXNUM, second_value);
     atom_list[0] = first_atom;
     atom_list[1] = second_atom;
     original = create_s_expr(first_atom, \
@@ -216,7 +216,7 @@ void test_copy_s_expr(test_env* te) {
     delete_s_expr_recursive(copied, true);
     free(copied_tp);
     // copy(multi-atomic-element list) -> new multi-atomic-element list
-    first_atom = create_atom_tp(TYPE_NUM, first_value);
+    first_atom = create_atom_tp(TYPE_FIXNUM, first_value);
     atom_list[0] = first_atom;
     original = create_empty_s_expr();
     original = create_s_expr(fourth_atom, create_s_expr_tp(original));
@@ -232,10 +232,10 @@ void test_copy_s_expr(test_env* te) {
     delete_s_expr_recursive(copied, true);
     free(copied_tp);
     // copy(list with list elements) -> deep copy of list elements
-    first_atom = create_atom_tp(TYPE_NUM, first_value);
-    second_atom = create_atom_tp(TYPE_NUM, second_value);
-    third_atom = create_atom_tp(TYPE_NUM, third_value);
-    fourth_atom = create_atom_tp(TYPE_NUM, fourth_value);
+    first_atom = create_atom_tp(TYPE_FIXNUM, first_value);
+    second_atom = create_atom_tp(TYPE_FIXNUM, second_value);
+    third_atom = create_atom_tp(TYPE_FIXNUM, third_value);
+    fourth_atom = create_atom_tp(TYPE_FIXNUM, fourth_value);
     atom_list[0] = first_atom;
     atom_list[1] = second_atom;
     atom_list[2] = third_atom;
@@ -270,50 +270,50 @@ void test_delete_s_expr_recursive(test_env* te) {
     delete_s_expr_recursive(se, true);
     delete_s_expr_recursive(se, false);
     // deleting a pair
-    se = create_s_expr(create_atom_tp(TYPE_NUM, 64), \
-                       create_atom_tp(TYPE_NUM, 128));
+    se = create_s_expr(create_atom_tp(TYPE_FIXNUM, 64), \
+                       create_atom_tp(TYPE_FIXNUM, 128));
     delete_s_expr_recursive(se, true);
     // deleting a one-atomic-element list
-    se = create_s_expr(create_atom_tp(TYPE_NUM, 64), \
+    se = create_s_expr(create_atom_tp(TYPE_FIXNUM, 64), \
                        create_s_expr_tp(create_empty_s_expr()));
     delete_s_expr_recursive(se, true);
     // deleting a multi-atomic-element list
     se = create_empty_s_expr();
-    se = create_s_expr(create_atom_tp(TYPE_NUM, 256), create_s_expr_tp(se));
-    se = create_s_expr(create_atom_tp(TYPE_NUM, 128), create_s_expr_tp(se));
-    se = create_s_expr(create_atom_tp(TYPE_NUM, 64), create_s_expr_tp(se));
+    se = create_s_expr(create_atom_tp(TYPE_FIXNUM, 256), create_s_expr_tp(se));
+    se = create_s_expr(create_atom_tp(TYPE_FIXNUM, 128), create_s_expr_tp(se));
+    se = create_s_expr(create_atom_tp(TYPE_FIXNUM, 64), create_s_expr_tp(se));
     delete_s_expr_recursive(se, true);
     // deleting a one-list-element list
     s_expr* branch = create_empty_s_expr();
-    branch = create_s_expr(create_atom_tp(TYPE_NUM, 256), \
+    branch = create_s_expr(create_atom_tp(TYPE_FIXNUM, 256), \
                            create_s_expr_tp(branch));
-    branch = create_s_expr(create_atom_tp(TYPE_NUM, 128), \
+    branch = create_s_expr(create_atom_tp(TYPE_FIXNUM, 128), \
                            create_s_expr_tp(branch));
-    branch = create_s_expr(create_atom_tp(TYPE_NUM, 64), \
+    branch = create_s_expr(create_atom_tp(TYPE_FIXNUM, 64), \
                            create_s_expr_tp(branch));
     se = create_empty_s_expr();
-    se = create_s_expr(create_atom_tp(TYPE_NUM, 1024), create_s_expr_tp(se));
-    se = create_s_expr(create_atom_tp(TYPE_NUM, 512), create_s_expr_tp(se));
+    se = create_s_expr(create_atom_tp(TYPE_FIXNUM, 1024), create_s_expr_tp(se));
+    se = create_s_expr(create_atom_tp(TYPE_FIXNUM, 512), create_s_expr_tp(se));
     se = create_s_expr(create_s_expr_tp(branch), create_s_expr_tp(se));
     delete_s_expr_recursive(se, true);
     // deleting a multi-list-element list
     s_expr* branch_1 = create_empty_s_expr();
-    branch_1 = create_s_expr(create_atom_tp(TYPE_NUM, 256), \
+    branch_1 = create_s_expr(create_atom_tp(TYPE_FIXNUM, 256), \
                              create_s_expr_tp(branch_1));
-    branch_1 = create_s_expr(create_atom_tp(TYPE_NUM, 128), \
+    branch_1 = create_s_expr(create_atom_tp(TYPE_FIXNUM, 128), \
                              create_s_expr_tp(branch_1));
-    branch_1 = create_s_expr(create_atom_tp(TYPE_NUM, 64), \
+    branch_1 = create_s_expr(create_atom_tp(TYPE_FIXNUM, 64), \
                              create_s_expr_tp(branch_1));
     s_expr* branch_2 = create_empty_s_expr();
-    branch_2 = create_s_expr(create_atom_tp(TYPE_NUM, 2048), \
+    branch_2 = create_s_expr(create_atom_tp(TYPE_FIXNUM, 2048), \
                              create_s_expr_tp(branch_2));
-    branch_2 = create_s_expr(create_atom_tp(TYPE_NUM, 1024), \
+    branch_2 = create_s_expr(create_atom_tp(TYPE_FIXNUM, 1024), \
                              create_s_expr_tp(branch_2));
-    branch_2 = create_s_expr(create_atom_tp(TYPE_NUM, 512), \
+    branch_2 = create_s_expr(create_atom_tp(TYPE_FIXNUM, 512), \
                              create_s_expr_tp(branch_2));
     se = create_empty_s_expr();
-    se = create_s_expr(create_atom_tp(TYPE_NUM, 8192), create_s_expr_tp(se));
-    se = create_s_expr(create_atom_tp(TYPE_NUM, 4096), create_s_expr_tp(se));
+    se = create_s_expr(create_atom_tp(TYPE_FIXNUM, 8192), create_s_expr_tp(se));
+    se = create_s_expr(create_atom_tp(TYPE_FIXNUM, 4096), create_s_expr_tp(se));
     se = create_s_expr(create_s_expr_tp(branch_2), create_s_expr_tp(se));
     se = create_s_expr(create_s_expr_tp(branch_1), create_s_expr_tp(se));
     delete_s_expr_recursive(se, true);
@@ -329,10 +329,10 @@ void test_s_expr_next(test_env* te) {
     int second_value = 128;
     int third_value = 256;
     int fourth_value = 512;
-    typed_ptr* first_atom = create_atom_tp(TYPE_NUM, first_value);
-    typed_ptr* second_atom = create_atom_tp(TYPE_NUM, second_value);
-    typed_ptr* third_atom = create_atom_tp(TYPE_NUM, third_value);
-    typed_ptr* fourth_atom = create_atom_tp(TYPE_NUM, fourth_value);
+    typed_ptr* first_atom = create_atom_tp(TYPE_FIXNUM, first_value);
+    typed_ptr* second_atom = create_atom_tp(TYPE_FIXNUM, second_value);
+    typed_ptr* third_atom = create_atom_tp(TYPE_FIXNUM, third_value);
+    typed_ptr* fourth_atom = create_atom_tp(TYPE_FIXNUM, fourth_value);
     typed_ptr* atom_list[] = {first_atom, second_atom, third_atom, fourth_atom};
     s_expr* se = create_empty_s_expr();
     se = create_s_expr(fourth_atom, create_s_expr_tp(se));
@@ -364,8 +364,8 @@ void test_is_empty_list(test_env* te) {
     if (!is_empty_list(se)) {
         pass = false;
     }
-    se->car = create_atom_tp(TYPE_NUM, 64);
-    se->cdr = create_atom_tp(TYPE_NUM, 128);
+    se->car = create_atom_tp(TYPE_FIXNUM, 64);
+    se->cdr = create_atom_tp(TYPE_FIXNUM, 128);
     if (is_empty_list(se)) {
         pass = false;
     }
@@ -392,7 +392,7 @@ void test_is_false_literal(test_env* te) {
     if (is_false_literal(tp)) {
         pass = false;
     }
-    tp->type = TYPE_NUM;
+    tp->type = TYPE_FIXNUM;
     if (is_false_literal(tp)) {
         pass = false;
     }
@@ -416,8 +416,8 @@ void test_is_pair(test_env* te) {
         pass = false;
     }
     free(se);
-    se = create_s_expr(create_atom_tp(TYPE_NUM, 64), \
-                       create_atom_tp(TYPE_NUM, 128));
+    se = create_s_expr(create_atom_tp(TYPE_FIXNUM, 64), \
+                       create_atom_tp(TYPE_FIXNUM, 128));
     if (!is_pair(se)) {
         pass = false;
     }
