@@ -578,7 +578,7 @@ typed_ptr* eval_list_construction(const s_expr* se, Environment* env) {
 
 typed_ptr* eval_and_or(const s_expr* se, Environment* env) {
     typed_ptr* result = NULL;
-    typed_ptr* args_tp = collect_arguments(se, env, 0, -1, true);
+    typed_ptr* args_tp = collect_arguments(se, env, 0, -1, false);
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
@@ -588,16 +588,17 @@ typed_ptr* eval_and_or(const s_expr* se, Environment* env) {
                                              se->car->ptr.idx == BUILTIN_AND);
         s_expr* arg_se = create_s_expr(start_tp, args_tp);
         s_expr* curr_se = arg_se;
-        s_expr* last = arg_se;
+        typed_ptr* evaluated_arg = copy_typed_ptr(start_tp);
         while (!is_empty_list(curr_se)) {
-            last = curr_se;
-            if (is_false_literal(last->car) == start_tp->ptr.idx) {
+            free(evaluated_arg);
+            evaluated_arg = evaluate(curr_se, env);
+            if (evaluated_arg->type == TYPE_ERROR || \
+                is_false_literal(evaluated_arg) == start_tp->ptr.idx) {
                 break;
             }
             curr_se = s_expr_next(curr_se);
         }
-        result = last->car;
-        last->car = NULL;
+        result = evaluated_arg;
         delete_s_expr_recursive(arg_se, true);
     }
     return result;
