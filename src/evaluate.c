@@ -599,7 +599,8 @@ typed_ptr* eval_and_or(const s_expr* se, Environment* env) {
             curr_se = s_expr_next(curr_se);
         }
         result = evaluated_arg;
-        delete_s_expr_recursive(arg_se, true);
+        free(arg_se->car);
+        free(arg_se);
     }
     return result;
 }
