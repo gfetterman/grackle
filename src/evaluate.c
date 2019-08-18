@@ -387,10 +387,8 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
                 if (arg->type == TYPE_ERROR) {
                     result = arg;
                 } else {
-                    char* name = sym_entry->name;
-                    result = install_symbol(env, name, arg->type, arg->ptr);
+                    blind_install_symbol(env, sym_entry->name, arg);
                     free(arg);
-                    free(result);
                     result = create_atom_tp(TYPE_VOID, 0);
                 }
             }
@@ -429,18 +427,13 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
                     } else {
                         delete_s_expr_recursive(param_list->ptr.se_ptr, true);
                         delete_s_expr_recursive(dummy_lam, false);
-                        blind_install_symbol_atom(env, \
-                                                  sym_entry->name, \
-                                                  fn->type, \
-                                                  fn->ptr.idx);
+                        blind_install_symbol(env, sym_entry->name, fn);
                         Function_Node* fn_fn = function_lookup_index(env, fn);
-                        blind_install_symbol_atom(fn_fn->closure_env, \
-                                                  sym_entry->name, \
-                                                  fn->type, \
-                                                  fn->ptr.idx);
+                        blind_install_symbol(fn_fn->closure_env, \
+                                             sym_entry->name, \
+                                             fn);
                         free(fn);
-                        result = create_typed_ptr(TYPE_VOID, \
-                                                  (tp_value){.idx=0});
+                        result = create_atom_tp(TYPE_VOID, 0);
                     }
                 }
             }
@@ -486,10 +479,8 @@ typed_ptr* eval_set_variable(const s_expr* se, Environment* env) {
                 if (arg->type == TYPE_ERROR) {
                     result = arg;
                 } else {
-                    char* name = sym_entry->name;
-                    result = install_symbol(env, name, arg->type, arg->ptr);
+                    blind_install_symbol(env, sym_entry->name, arg);
                     free(arg);
-                    free(result);
                     result = create_atom_tp(TYPE_VOID, 0);
                 }
             }

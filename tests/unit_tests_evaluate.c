@@ -114,6 +114,8 @@ bool run_test_expect(typed_ptr* (*function)(const s_expr*, Environment*), \
 #define LIST_SYM symbol_tp_from_name(env, "list")
 #define LAMBDA_SYM symbol_tp_from_name(env, "lambda")
 
+typed_ptr undef = {.type=TYPE_UNDEF, .ptr={.idx=0}};
+
 static inline s_expr* divide_zero_s_expr(Environment* env) {
     s_expr* se = unit_list(DIVIDE_SYM);
     s_expr_append(se, create_number_tp(0));
@@ -160,13 +162,14 @@ void test_collect_parameters(test_env* te) {
     delete_s_expr_recursive(se_tp->ptr.se_ptr, true);
     free(se_tp);
     // pass a list whose middle car is not a symbol
+    typed_ptr thousand = {.type=TYPE_FIXNUM, .ptr={.idx=1000}};
     typed_ptr *sym_1, *sym_2, *sym_3;
-    sym_1 = install_symbol(env, "x", TYPE_FIXNUM, (tp_value){.idx=1000});
-    sym_2 = install_symbol(env, "y", TYPE_FIXNUM, (tp_value){.idx=1000});
-    sym_3 = install_symbol(env, "z", TYPE_FIXNUM, (tp_value){.idx=1000});
+    sym_1 = install_symbol(env, "x", &thousand);
+    sym_2 = install_symbol(env, "y", &thousand);
+    sym_3 = install_symbol(env, "z", &thousand);
     se_tp = create_s_expr_tp(create_empty_s_expr());
     s_expr_append(se_tp->ptr.se_ptr, copy_typed_ptr(sym_1));
-    s_expr_append(se_tp->ptr.se_ptr, create_atom_tp(TYPE_FIXNUM, 1000));
+    s_expr_append(se_tp->ptr.se_ptr, copy_typed_ptr(&thousand));
     s_expr_append(se_tp->ptr.se_ptr, copy_typed_ptr(sym_2));
     params = collect_parameters(se_tp, env);
     if (params == NULL || \
@@ -415,9 +418,9 @@ void test_make_eval_env(test_env* te) {
     bool pass = true;
     // empty list of bound args
     Environment* env = create_environment(0, 0);
-    blind_install_symbol_atom(env, "x", TYPE_UNDEF, 0);
-    blind_install_symbol_atom(env, "y", TYPE_UNDEF, 0);
-    blind_install_symbol_atom(env, "z", TYPE_UNDEF, 0);
+    blind_install_symbol(env, "x", &undef);
+    blind_install_symbol(env, "y", &undef);
+    blind_install_symbol(env, "z", &undef);
     Symbol_Node* args = NULL;
     Environment* out = make_eval_env(env, args);
     if (out == env || \
@@ -1710,7 +1713,7 @@ void test_eval_and_or(test_env* te) {
     typed_ptr* define_sym = symbol_tp_from_name(env, "define");
     typed_ptr* boolpred_sym = symbol_tp_from_name(env, "boolean?");
     typed_ptr* x_sym;
-    x_sym = install_symbol(env, "x", TYPE_UNDEF, (tp_value){.idx=0});
+    x_sym = install_symbol(env, "x", &undef);
     bool pass = true;
     // (and) -> #t
     s_expr* cmd = unit_list(copy_typed_ptr(and_builtin));
@@ -2176,8 +2179,9 @@ void test_eval_atom_pred(test_env* te) {
     Environment* env = create_environment(0, 0);
     setup_environment(env);
     typed_ptr* cons_sym = symbol_tp_from_name(env, "cons");
-   typed_ptr* x_sym;
-    x_sym = install_symbol(env, "x", TYPE_FUNCTION, (tp_value){.idx=0});
+    typed_ptr fn_tp = {.type=TYPE_FUNCTION, .ptr={.idx=0}};
+    typed_ptr* x_sym;
+    x_sym = install_symbol(env, "x", &fn_tp);
     bool pass = true;
     #define NUM_TYPES 9
     type type_list[NUM_TYPES] = {TYPE_UNDEF, TYPE_ERROR, TYPE_VOID, \
@@ -2306,8 +2310,8 @@ void test_eval_lambda(test_env* te) {
     setup_environment(env);
     typed_ptr* lambda_builtin = builtin_tp_from_name(env, "lambda");
     typed_ptr *x_sym, *y_sym;
-    x_sym = install_symbol(env, "x", TYPE_UNDEF, (tp_value){.idx=0});
-    y_sym = install_symbol(env, "y", TYPE_UNDEF, (tp_value){.idx=0});
+    x_sym = install_symbol(env, "x", &undef);
+    y_sym = install_symbol(env, "y", &undef);
     bool pass = true;
     // (lambda) -> EVAL_ERROR_FEW_ARGS
     s_expr* cmd = unit_list(copy_typed_ptr(lambda_builtin));
@@ -2774,9 +2778,9 @@ void test_eval_define(test_env* te) {
     setup_environment(env);
     typed_ptr* define_builtin = builtin_tp_from_name(env, "define");
     typed_ptr *x_sym, *y_sym, *z_sym;
-    x_sym = install_symbol(env, "x", TYPE_UNDEF, (tp_value){.idx=0});
-    y_sym = install_symbol(env, "y", TYPE_UNDEF, (tp_value){.idx=0});
-    z_sym = install_symbol(env, "z", TYPE_UNDEF, (tp_value){.idx=0});
+    x_sym = install_symbol(env, "x", &undef);
+    y_sym = install_symbol(env, "y", &undef);
+    z_sym = install_symbol(env, "z", &undef);
     bool pass = true;
     // (define) -> EVAL_ERROR_FEW_ARGS
     s_expr* cmd = unit_list(copy_typed_ptr(define_builtin));
@@ -2989,7 +2993,7 @@ void test_eval_setvar(test_env* te) {
     setup_environment(env);
     typed_ptr* setvar_builtin = builtin_tp_from_name(env, "set!");
     typed_ptr *x_sym;
-    x_sym = install_symbol(env, "x", TYPE_UNDEF, (tp_value){.idx=0});
+    x_sym = install_symbol(env, "x", &undef);
     bool pass = true;
     // (set!) -> EVAL_ERROR_FEW_ARGS
     s_expr* cmd = unit_list(copy_typed_ptr(setvar_builtin));
@@ -3105,7 +3109,7 @@ void test_eval_builtin(test_env* te) {
     setup_environment(env);
     typed_ptr* else_sym = symbol_tp_from_name(env, "else");
     typed_ptr *x_sym;
-    x_sym = install_symbol(env, "x", TYPE_UNDEF, (tp_value){.idx=0});
+    x_sym = install_symbol(env, "x", &undef);
     bool pass = true;
     // (+ 1 1) -> 2
     s_expr* cmd = unit_list(create_atom_tp(TYPE_BUILTIN, BUILTIN_ADD));
@@ -3307,8 +3311,8 @@ void test_eval_s_expr(test_env* te) {
     Environment* env = create_environment(0, 0);
     setup_environment(env);
     typed_ptr *x_sym, *x2_sym;
-    x_sym = install_symbol(env, "x", TYPE_UNDEF, (tp_value){.idx=0});
-    x2_sym = install_symbol(env, "x2", TYPE_UNDEF, (tp_value){.idx=0});
+    x_sym = install_symbol(env, "x", &undef);
+    x2_sym = install_symbol(env, "x2", &undef);
     bool pass = true;
     // () -> EVAL_ERROR_MISSING_PROCEDURE
     s_expr* cmd = create_empty_s_expr();
@@ -3392,10 +3396,10 @@ void test_eval_function(test_env* te) {
     Environment* env = create_environment(0, 0);
     setup_environment(env);
     typed_ptr *x_sym, *y_sym, *my_fun;
-    x_sym = install_symbol(env, "x", TYPE_UNDEF, (tp_value){.idx=0});
-    y_sym = install_symbol(env, "y", TYPE_UNDEF, (tp_value){.idx=0});
+    x_sym = install_symbol(env, "x", &undef);
+    y_sym = install_symbol(env, "y", &undef);
     char mf[] = "my-fun";
-    my_fun = install_symbol(env, mf, TYPE_UNDEF, (tp_value){.idx=0});
+    my_fun = install_symbol(env, mf, &undef);
     bool pass = true;
     // given my-fun, a two-parameter function that doubles its first argument
     //   and prepends it to its second
@@ -3474,8 +3478,9 @@ void test_evaluate(test_env* te) {
     print_test_announce("evaluate()");
     Environment* env = create_environment(0, 0);
     setup_environment(env);
+    typed_ptr number = {.type=TYPE_FIXNUM, .ptr={.idx=1}};
     typed_ptr *x_sym;
-    x_sym = install_symbol(env, "x", TYPE_FIXNUM, (tp_value){.idx=1});
+    x_sym = install_symbol(env, "x", &number);
     bool pass = true;
     // eval[ NULL ] -> EVAL_ERROR_NULL_S_EXPR
     s_expr* cmd = NULL;

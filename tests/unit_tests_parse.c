@@ -246,10 +246,8 @@ void test_register_symbol(test_env* te) {
     stack->se->car = NULL;
     // passing a symbol already in env
     char symbol_env[] = "in-env";
-    typed_ptr* symbol_env_tp = install_symbol(env, \
-                                              symbol_env, \
-                                              TYPE_FIXNUM, \
-                                              (tp_value){.idx=1000});
+    typed_ptr thousand = {.type=TYPE_FIXNUM, .ptr={.idx=1000}};
+    typed_ptr* symbol_env_tp = install_symbol(env, symbol_env, &thousand);
     out = register_symbol(&stack, env, temp_env, symbol_env);
     if (out != PARSE_ERROR_NONE || \
         stack->se == NULL || \
@@ -265,8 +263,7 @@ void test_register_symbol(test_env* te) {
     char symbol_temp_env[] = "in-temp-env";
     typed_ptr* symbol_temp_env_tp = install_symbol(temp_env, \
                                                    symbol_temp_env, \
-                                                   TYPE_FIXNUM, \
-                                                   (tp_value){.idx=1000});
+                                                   &thousand);
     out = register_symbol(&stack, env, temp_env, symbol_temp_env);
     if (out != PARSE_ERROR_NONE || \
         stack->se == NULL || \

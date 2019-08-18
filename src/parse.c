@@ -196,7 +196,8 @@ interpreter_error register_symbol(s_expr_stack** stack, \
         Symbol_Node* found = symbol_lookup_name(env, name);
         found = (found == NULL) ? symbol_lookup_name(temp_env, name) : found;
         if (found == NULL) {
-            tp = install_symbol(temp_env, name, TYPE_UNDEF, (tp_value){.idx=0});
+            typed_ptr undef_tp = {.type=TYPE_UNDEF, .ptr={.idx=0}};
+            tp = install_symbol(temp_env, name, &undef_tp);
         } else {
             tp = create_atom_tp(TYPE_SYMBOL, found->symbol_idx);
         }

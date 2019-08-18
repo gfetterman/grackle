@@ -75,17 +75,8 @@ void delete_environment_full(Environment* env);
 
 // adding things to an environment
 
-typed_ptr* install_symbol(Environment* env, \
-                          char* name, \
-                          type type, \
-                          tp_value value);
-void blind_install_symbol_atom(Environment* env, \
-                               char* symbol, \
-                               type type, \
-                               long value);
-void blind_install_symbol_s_expr(Environment* env, \
-                                char* symbol, \
-                                s_expr* value);
+typed_ptr* install_symbol(Environment* env, char* name, typed_ptr* tp);
+void blind_install_symbol(Environment* env, char* name, typed_ptr* tp);
 typed_ptr* install_function(Environment* env, \
                             Symbol_Node* arg_list, \
                             Environment* closure_env, \
