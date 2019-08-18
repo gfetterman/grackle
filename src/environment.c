@@ -209,50 +209,28 @@ void delete_environment_full(Environment* env) {
 // The returned typed_ptr is the caller's responsibility to free; it can be
 //   safely (shallow) freed without harm to the symbol table or any other
 //   object.
-typed_ptr* install_symbol(Environment* env, \
-                          char* name, \
-                          type type, \
-                          tp_value value) {
-    unsigned int symbol_idx = env->symbol_table->length + \
-                              env->symbol_table->offset;
+typed_ptr* install_symbol(Environment* env, char* name, typed_ptr* tp) {
+    unsigned int idx = env->symbol_table->length + env->symbol_table->offset;
     Symbol_Node* found = symbol_lookup_name(env, name);
     if (found == NULL) {
-        Symbol_Node* new_sn = create_symbol_node(symbol_idx, name, type, value);
-        new_sn->next = env->symbol_table->head;
-        env->symbol_table->head = new_sn;
+        Symbol_Node* sn = create_symbol_node(idx, name, tp->type, tp->ptr);
+        sn->next = env->symbol_table->head;
+        env->symbol_table->head = sn;
         env->symbol_table->length++;
     } else {
-        found->type = type;
-        found->value = value;
-        symbol_idx = found->symbol_idx;
+        found->type = tp->type;
+        found->value = tp->ptr;
+        idx = found->symbol_idx;
     }
-    return create_atom_tp(TYPE_SYMBOL, symbol_idx);
+    return create_atom_tp(TYPE_SYMBOL, idx);
 }
 
 // All considerations attendant upon the function "install_symbol()" above apply
 //   here.
 // This is a convenience function for use in initial symbol table setup.
-void blind_install_symbol_atom(Environment* env, \
-                               char* name, \
-                               type type, \
-                               long value) {
-    typed_ptr* tp = install_symbol(env, \
-                                   name, \
-                                   type, \
-                                   (tp_value){.idx=value});
-    free(tp);
-    return;
-}
-
-// All considerations attendant upon the function "install_symbol()" above apply
-//   here.
-// This is a convenience function for use in initial symbol table setup.
-void blind_install_symbol_s_expr(Environment* env, char* name, s_expr* value) {
-    typed_ptr* tp = install_symbol(env, \
-                                   name, \
-                                   TYPE_S_EXPR, \
-                                   (tp_value){.se_ptr=value});
-    free(tp);
+void blind_install_symbol(Environment* env, char* name, typed_ptr* tp) {
+    typed_ptr* result = install_symbol(env, name, tp);
+    free(result);
     return;
 }
 
@@ -278,38 +256,43 @@ typed_ptr* install_function(Environment* env, \
 }
 
 void setup_symbol_table(Environment* env) {
+    #define ATOM_TP(type_, idx_) (typed_ptr){.type=type_, .ptr={.idx=idx_}}
+    #define S_EXPR_TP(ptr_) (typed_ptr){.type=TYPE_S_EXPR, .ptr={.se_ptr=ptr_}}
     builtin_code tbi = TYPE_BUILTIN;
-    blind_install_symbol_atom(env, "NULL_SENTINEL", TYPE_UNDEF, 0);
-    blind_install_symbol_atom(env, "+", tbi, BUILTIN_ADD);
-    blind_install_symbol_atom(env, "*", tbi, BUILTIN_MUL);
-    blind_install_symbol_atom(env, "-", tbi, BUILTIN_SUB);
-    blind_install_symbol_atom(env, "/", tbi, BUILTIN_DIV);
-    blind_install_symbol_atom(env, "define", tbi, BUILTIN_DEFINE);
-    blind_install_symbol_atom(env, "set!", tbi, BUILTIN_SETVAR);
-    blind_install_symbol_atom(env, "exit", tbi, BUILTIN_EXIT);
-    blind_install_symbol_atom(env, "cons", tbi, BUILTIN_CONS);
-    blind_install_symbol_atom(env, "car", tbi, BUILTIN_CAR);
-    blind_install_symbol_atom(env, "cdr", tbi, BUILTIN_CDR);
-    blind_install_symbol_atom(env, "and", tbi, BUILTIN_AND);
-    blind_install_symbol_atom(env, "or", tbi, BUILTIN_OR);
-    blind_install_symbol_atom(env, "not", tbi, BUILTIN_NOT);
-    blind_install_symbol_atom(env, "cond", tbi, BUILTIN_COND);
-    blind_install_symbol_atom(env, "list", tbi, BUILTIN_LIST);
-    blind_install_symbol_atom(env, "pair?", tbi, BUILTIN_PAIRPRED);
-    blind_install_symbol_atom(env, "list?", tbi, BUILTIN_LISTPRED);
-    blind_install_symbol_atom(env, "number?", tbi, BUILTIN_NUMBERPRED);
-    blind_install_symbol_atom(env, "boolean?", tbi, BUILTIN_BOOLPRED);
-    blind_install_symbol_atom(env, "void?", tbi, BUILTIN_VOIDPRED);
-    blind_install_symbol_atom(env, "=", tbi, BUILTIN_NUMBEREQ);
-    blind_install_symbol_atom(env, ">", tbi, BUILTIN_NUMBERGT);
-    blind_install_symbol_atom(env, "<", tbi, BUILTIN_NUMBERLT);
-    blind_install_symbol_atom(env, ">=", tbi, BUILTIN_NUMBERGE);
-    blind_install_symbol_atom(env, "<=", tbi, BUILTIN_NUMBERLE);
-    blind_install_symbol_atom(env, "lambda", tbi, BUILTIN_LAMBDA);
-    blind_install_symbol_atom(env, "else", TYPE_UNDEF, 0);
-    blind_install_symbol_s_expr(env, "null", create_empty_s_expr());
-    blind_install_symbol_atom(env, "#t", TYPE_BOOL, true);
-    blind_install_symbol_atom(env, "#f", TYPE_BOOL, false);
+    // builtin operators
+    blind_install_symbol(env, "+", &ATOM_TP(tbi, BUILTIN_ADD));
+    blind_install_symbol(env, "*", &ATOM_TP(tbi, BUILTIN_MUL));
+    blind_install_symbol(env, "-", &ATOM_TP(tbi, BUILTIN_SUB));
+    blind_install_symbol(env, "/", &ATOM_TP(tbi, BUILTIN_DIV));
+    blind_install_symbol(env, "define", &ATOM_TP(tbi, BUILTIN_DEFINE));
+    blind_install_symbol(env, "set!", &ATOM_TP(tbi, BUILTIN_SETVAR));
+    blind_install_symbol(env, "exit", &ATOM_TP(tbi, BUILTIN_EXIT));
+    blind_install_symbol(env, "cons", &ATOM_TP(tbi, BUILTIN_CONS));
+    blind_install_symbol(env, "car", &ATOM_TP(tbi, BUILTIN_CAR));
+    blind_install_symbol(env, "cdr", &ATOM_TP(tbi, BUILTIN_CDR));
+    blind_install_symbol(env, "and", &ATOM_TP(tbi, BUILTIN_AND));
+    blind_install_symbol(env, "or", &ATOM_TP(tbi, BUILTIN_OR));
+    blind_install_symbol(env, "not", &ATOM_TP(tbi, BUILTIN_NOT));
+    blind_install_symbol(env, "cond", &ATOM_TP(tbi, BUILTIN_COND));
+    blind_install_symbol(env, "list", &ATOM_TP(tbi, BUILTIN_LIST));
+    blind_install_symbol(env, "pair?", &ATOM_TP(tbi, BUILTIN_PAIRPRED));
+    blind_install_symbol(env, "list?", &ATOM_TP(tbi, BUILTIN_LISTPRED));
+    blind_install_symbol(env, "number?", &ATOM_TP(tbi, BUILTIN_NUMBERPRED));
+    blind_install_symbol(env, "boolean?", &ATOM_TP(tbi, BUILTIN_BOOLPRED));
+    blind_install_symbol(env, "void?", &ATOM_TP(tbi, BUILTIN_VOIDPRED));
+    blind_install_symbol(env, "=", &ATOM_TP(tbi, BUILTIN_NUMBEREQ));
+    blind_install_symbol(env, ">", &ATOM_TP(tbi, BUILTIN_NUMBERGT));
+    blind_install_symbol(env, "<", &ATOM_TP(tbi, BUILTIN_NUMBERLT));
+    blind_install_symbol(env, ">=", &ATOM_TP(tbi, BUILTIN_NUMBERGE));
+    blind_install_symbol(env, "<=", &ATOM_TP(tbi, BUILTIN_NUMBERLE));
+    blind_install_symbol(env, "lambda", &ATOM_TP(tbi, BUILTIN_LAMBDA));
+    // special values and keywords
+    blind_install_symbol(env, "else", &ATOM_TP(TYPE_UNDEF, 0));
+    blind_install_symbol(env, "#t", &ATOM_TP(TYPE_BOOL, true));
+    blind_install_symbol(env, "#f", &ATOM_TP(TYPE_BOOL, false));
+    blind_install_symbol(env, "null", &S_EXPR_TP(create_empty_s_expr()));
+    #undef ATOM_TP
+    #undef S_EXPR_TP
     return;
 }
 
