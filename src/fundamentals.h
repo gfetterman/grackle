@@ -10,7 +10,7 @@
 typedef enum {TYPE_UNDEF, \
               TYPE_ERROR, \
               TYPE_VOID, \
-              TYPE_NUM, \
+              TYPE_FIXNUM, \
               TYPE_BOOL, \
               TYPE_BUILTIN, \
               TYPE_S_EXPR, \
@@ -71,6 +71,8 @@ typedef enum {PARSE_ERROR_NONE, \
               EVAL_ERROR_BAD_ARG_TYPE, \
               EVAL_ERROR_NEED_NUM, \
               EVAL_ERROR_NOT_ID, \
+              EVAL_ERROR_FIXNUM_UNDER, \
+              EVAL_ERROR_FIXNUM_OVER, \
               EVAL_ERROR_DIV_ZERO, \
               EVAL_ERROR_EMPTY_ELSE, \
               EVAL_ERROR_NONTERMINAL_ELSE, \

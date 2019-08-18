@@ -91,30 +91,30 @@ void end_to_end_parse_tests(test_env* t_env) {
 void end_to_end_arithmetic_tests(test_env* t_env) {
     printf("# arithmetic #\n");
     printf("## + ##\n");
-    e2e_atom_test("(+ 1 2 3 4)", TYPE_NUM, 10, t_env);
-    e2e_atom_test("(+ 1 1)", TYPE_NUM, 2, t_env);
-    e2e_atom_test("(+ 1)", TYPE_NUM, 1, t_env);
-    e2e_atom_test("(+)", TYPE_NUM, 0, t_env);
+    e2e_atom_test("(+ 1 2 3 4)", TYPE_FIXNUM, 10, t_env);
+    e2e_atom_test("(+ 1 1)", TYPE_FIXNUM, 2, t_env);
+    e2e_atom_test("(+ 1)", TYPE_FIXNUM, 1, t_env);
+    e2e_atom_test("(+)", TYPE_FIXNUM, 0, t_env);
     e2e_atom_test("(+ 1 #t)", TYPE_ERROR, EVAL_ERROR_NEED_NUM, t_env);
     e2e_atom_test("(+ 1 (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     printf("## - ##\n");
-    e2e_atom_test("(- 10 1 2 3)", TYPE_NUM, 4, t_env);
-    e2e_atom_test("(- 10 1)", TYPE_NUM, 9, t_env);
-    e2e_atom_test("(- 10)", TYPE_NUM, -10, t_env);
+    e2e_atom_test("(- 10 1 2 3)", TYPE_FIXNUM, 4, t_env);
+    e2e_atom_test("(- 10 1)", TYPE_FIXNUM, 9, t_env);
+    e2e_atom_test("(- 10)", TYPE_FIXNUM, -10, t_env);
     e2e_atom_test("(-)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(- 1 #t)", TYPE_ERROR, EVAL_ERROR_NEED_NUM, t_env);
     e2e_atom_test("(- 1 (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     printf("## * ##\n");
-    e2e_atom_test("(* 2 3 4)", TYPE_NUM, 24, t_env);
-    e2e_atom_test("(* 2 3)", TYPE_NUM, 6, t_env);
-    e2e_atom_test("(* 2)", TYPE_NUM, 2, t_env);
-    e2e_atom_test("(*)", TYPE_NUM, 1, t_env);
+    e2e_atom_test("(* 2 3 4)", TYPE_FIXNUM, 24, t_env);
+    e2e_atom_test("(* 2 3)", TYPE_FIXNUM, 6, t_env);
+    e2e_atom_test("(* 2)", TYPE_FIXNUM, 2, t_env);
+    e2e_atom_test("(*)", TYPE_FIXNUM, 1, t_env);
     e2e_atom_test("(* 1 #t)", TYPE_ERROR, EVAL_ERROR_NEED_NUM, t_env);
     e2e_atom_test("(* 1 (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     printf("## / ##\n");
-    e2e_atom_test("(/ 100 4 5)", TYPE_NUM, 5, t_env);
-    e2e_atom_test("(/ 100 4)", TYPE_NUM, 25, t_env);
-    e2e_atom_test("(/ 1)", TYPE_NUM, 1, t_env);
+    e2e_atom_test("(/ 100 4 5)", TYPE_FIXNUM, 5, t_env);
+    e2e_atom_test("(/ 100 4)", TYPE_FIXNUM, 25, t_env);
+    e2e_atom_test("(/ 1)", TYPE_FIXNUM, 1, t_env);
     e2e_atom_test("(/)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(/ 100 0)", TYPE_ERROR, EVAL_ERROR_DIV_ZERO, t_env);
     e2e_atom_test("(/ 1 #t)", TYPE_ERROR, EVAL_ERROR_NEED_NUM, t_env);
@@ -241,7 +241,7 @@ void end_to_end_boolean_operation_tests(test_env* t_env) {
     printf("# boolean operators #\n");
     printf("## and ##\n");
     e2e_atom_test("(and)", TYPE_BOOL, true, t_env);
-    e2e_atom_test("(and 1)", TYPE_NUM, 1, t_env);
+    e2e_atom_test("(and 1)", TYPE_FIXNUM, 1, t_env);
     e2e_atom_test("(and #t)", TYPE_BOOL, true, t_env);
     e2e_atom_test("(and #f)", TYPE_BOOL, false, t_env);
     e2e_atom_test("(and #t #t)", TYPE_BOOL, true, t_env);
@@ -256,7 +256,7 @@ void end_to_end_boolean_operation_tests(test_env* t_env) {
     e2e_atom_test("(and #t (-) #t)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     printf("## or ##\n");
     e2e_atom_test("(or)", TYPE_BOOL, false, t_env);
-    e2e_atom_test("(or 1)", TYPE_NUM, 1, t_env);
+    e2e_atom_test("(or 1)", TYPE_FIXNUM, 1, t_env);
     e2e_atom_test("(or #t)", TYPE_BOOL, true, t_env);
     e2e_atom_test("(or #f)", TYPE_BOOL, false, t_env);
     e2e_atom_test("(or #t #t)", TYPE_BOOL, true, t_env);
@@ -286,11 +286,11 @@ void end_to_end_boolean_operation_tests(test_env* t_env) {
 
 void end_to_end_car_cdr_tests(test_env* t_env) {
     printf("# car & cdr #\n");
-    e2e_atom_test("(car (cons 1 2))", TYPE_NUM, 1, t_env);
-    e2e_atom_test("(cdr (cons 1 2))", TYPE_NUM, 2, t_env);
-    e2e_atom_test("(car (list 1 2 3))", TYPE_NUM, 1, t_env);
-    e2e_atom_test("(car (cdr (list 1 2 3)))", TYPE_NUM, 2, t_env);
-    e2e_atom_test("(car (cdr (cdr (list 1 2 3))))", TYPE_NUM, 3, t_env);
+    e2e_atom_test("(car (cons 1 2))", TYPE_FIXNUM, 1, t_env);
+    e2e_atom_test("(cdr (cons 1 2))", TYPE_FIXNUM, 2, t_env);
+    e2e_atom_test("(car (list 1 2 3))", TYPE_FIXNUM, 1, t_env);
+    e2e_atom_test("(car (cdr (list 1 2 3)))", TYPE_FIXNUM, 2, t_env);
+    e2e_atom_test("(car (cdr (cdr (list 1 2 3))))", TYPE_FIXNUM, 3, t_env);
     e2e_atom_test("(car 1)", TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE, t_env);
     e2e_atom_test("(car)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     char* car_many = "(car (cons 1 2) (cons 3 4))";
@@ -311,23 +311,23 @@ void end_to_end_cond_tests(test_env* t_env) {
     e2e_atom_test("(cond)", TYPE_VOID, 0, t_env);
     e2e_atom_test("(cond #t)", TYPE_ERROR, EVAL_ERROR_BAD_SYNTAX, t_env);
     e2e_atom_test("(cond (#t))", TYPE_BOOL, true, t_env);
-    e2e_atom_test("(cond (#t 1))", TYPE_NUM, 1, t_env);
+    e2e_atom_test("(cond (#t 1))", TYPE_FIXNUM, 1, t_env);
     e2e_atom_test("(cond (#f 1))", TYPE_VOID, 0, t_env);
-    e2e_atom_test("(cond (#t 1) (else 2))", TYPE_NUM, 1, t_env);
-    e2e_atom_test("(cond (#f 1) (else 2))", TYPE_NUM, 2, t_env);
+    e2e_atom_test("(cond (#t 1) (else 2))", TYPE_FIXNUM, 1, t_env);
+    e2e_atom_test("(cond (#f 1) (else 2))", TYPE_FIXNUM, 2, t_env);
     char* empty_else = "(cond (#f 1) (else))";
     e2e_atom_test(empty_else, TYPE_ERROR, EVAL_ERROR_EMPTY_ELSE, t_env);
     char* nonterm_else = "(cond (#f 1) (else 2) (#t 3))";
     e2e_atom_test(nonterm_else, TYPE_ERROR, EVAL_ERROR_NONTERMINAL_ELSE, t_env);
-    e2e_atom_test("(cond (#t (+ 1 1) (+ 2 2)))", TYPE_NUM, 4, t_env);
+    e2e_atom_test("(cond (#t (+ 1 1) (+ 2 2)))", TYPE_FIXNUM, 4, t_env);
     e2e_atom_test("(cond ((-) 1))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(cond (#t (-)))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     return;
 }
 
 void end_to_end_cons_tests(test_env* t_env) {
-    typed_ptr* num_1 = create_atom_tp(TYPE_NUM, 1);
-    typed_ptr* num_2 = create_atom_tp(TYPE_NUM, 2);
+    typed_ptr* num_1 = create_atom_tp(TYPE_FIXNUM, 1);
+    typed_ptr* num_2 = create_atom_tp(TYPE_FIXNUM, 2);
     typed_ptr* cons_test_num_pair[] = {num_1, num_2};
     printf("# cons #\n");
     e2e_atom_test("(cons)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
@@ -344,8 +344,8 @@ void end_to_end_cons_tests(test_env* t_env) {
 }
 
 void end_to_end_list_tests(test_env* t_env) {
-    typed_ptr* num_1 = create_atom_tp(TYPE_NUM, 1);
-    typed_ptr* num_2 = create_atom_tp(TYPE_NUM, 2);
+    typed_ptr* num_1 = create_atom_tp(TYPE_FIXNUM, 1);
+    typed_ptr* num_2 = create_atom_tp(TYPE_FIXNUM, 2);
     typed_ptr* list_test_num_pair[] = {num_1, num_2};
     printf("# list #\n");
     e2e_s_expr_test("(list)", list_test_num_pair, 0, t_env);
@@ -364,13 +364,13 @@ void end_to_end_lambda_tests(test_env* t_env) {
     e2e_atom_test("(lambda 1)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(lambda 1 2)", TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE, t_env);
     e2e_atom_test("(lambda ())", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    e2e_atom_test("((lambda () 1))", TYPE_NUM, 1, t_env);
+    e2e_atom_test("((lambda () 1))", TYPE_FIXNUM, 1, t_env);
     e2e_atom_test("((lambda () 1) 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
-    e2e_atom_test("((lambda () (+ 1 1)))", TYPE_NUM, 2, t_env);
+    e2e_atom_test("((lambda () (+ 1 1)))", TYPE_FIXNUM, 2, t_env);
     char* lam_0_few = "((lambda (x) (* x 10)))";
     e2e_atom_test(lam_0_few, TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    e2e_atom_test("((lambda (x) (* x 10)) 3)", TYPE_NUM, 30, t_env);
-    e2e_atom_test("((lambda (x) (* x 10)) (+ 1 2))", TYPE_NUM, 30, t_env);
+    e2e_atom_test("((lambda (x) (* x 10)) 3)", TYPE_FIXNUM, 30, t_env);
+    e2e_atom_test("((lambda (x) (* x 10)) (+ 1 2))", TYPE_FIXNUM, 30, t_env);
     char* lam_body_error = "((lambda (x) (* x 10)) #t)";
     e2e_atom_test(lam_body_error, TYPE_ERROR, EVAL_ERROR_NEED_NUM, t_env);
     char* lam_prop_error = "((lambda (x) (* x 10)) (-))";
@@ -379,7 +379,7 @@ void end_to_end_lambda_tests(test_env* t_env) {
     e2e_atom_test(lam_0_many, TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     char* lam_not_id = "((lambda (x 2) (* x 10)) 3)";
     e2e_atom_test(lam_not_id, TYPE_ERROR, EVAL_ERROR_NOT_ID, t_env);
-    e2e_atom_test("((lambda (x y) (* x y)) 3 4)", TYPE_NUM, 12, t_env);
+    e2e_atom_test("((lambda (x y) (* x y)) 3 4)", TYPE_FIXNUM, 12, t_env);
     char* lam_1_few = "((lambda (x y) (* x y)) 3)";
     e2e_atom_test(lam_1_few, TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     char* lam_1_many = "((lambda (x y) (* x y)) 3 4 5)";
@@ -404,7 +404,7 @@ void end_to_end_setvar_tests(test_env* t_env) {
                             TYPE_ERROR, \
                             EVAL_ERROR_FEW_ARGS, t_env);
     e2e_multiline_atom_test(set_lines, 2, TYPE_VOID, 0, t_env);
-    e2e_multiline_atom_test(set_lines, 3, TYPE_NUM, 3, t_env);
+    e2e_multiline_atom_test(set_lines, 3, TYPE_FIXNUM, 3, t_env);
     return;
 }
 
@@ -418,7 +418,7 @@ void end_to_end_define_tests(test_env* t_env) {
     char* def_line2 = "(+ x 10)";
     char* def_lines[] = {def_line1, def_line2};
     e2e_multiline_atom_test(def_lines, 1, TYPE_VOID, 0, t_env);
-    e2e_multiline_atom_test(def_lines, 2, TYPE_NUM, 13, t_env);
+    e2e_multiline_atom_test(def_lines, 2, TYPE_FIXNUM, 13, t_env);
     e2e_atom_test("(define ())", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(define () 1)", TYPE_ERROR, EVAL_ERROR_BAD_SYNTAX, t_env);
     e2e_atom_test("(define (x))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
@@ -465,12 +465,12 @@ void end_to_end_define_tests(test_env* t_env) {
                             t_env);
     e2e_multiline_atom_test(def_call_fnx_zero_param_zero_arg, \
                             2, \
-                            TYPE_NUM, \
+                            TYPE_FIXNUM, \
                             10, \
                             t_env);
     e2e_multiline_atom_test(def_call_fnx_zero_param_s_expr_zero_arg, \
                             2, \
-                            TYPE_NUM, \
+                            TYPE_FIXNUM, \
                             3, \
                             t_env);
     e2e_multiline_atom_test(def_call_fnx_zero_param_one_arg, \
@@ -485,7 +485,7 @@ void end_to_end_define_tests(test_env* t_env) {
                             t_env);
     e2e_multiline_atom_test(def_call_fnx_one_param_one_arg, \
                             2, \
-                            TYPE_NUM, \
+                            TYPE_FIXNUM, \
                             20, \
                             t_env);
     e2e_multiline_atom_test(def_call_fnx_one_param_two_arg, \
@@ -505,7 +505,7 @@ void end_to_end_define_tests(test_env* t_env) {
                             t_env);
     e2e_multiline_atom_test(def_call_fnx_two_param_two_arg, \
                             2, \
-                            TYPE_NUM, \
+                            TYPE_FIXNUM, \
                             25, \
                             t_env);
     e2e_multiline_atom_test(def_call_fnx_two_param_three_arg, \

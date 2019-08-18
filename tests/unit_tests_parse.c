@@ -138,7 +138,7 @@ void test_terminate_s_expr(test_env* te) {
     }
     err = PARSE_ERROR_NONE;
     // passing in a stack with a pair on top -> parse error
-    s_expr* se = create_s_expr(NULL, create_atom_tp(TYPE_NUM, 1000));
+    s_expr* se = create_s_expr(NULL, create_atom_tp(TYPE_FIXNUM, 1000));
     s_expr_stack_push(&stack, se);
     out = terminate_s_expr(&stack, &err);
     if (out != PARSE_ERROR || \
@@ -162,7 +162,7 @@ void test_terminate_s_expr(test_env* te) {
     }
     free(se);
     // passing in stack of one partial s-expr -> finish s-expr, parse is done
-    typed_ptr* test_atom = create_atom_tp(TYPE_NUM, 1000);
+    typed_ptr* test_atom = create_atom_tp(TYPE_FIXNUM, 1000);
     se = create_s_expr(test_atom, NULL);
     s_expr_stack_push(&stack, se);
     out = terminate_s_expr(&stack, &err);
@@ -176,7 +176,7 @@ void test_terminate_s_expr(test_env* te) {
     }
     delete_s_expr_recursive(se, true);
     // passing in stack of a nested s-expr -> return to spine, parse can proceed
-    test_atom = create_atom_tp(TYPE_NUM, 1000);
+    test_atom = create_atom_tp(TYPE_FIXNUM, 1000);
     se = create_empty_s_expr();
     s_expr_stack_push(&stack, se);
     init_new_s_expr(&stack);
@@ -237,7 +237,7 @@ void test_register_symbol(test_env* te) {
     if (out != PARSE_ERROR_NONE || \
         stack->se == NULL || \
         stack->se->car == NULL || \
-        !check_typed_ptr(stack->se->car, TYPE_NUM, (tp_value){.idx=1000}) || \
+        !check_typed_ptr(stack->se->car, TYPE_FIXNUM, (tp_value){.idx=1000}) || \
         symbol_lookup_name(env, symbol_num) != NULL || \
         symbol_lookup_name(temp_env, symbol_num) != NULL) {
         pass = false;
@@ -248,7 +248,7 @@ void test_register_symbol(test_env* te) {
     char symbol_env[] = "in-env";
     typed_ptr* symbol_env_tp = install_symbol(env, \
                                               symbol_env, \
-                                              TYPE_NUM, \
+                                              TYPE_FIXNUM, \
                                               (tp_value){.idx=1000});
     out = register_symbol(&stack, env, temp_env, symbol_env);
     if (out != PARSE_ERROR_NONE || \
@@ -265,7 +265,7 @@ void test_register_symbol(test_env* te) {
     char symbol_temp_env[] = "in-temp-env";
     typed_ptr* symbol_temp_env_tp = install_symbol(temp_env, \
                                                    symbol_temp_env, \
-                                                   TYPE_NUM, \
+                                                   TYPE_FIXNUM, \
                                                    (tp_value){.idx=1000});
     out = register_symbol(&stack, env, temp_env, symbol_temp_env);
     if (out != PARSE_ERROR_NONE || \
