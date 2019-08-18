@@ -278,10 +278,10 @@ typed_ptr* eval_comparison(const s_expr* se, Environment* env) {
         if (arg_se->car->type != TYPE_NUM) {
             result = create_error_tp(EVAL_ERROR_NEED_NUM);
         } else {
-            long truth = 1;
+            long truth = true;
             long last_num = arg_se->car->ptr.idx;
             arg_se = s_expr_next(arg_se);
-            while (!is_empty_list(arg_se) && truth == 1) {
+            while (!is_empty_list(arg_se) && truth == true) {
                 if (arg_se->car->type != TYPE_NUM) {
                     result = create_error_tp(EVAL_ERROR_NEED_NUM);
                     break;
@@ -573,9 +573,9 @@ typed_ptr* eval_not(const s_expr* se, Environment* env) {
         result = args_tp;
     } else {
         if (is_false_literal(args_tp->ptr.se_ptr->car)) {
-            result = create_atom_tp(TYPE_BOOL, 1);
+            result = create_atom_tp(TYPE_BOOL, true);
         } else {
-            result = create_atom_tp(TYPE_BOOL, 0);
+            result = create_atom_tp(TYPE_BOOL, false);
         }
         delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
         free(args_tp);
@@ -701,7 +701,7 @@ typed_ptr* eval_list_pred(const s_expr* se, Environment* env) {
         result = args_tp;
     } else {
         typed_ptr* arg = args_tp->ptr.se_ptr->car;
-        result = create_atom_tp(TYPE_BOOL, 1);
+        result = create_atom_tp(TYPE_BOOL, true);
         if (arg->type != TYPE_S_EXPR) {
             result->ptr.idx = 0;
         } else {
@@ -738,7 +738,7 @@ typed_ptr* eval_atom_pred(const s_expr* se, Environment* env, type t) {
         result = args_tp;
     } else {
         typed_ptr* arg = args_tp->ptr.se_ptr->car;
-        result = create_atom_tp(TYPE_BOOL, (arg->type == t) ? 1 : 0);
+        result = create_atom_tp(TYPE_BOOL, arg->type == t);
         if (arg->type == TYPE_S_EXPR && is_empty_list(arg->ptr.se_ptr)) {
             result->ptr.idx = 0;
         }

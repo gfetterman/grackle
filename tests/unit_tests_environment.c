@@ -28,14 +28,14 @@ void unit_tests_environment(test_env* te) {
 void test_create_symbol_node(test_env* te) {
     print_test_announce("create_symbol_node()");
     Symbol_Node* out = create_symbol_node(0, "test", TYPE_NUM, TEST_NUM_TP_VAL);
-    bool pass = 1;
+    bool pass = true;
     if (out == NULL || \
         out->symbol_idx != 0 || \
         strcmp(out->name, "test") || \
         out->type != TYPE_NUM || \
         out->value.idx != TEST_NUM || \
         out->next != NULL) {
-        pass = 0;
+        pass = false;
     }
     delete_symbol_node_list(out);
     print_test_result(pass);
@@ -47,14 +47,14 @@ void test_create_symbol_node(test_env* te) {
 void test_create_error_symbol_node(test_env* te) {
     print_test_announce("create_error_symbol_node()");
     Symbol_Node* out = create_error_symbol_node(EVAL_ERROR_EXIT);
-    bool pass = 1;
+    bool pass = true;
     if (out == NULL || \
         out->symbol_idx != 0 || \
         strcmp(out->name, "") || \
         out->type != TYPE_ERROR || \
         out->value.idx != EVAL_ERROR_EXIT || \
         out->next != NULL) {
-        pass = 0;
+        pass = false;
     }
     delete_symbol_node_list(out);
     print_test_result(pass);
@@ -66,12 +66,12 @@ void test_create_error_symbol_node(test_env* te) {
 void test_create_symbol_table(test_env* te) {
     print_test_announce("create_symbol_table()");
     Symbol_Table* out = create_symbol_table(42);
-    bool pass = 1;
+    bool pass = true;
     if (out == NULL || \
         out->head != NULL || \
         out->length != 0 || \
         out->offset != 42) {
-        pass = 0;
+        pass = false;
     }
     free(out);
     print_test_result(pass);
@@ -84,7 +84,7 @@ void test_merge_symbol_tables(test_env* te) {
     print_test_announce("merge_symbol_tables()");
     Symbol_Table* first = create_symbol_table(0);
     Symbol_Table* second = create_symbol_table(10);
-    bool pass = 1;
+    bool pass = true;
     // both empty
     merge_symbol_tables(first, second);
     if (first == NULL || \
@@ -93,7 +93,7 @@ void test_merge_symbol_tables(test_env* te) {
         first->length != 0 || \
         first->offset != 0 || \
         second->head != NULL) {
-        pass = 0;
+        pass = false;
     }
     // first empty
     Symbol_Node *first_node1, *first_node2, *second_node1, *second_node2;
@@ -114,7 +114,7 @@ void test_merge_symbol_tables(test_env* te) {
         first->offset != 0 || \
         second->head != NULL || \
         second->length != 0) {
-        pass = 0;
+        pass = false;
     }
     second_node1->next = NULL;
     first->head = NULL;
@@ -133,7 +133,7 @@ void test_merge_symbol_tables(test_env* te) {
         first->offset != 0 || \
         second->head != NULL || \
         second->length != 0) {
-        pass = 0;
+        pass = false;
     }
     // neither empty
     second->head = second_node1;
@@ -151,7 +151,7 @@ void test_merge_symbol_tables(test_env* te) {
         first->offset != 0 || \
         second->head != NULL || \
         second->length != 0) {
-        pass = 0;
+        pass = false;
     }
     delete_symbol_node_list(first->head);
     free(first);
@@ -191,14 +191,14 @@ void test_create_function_node(test_env* te) {
     Environment* closure = create_environment(0, 0);
     typed_ptr* body = create_s_expr_tp(create_empty_s_expr());
     Function_Node* out = create_function_node(0, params, closure, body);
-    bool pass = 1;
+    bool pass = true;
     if (out == NULL || \
         out->function_idx != 0 || \
         out->param_list != params || \
         out->closure_env != closure || \
         out->body != body || \
         out->next != NULL) {
-        pass = 0;
+        pass = false;
     }
     delete_symbol_node_list(params);
     delete_environment_full(closure);
@@ -214,12 +214,12 @@ void test_create_function_node(test_env* te) {
 void test_create_function_table(test_env* te) {
     print_test_announce("create_function_table()");
     Function_Table* out = create_function_table(42);
-    bool pass = 1;
+    bool pass = true;
     if (out == NULL || \
         out->head != NULL || \
         out->length != 0 || \
         out->offset != 42) {
-        pass = 0;
+        pass = false;
     }
     free(out);
     print_test_result(pass);
@@ -231,7 +231,7 @@ void test_create_function_table(test_env* te) {
 void test_create_environment(test_env* te) {
     print_test_announce("create_environment()");
     Environment* out = create_environment(2, 4);
-    bool pass = 1;
+    bool pass = true;
     if (out == NULL || \
         out->symbol_table == NULL || \
         out->symbol_table->head != NULL || \
@@ -241,7 +241,7 @@ void test_create_environment(test_env* te) {
         out->function_table->head != NULL || \
         out->function_table->length != 0 || \
         out->function_table->offset != 4) {
-        pass = 0;
+        pass = false;
     }
     delete_environment_full(out);
     print_test_result(pass);
@@ -266,7 +266,7 @@ void test_copy_environment(test_env* te) {
     typed_ptr* out = install_function(original, params, closure, body);
     free(out);
     Environment* copied = copy_environment(original);
-    bool pass = 1;
+    bool pass = true;
     if (copied == NULL || \
         copied->symbol_table == NULL || \
         copied->symbol_table == original->symbol_table || \
@@ -274,7 +274,7 @@ void test_copy_environment(test_env* te) {
         copied->symbol_table->offset != 0 || \
         copied->function_table == NULL || \
         copied->function_table != original->function_table) {
-        pass = 0;
+        pass = false;
     }
     for (Symbol_Node* osn = original->symbol_table->head; \
          pass && osn != NULL; \
@@ -288,7 +288,7 @@ void test_copy_environment(test_env* te) {
              osn->value.se_ptr == csn->value.se_ptr) || \
             (osn->type != TYPE_S_EXPR && \
              osn->value.idx != csn->value.idx)) {
-            pass = 0;
+            pass = false;
         }
     }
     free(closure->function_table);
@@ -335,49 +335,49 @@ void test_install_symbol_regular_and_blind(test_env* te) {
     char name4[] = "test_sym_4";
     typed_ptr* out;
     out = install_symbol(env, name1, TYPE_NUM, TEST_NUM_TP_VAL);
-    bool pass = 1;
+    bool pass = true;
     if (out == NULL || \
         out->type != TYPE_SYMBOL || \
         out->ptr.idx != symbol_lookup_name(env, name1)->symbol_idx) {
-        pass = 0;
+        pass = false;
     }
     free(out);
     out = install_symbol(env, name2, TYPE_BOOL, TEST_NUM_TP_VAL);
     if (out == NULL || \
         out->type != TYPE_SYMBOL || \
         out->ptr.idx != symbol_lookup_name(env, name2)->symbol_idx) {
-        pass = 0;
+        pass = false;
     }
     free(out);
     blind_install_symbol_atom(env, name3, TYPE_ERROR, EVAL_ERROR_EXIT);
     s_expr* se = create_empty_s_expr();
     blind_install_symbol_s_expr(env, name4, se);
     if (env->symbol_table->length != 4) {
-        pass = 0;
+        pass = false;
     }
     if (symbol_lookup_name(env, name1) == NULL || \
         strcmp(symbol_lookup_name(env, name1)->name, name1) || \
         symbol_lookup_name(env, name1)->type != TYPE_NUM || \
         symbol_lookup_name(env, name1)->value.idx != TEST_NUM) {
-        pass = 0;
+        pass = false;
     }
     if (symbol_lookup_name(env, name2) == NULL || \
         strcmp(symbol_lookup_name(env, name2)->name, name2) || \
         symbol_lookup_name(env, name2)->type != TYPE_BOOL || \
         symbol_lookup_name(env, name2)->value.idx != TEST_NUM) {
-        pass = 0;
+        pass = false;
     }
     if (symbol_lookup_name(env, name3) == NULL || \
         strcmp(symbol_lookup_name(env, name3)->name, name3) || \
         symbol_lookup_name(env, name3)->type != TYPE_ERROR || \
         symbol_lookup_name(env, name3)->value.idx != EVAL_ERROR_EXIT) {
-        pass = 0;
+        pass = false;
     }
     if (symbol_lookup_name(env, name4) == NULL || \
         strcmp(symbol_lookup_name(env, name4)->name, name4) || \
         symbol_lookup_name(env, name4)->type != TYPE_S_EXPR || \
         symbol_lookup_name(env, name4)->value.se_ptr != se) {
-        pass = 0;
+        pass = false;
     }
     delete_environment_full(env);
     print_test_result(pass);
@@ -395,14 +395,14 @@ void test_install_function(test_env* te) {
     Environment* closure = create_environment(0, 0);
     typed_ptr* body = create_s_expr_tp(create_empty_s_expr());
     typed_ptr* out = install_function(env, params, closure, body);
-    bool pass = 1;
+    bool pass = true;
     if (out == NULL || \
         out->type != TYPE_FUNCTION || \
         out->ptr.idx != env->function_table->head->function_idx || \
         function_lookup_index(env, out)->param_list != params || \
         function_lookup_index(env, out)->closure_env != closure || \
         function_lookup_index(env, out)->body != body) {
-        pass = 0;
+        pass = false;
     }
     free(out);
     free(closure->function_table);
@@ -423,7 +423,7 @@ void test_symbol_lookup_name(test_env* te) {
     blind_install_symbol_atom(env, name1, TYPE_NUM, TEST_NUM);
     blind_install_symbol_atom(env, name2, TYPE_BOOL, TEST_NUM);
     blind_install_symbol_atom(env, name3, TYPE_ERROR, EVAL_ERROR_EXIT);
-    bool pass = 1;
+    bool pass = true;
     if (symbol_lookup_name(env, name1) == NULL || \
         strcmp(symbol_lookup_name(env, name1)->name, name1) || \
         symbol_lookup_name(env, name1)->type != TYPE_NUM || \
@@ -437,10 +437,10 @@ void test_symbol_lookup_name(test_env* te) {
         symbol_lookup_name(env, name3)->type != TYPE_ERROR || \
         symbol_lookup_name(env, name3)->value.idx != EVAL_ERROR_EXIT || \
         symbol_lookup_name(env, absent_name) != NULL) {
-        pass = 0;
+        pass = false;
     }
     if (symbol_lookup_name(env, NULL) != NULL) {
-        pass = 0;
+        pass = false;
     }
     delete_environment_full(env);
     print_test_result(pass);
@@ -461,7 +461,7 @@ void test_symbol_lookup_index(test_env* te) {
     symbol_3 = install_symbol(env, name3, TYPE_ERROR, TEST_NUM_TP_VAL);
     typed_ptr* absent_symbol = create_atom_tp(TYPE_SYMBOL, 1000);
     typed_ptr* not_a_symbol = create_atom_tp(TYPE_NUM, 1000);
-    bool pass = 1;
+    bool pass = true;
     if (symbol_lookup_index(env, symbol_1) == NULL || \
         strcmp(symbol_lookup_index(env, symbol_1)->name, name1) || \
         symbol_lookup_index(env, symbol_1)->type != TYPE_NUM || \
@@ -475,13 +475,13 @@ void test_symbol_lookup_index(test_env* te) {
         symbol_lookup_index(env, symbol_3)->type != TYPE_ERROR || \
         symbol_lookup_index(env, symbol_3)->value.idx != TEST_NUM || \
         symbol_lookup_index(env, absent_symbol) != NULL) {
-        pass = 0;
+        pass = false;
     }
     if (symbol_lookup_index(env, NULL) != NULL) {
-        pass = 0;
+        pass = false;
     }
     if (symbol_lookup_index(env, not_a_symbol) != NULL) {
-        pass = 0;
+        pass = false;
     }
     free(symbol_1);
     free(symbol_2);
@@ -510,7 +510,7 @@ void test_builtin_lookup_index(test_env* te) {
     blind_install_symbol_atom(env, "bi_1", TYPE_BUILTIN, builtin_1);
     blind_install_symbol_atom(env, "bi_2", TYPE_BUILTIN, builtin_2);
     blind_install_symbol_atom(env, "bi_3", TYPE_BUILTIN, builtin_3);
-    bool pass = 1;
+    bool pass = true;
     if (builtin_lookup_index(env, bi_ptr_1) == NULL || \
         strcmp(builtin_lookup_index(env, bi_ptr_1)->name, "bi_1") || \
         builtin_lookup_index(env, bi_ptr_1)->type != TYPE_BUILTIN || \
@@ -524,13 +524,13 @@ void test_builtin_lookup_index(test_env* te) {
         builtin_lookup_index(env, bi_ptr_3)->type != TYPE_BUILTIN || \
         builtin_lookup_index(env, bi_ptr_3)->value.idx != builtin_3 || \
         builtin_lookup_index(env, bi_ptr_absent) != NULL) {
-        pass = 0;
+        pass = false;
     }
     if (builtin_lookup_index(env, NULL) != NULL) {
-        pass = 0;
+        pass = false;
     }
     if (builtin_lookup_index(env, not_a_builtin) != NULL) {
-        pass = 0;
+        pass = false;
     }
     free(bi_ptr_1);
     free(bi_ptr_2);
@@ -560,19 +560,19 @@ void test_value_lookup_index(test_env* te) {
     symbol_undef = install_symbol(env, name_undef, TYPE_UNDEF, TEST_NUM_TP_VAL);
     typed_ptr* absent_symbol = create_atom_tp(TYPE_SYMBOL, 1000);
     typed_ptr* not_a_symbol = create_atom_tp(TYPE_NUM, 1000);
-    bool pass = 1;
+    bool pass = true;
     typed_ptr* out = value_lookup_index(env, symbol_num);
     if (out == NULL || \
         out->type != TYPE_NUM || \
         out->ptr.idx != TEST_NUM) {
-        pass = 0;
+        pass = false;
     }
     free(out);
     out = value_lookup_index(env, symbol_bool);
     if (out == NULL || \
         out->type != TYPE_BOOL || \
         out->ptr.idx != TEST_NUM) {
-        pass = 0;
+        pass = false;
     }
     free(out);
     out = value_lookup_index(env, symbol_se);
@@ -580,7 +580,7 @@ void test_value_lookup_index(test_env* te) {
         out->type != TYPE_S_EXPR || \
         !is_empty_list(out->ptr.se_ptr) || \
         out->ptr.se_ptr == se) {
-        pass = 0;
+        pass = false;
     }
     free(out->ptr.se_ptr);
     free(out);
@@ -588,17 +588,17 @@ void test_value_lookup_index(test_env* te) {
     if (out == NULL || \
         out->type != TYPE_ERROR || \
         out->ptr.idx != EVAL_ERROR_UNDEF_SYM) {
-        pass = 0;
+        pass = false;
     }
     free(out);
     out = value_lookup_index(env, absent_symbol);
     if (out != NULL) {
-        pass = 0;
+        pass = false;
     }
     free(out);
     out = value_lookup_index(env, not_a_symbol);
     if (out != NULL) {
-        pass = 0;
+        pass = false;
     }
     free(out);
     free(symbol_num);
@@ -624,24 +624,24 @@ void test_function_lookup_index(test_env* te) {
     Environment* closure = create_environment(0, 0);
     typed_ptr* body = create_s_expr_tp(create_empty_s_expr());
     typed_ptr* out = install_function(env, params, closure, body);
-    bool pass = 1;
+    bool pass = true;
     if (function_lookup_index(env, out) == NULL || \
         function_lookup_index(env, out)->function_idx != out->ptr.idx || \
         function_lookup_index(env, out)->param_list != params || \
         function_lookup_index(env, out)->closure_env != closure || \
         function_lookup_index(env, out)->body != body) {
-        pass = 0;
+        pass = false;
     }
     if (function_lookup_index(env, NULL) != NULL) {
-        pass = 0;
+        pass = false;
     }
     typed_ptr* not_a_function = create_atom_tp(TYPE_NUM, 1000);
     if (function_lookup_index(env, not_a_function) != NULL) {
-        pass = 0;
+        pass = false;
     }
     typed_ptr* absent_function = create_atom_tp(TYPE_FUNCTION, 1000);
     if (function_lookup_index(env, absent_function) != NULL) {
-        pass = 0;
+        pass = false;
     }
     free(out);
     free(not_a_function);

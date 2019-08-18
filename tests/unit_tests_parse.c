@@ -18,11 +18,11 @@ void test_create_s_expr_stack(test_env* te) {
     print_test_announce("create_s_expr_stack()");
     s_expr* se = create_empty_s_expr();
     s_expr_stack* stack = create_s_expr_stack(se);
-    bool pass = 1;
+    bool pass = true;
     if (stack == NULL || \
         stack->se != se || \
         stack->next != NULL) {
-        pass = 0;
+        pass = false;
     }
     free(se);
     free(stack);
@@ -38,11 +38,11 @@ void test_s_expr_stack_push_pop(test_env* te) {
     s_expr* se_1 = create_empty_s_expr();
     s_expr* se_2 = create_empty_s_expr();
     s_expr_stack_push(&stack, se_1);
-    bool pass = 1;
+    bool pass = true;
     if (stack == NULL || \
         stack->se != se_1 || \
         stack->next != NULL) {
-        pass = 0;
+        pass = false;
     }
     s_expr_stack_push(&stack, se_2);
     if (stack == NULL || \
@@ -50,17 +50,17 @@ void test_s_expr_stack_push_pop(test_env* te) {
         stack->next == NULL || \
         stack->next->se != se_1 || \
         stack->next->next != NULL) {
-        pass = 0;
+        pass = false;
     }
     s_expr_stack_pop(&stack);
     if (stack == NULL || \
         stack->se != se_1 || \
         stack->next != NULL) {
-        pass = 0;
+        pass = false;
     }
     s_expr_stack_pop(&stack);
     if (stack != NULL) {
-        pass = 0;
+        pass = false;
     }
     free(se_1);
     free(se_2);
@@ -76,7 +76,7 @@ void test_init_new_s_expr(test_env* te) {
     s_expr* se_1 = create_empty_s_expr();
     s_expr_stack* stack = create_s_expr_stack(se_1);
     init_new_s_expr(&stack);
-    bool pass = 1;
+    bool pass = true;
     if (stack == NULL || \
         !is_empty_list(stack->se) || \
         stack->next == NULL || \
@@ -85,7 +85,7 @@ void test_init_new_s_expr(test_env* te) {
         stack->next->se->car == NULL || \
         stack->next->se->car->ptr.se_ptr != stack->se || \
         stack->next->se->cdr != NULL) {
-        pass = 0;
+        pass = false;
     }
     free(stack->se);
     free(se_1->car);
@@ -103,7 +103,7 @@ void test_extend_s_expr(test_env* te) {
     s_expr* se_1 = create_empty_s_expr();
     s_expr_stack* stack = create_s_expr_stack(se_1);
     extend_s_expr(&stack);
-    bool pass = 1;
+    bool pass = true;
     if (stack == NULL || \
         !is_empty_list(stack->se) || \
         stack->next == NULL || \
@@ -112,7 +112,7 @@ void test_extend_s_expr(test_env* te) {
         stack->next->se->car != NULL || \
         stack->next->se->cdr == NULL || \
         stack->next->se->cdr->ptr.se_ptr != stack->se) {
-        pass = 0;
+        pass = false;
     }
     free(stack->se);
     free(se_1->cdr);
@@ -131,10 +131,10 @@ void test_terminate_s_expr(test_env* te) {
     interpreter_error err = PARSE_ERROR_NONE;
     // passing in an empty stack -> parse error
     Parse_State out = terminate_s_expr(&stack, &err);
-    bool pass = 1;
+    bool pass = true;
     if (out != PARSE_ERROR || \
         err != PARSE_ERROR_UNBAL_PAREN) {
-        pass = 0;
+        pass = false;
     }
     err = PARSE_ERROR_NONE;
     // passing in a stack with a pair on top -> parse error
@@ -143,7 +143,7 @@ void test_terminate_s_expr(test_env* te) {
     out = terminate_s_expr(&stack, &err);
     if (out != PARSE_ERROR || \
         err != PARSE_ERROR_UNBAL_PAREN) {
-        pass = 0;
+        pass = false;
     }
     free(se->cdr);
     free(se);
@@ -158,7 +158,7 @@ void test_terminate_s_expr(test_env* te) {
         out != PARSE_FINISH || \
         err != PARSE_ERROR_NONE || \
         !is_empty_list(se)) {
-        pass = 0;
+        pass = false;
     }
     free(se);
     // passing in stack of one partial s-expr -> finish s-expr, parse is done
@@ -172,7 +172,7 @@ void test_terminate_s_expr(test_env* te) {
         !match_typed_ptrs(se->car, test_atom) || \
         se->cdr == NULL || \
         !is_empty_list(se->cdr->ptr.se_ptr)) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(se, true);
     // passing in stack of a nested s-expr -> return to spine, parse can proceed
@@ -190,7 +190,7 @@ void test_terminate_s_expr(test_env* te) {
         se->car == NULL || \
         se->car->ptr.se_ptr->car != test_atom || \
         se->cdr != NULL) {
-        pass = 0;
+        pass = false;
     }
     s_expr_stack_pop(&stack);
     se->cdr = create_s_expr_tp(create_empty_s_expr());
@@ -207,7 +207,7 @@ void test_register_symbol(test_env* te) {
     Environment* temp_env = create_environment(10, 0);
     s_expr_stack* stack = NULL;
     s_expr_stack_push(&stack, create_empty_s_expr());
-    bool pass = 1;
+    bool pass = true;
     interpreter_error out;
     // passing a number too small (negative)
     char symbol_num_low[100];
@@ -218,7 +218,7 @@ void test_register_symbol(test_env* te) {
     if (out != PARSE_ERROR_INT_TOO_LOW || \
         stack->se == NULL || \
         stack->se->car != NULL) {
-        pass = 0;
+        pass = false;
     }
     // passing a number too large
     char symbol_num_high[100];
@@ -229,7 +229,7 @@ void test_register_symbol(test_env* te) {
     if (out != PARSE_ERROR_INT_TOO_HIGH || \
         stack->se == NULL || \
         stack->se->car != NULL) {
-        pass = 0;
+        pass = false;
     }
     // passing a valid number
     char symbol_num[] = "1000";
@@ -240,7 +240,7 @@ void test_register_symbol(test_env* te) {
         !check_typed_ptr(stack->se->car, TYPE_NUM, (tp_value){.idx=1000}) || \
         symbol_lookup_name(env, symbol_num) != NULL || \
         symbol_lookup_name(temp_env, symbol_num) != NULL) {
-        pass = 0;
+        pass = false;
     }
     free(stack->se->car);
     stack->se->car = NULL;
@@ -256,7 +256,7 @@ void test_register_symbol(test_env* te) {
         stack->se->car == NULL || \
         !match_typed_ptrs(stack->se->car, symbol_env_tp) || \
         symbol_lookup_name(temp_env, symbol_env) != NULL) {
-        pass = 0;
+        pass = false;
     }
     free(symbol_env_tp);
     free(stack->se->car);
@@ -273,7 +273,7 @@ void test_register_symbol(test_env* te) {
         stack->se->car == NULL || \
         !match_typed_ptrs(stack->se->car, symbol_temp_env_tp) || \
         symbol_lookup_name(env, symbol_temp_env) != NULL) {
-        pass = 0;
+        pass = false;
     }
     free(symbol_temp_env_tp);
     free(stack->se->car);
@@ -291,7 +291,7 @@ void test_register_symbol(test_env* te) {
         sn_from_string != sn_from_index || \
         strcmp(sn_from_index->name, symbol_absent) || \
         sn_from_index->type != TYPE_UNDEF) {
-        pass = 0;
+        pass = false;
     }
     free(stack->se->car);
     free(stack->se);
@@ -307,26 +307,26 @@ void test_register_symbol(test_env* te) {
 void test_substring(test_env* te) {
     print_test_announce("substring()");
     char big_string[] = "This is an entire sentence.";
-    bool pass = 1;
+    bool pass = true;
     // length zero substring, beginning
     char* out = substring(big_string, 0, 0);
     if (strlen(out) != 0 || \
         out[strlen(out)] != '\0') {
-        pass = 0;
+        pass = false;
     }
     free(out);
     // length zero substring, middle
     out = substring(big_string, 5, 5);
     if (strlen(out) != 0 || \
         out[strlen(out)] != '\0') {
-        pass = 0;
+        pass = false;
     }
     free(out);
     // length zero substring, end
     out = substring(big_string, strlen(big_string), strlen(big_string));
     if (strlen(out) != 0 || \
         out[strlen(out)] != '\0') {
-        pass = 0;
+        pass = false;
     }
     free(out);
     // length one substring, first character
@@ -334,7 +334,7 @@ void test_substring(test_env* te) {
     if (strlen(out) != 1 || \
         out[0] != big_string[0] || \
         out[strlen(out)] != '\0') {
-        pass = 0;
+        pass = false;
     }
     free(out);
     // length one substring, middle of string
@@ -342,7 +342,7 @@ void test_substring(test_env* te) {
     if (strlen(out) != 1 || \
         out[0] != big_string[5] || \
         out[strlen(out)] != '\0') {
-        pass = 0;
+        pass = false;
     }
     free(out);
     // length one substring, final character
@@ -350,7 +350,7 @@ void test_substring(test_env* te) {
     if (strlen(out) != 1 || \
         out[0] != big_string[strlen(big_string) - 1] || \
         out[strlen(out)] != '\0') {
-        pass = 0;
+        pass = false;
     }
     free(out);
     // length >1 substring, anchored at beginning
@@ -358,7 +358,7 @@ void test_substring(test_env* te) {
     if (strlen(out) != 4 || \
         strcmp(out, "This") || \
         out[strlen(out)] != '\0') {
-        pass = 0;
+        pass = false;
     }
     free(out);
     // length >1 substring, middle of string
@@ -366,7 +366,7 @@ void test_substring(test_env* te) {
     if (strlen(out) != 6 || \
         strcmp(out, "entire") || \
         out[strlen(out)] != '\0') {
-        pass = 0;
+        pass = false;
     }
     free(out);
     // length >1 substring, anchored at end
@@ -374,7 +374,7 @@ void test_substring(test_env* te) {
     if (strlen(out) != 9 || \
         strcmp(out, "sentence.") || \
         out[strlen(out)] != '\0') {
-        pass = 0;
+        pass = false;
     }
     free(out);
     // substring of length == total string length
@@ -382,7 +382,7 @@ void test_substring(test_env* te) {
     if (strlen(out) != strlen(big_string) || \
         strcmp(out, big_string) || \
         out[strlen(out)] != '\0') {
-        pass = 0;
+        pass = false;
     }
     free(out);
     print_test_result(pass);
@@ -393,21 +393,21 @@ void test_substring(test_env* te) {
 
 void test_string_is_number(test_env* te) {
     print_test_announce("string_is_number()");
-    bool pass = 1;
+    bool pass = true;
     if (string_is_number("") || \
         string_is_number("-") || \
         string_is_number("a") || \
         string_is_number("a1") || \
         string_is_number("1a") || \
         string_is_number("1a1")) {
-        pass = 0;
+        pass = false;
     }
     if (!string_is_number("0") || \
         !string_is_number("1") || \
         !string_is_number("-2") || \
         !string_is_number("1001") || \
         !string_is_number("-9876")) {
-        pass = 0;
+        pass = false;
     }
     if (string_is_number("1.2") || \
         string_is_number("1.") || \
@@ -417,7 +417,7 @@ void test_string_is_number(test_env* te) {
         string_is_number("-.4") || \
         string_is_number("-0.5") || \
         string_is_number("123.456")) {
-        pass = 0;
+        pass = false;
     }
     print_test_result(pass);
     te->passed += pass;
@@ -428,14 +428,14 @@ void test_string_is_number(test_env* te) {
 bool test_parse_output(const char cmd[], typed_ptr* expected) {
     Environment* env = create_environment(0, 0);
     typed_ptr* out = parse(cmd, env);
-    bool pass = 1;
+    bool pass = true;
     if (out == NULL || \
         out->type != expected->type || \
         (out->type == TYPE_S_EXPR && \
          !match_s_exprs(out->ptr.se_ptr, expected->ptr.se_ptr)) || \
         (out->type != TYPE_S_EXPR && \
          !match_typed_ptrs(out, expected))) {
-        pass = 0;
+        pass = false;
     }
     if (out->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(out->ptr.se_ptr, true);
@@ -451,7 +451,7 @@ bool test_parse_output(const char cmd[], typed_ptr* expected) {
 
 void test_parse(test_env* te) {
     print_test_announce("parse()");
-    bool pass = 1;
+    bool pass = true;
     // errors:
     // "a"
     typed_ptr* expected = create_error_tp(PARSE_ERROR_BARE_SYM);
@@ -588,7 +588,7 @@ void test_parse(test_env* te) {
     typed_ptr* out = parse("(", env);
     if (env->symbol_table->length != 0 || \
         env->symbol_table->head != NULL) {
-        pass = 0;
+        pass = false;
     }
     if (out != NULL && out->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(out->ptr.se_ptr, true);
@@ -598,7 +598,7 @@ void test_parse(test_env* te) {
     out = parse("()", env);
     if (env->symbol_table->length != 0 || \
         env->symbol_table->head != NULL) {
-        pass = 0;
+        pass = false;
     }
     if (out != NULL && out->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(out->ptr.se_ptr, true);
@@ -609,7 +609,7 @@ void test_parse(test_env* te) {
     if (env->symbol_table->length != 1 || \
         symbol_lookup_name(env, "a") == NULL || \
         symbol_lookup_name(env, "a")->type != TYPE_UNDEF) {
-        pass = 0;
+        pass = false;
     }
     if (out != NULL && out->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(out->ptr.se_ptr, true);
@@ -622,7 +622,7 @@ void test_parse(test_env* te) {
         symbol_lookup_name(env, "a")->type != TYPE_UNDEF || \
         symbol_lookup_name(env, "b") == NULL || \
         symbol_lookup_name(env, "b")->type != TYPE_UNDEF) {
-        pass = 0;
+        pass = false;
     }
     if (out != NULL && out->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(out->ptr.se_ptr, true);
@@ -635,7 +635,7 @@ void test_parse(test_env* te) {
         symbol_lookup_name(env, "a")->type != TYPE_UNDEF || \
         symbol_lookup_name(env, "b") == NULL || \
         symbol_lookup_name(env, "b")->type != TYPE_UNDEF) {
-        pass = 0;
+        pass = false;
     }
     if (out != NULL && out->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(out->ptr.se_ptr, true);

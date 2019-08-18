@@ -31,7 +31,7 @@ void print_typed_ptr(const typed_ptr* tp, const Environment* env) {
             printf("#<procedure:%s>", builtin_lookup_index(env, tp)->name);
             break;
         case TYPE_BOOL:
-            printf("%s", (tp->ptr.idx == 0) ? "#f" : "#t");
+            printf("%s", (tp->ptr.idx == false) ? "#f" : "#t");
             break;
         case TYPE_VOID:
             break; // print nothing

@@ -308,8 +308,8 @@ void setup_symbol_table(Environment* env) {
     blind_install_symbol_atom(env, "lambda", tbi, BUILTIN_LAMBDA);
     blind_install_symbol_atom(env, "else", TYPE_UNDEF, 0);
     blind_install_symbol_s_expr(env, "null", create_empty_s_expr());
-    blind_install_symbol_atom(env, "#t", TYPE_BOOL, 1);
-    blind_install_symbol_atom(env, "#f", TYPE_BOOL, 0);
+    blind_install_symbol_atom(env, "#t", TYPE_BOOL, true);
+    blind_install_symbol_atom(env, "#f", TYPE_BOOL, false);
     return;
 }
 
