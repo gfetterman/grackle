@@ -278,10 +278,10 @@ typed_ptr* eval_comparison(const s_expr* se, Environment* env) {
         if (arg_se->car->type != TYPE_NUM) {
             result = create_error_tp(EVAL_ERROR_NEED_NUM);
         } else {
-            long truth = 1;
+            long truth = true;
             long last_num = arg_se->car->ptr.idx;
             arg_se = s_expr_next(arg_se);
-            while (!is_empty_list(arg_se) && truth == 1) {
+            while (!is_empty_list(arg_se) && truth == true) {
                 if (arg_se->car->type != TYPE_NUM) {
                     result = create_error_tp(EVAL_ERROR_NEED_NUM);
                     break;
@@ -368,28 +368,29 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
                 if (sym_entry == NULL) {
                     result = create_error_tp(EVAL_ERROR_BAD_SYMBOL);
                 } else {
-                    // create a dummy (lambda arg-list body) s-expression
-                    typed_ptr* arg_list = arg->ptr.se_ptr->cdr;
+                    // create a dummy (lambda param-list body) s-expression
+                    typed_ptr* param_list = arg->ptr.se_ptr->cdr;
                     s_expr* empty = create_empty_s_expr();
                     arg->ptr.se_ptr->cdr = create_s_expr_tp(empty);
                     typed_ptr* fn_body = s_expr_next(args_tp->ptr.se_ptr)->car;
                     s_expr_next(args_tp->ptr.se_ptr)->car = NULL;
-                    Symbol_Node* lam_stn = symbol_lookup_string(env, "lambda");
+                    Symbol_Node* lam_stn = symbol_lookup_name(env, "lambda");
                     typed_ptr* lam = create_atom_tp(TYPE_SYMBOL, \
                                                     lam_stn->symbol_idx);
                     empty = create_empty_s_expr();
                     s_expr* fn_body_se = create_s_expr(fn_body, \
                                                        create_s_expr_tp(empty));
                     typed_ptr* fn_body_tp = create_s_expr_tp(fn_body_se);
-                    s_expr* arg_list_se = create_s_expr(arg_list, fn_body_tp);
-                    typed_ptr* arg_list_tp = create_s_expr_tp(arg_list_se);
-                    s_expr* dummy_lam = create_s_expr(lam, arg_list_tp);
+                    s_expr* param_list_se = create_s_expr(param_list, \
+                                                          fn_body_tp);
+                    typed_ptr* param_list_tp = create_s_expr_tp(param_list_se);
+                    s_expr* dummy_lam = create_s_expr(lam, param_list_tp);
                     typed_ptr* fn = eval_lambda(dummy_lam, env);
                     if (fn->type == TYPE_ERROR) {
                         delete_s_expr_recursive(dummy_lam, true);
                         result = fn;
                     } else {
-                        delete_s_expr_recursive(arg_list->ptr.se_ptr, true);
+                        delete_s_expr_recursive(param_list->ptr.se_ptr, true);
                         delete_s_expr_recursive(dummy_lam, false);
                         blind_install_symbol_atom(env, \
                                                   sym_entry->name, \
@@ -572,9 +573,9 @@ typed_ptr* eval_not(const s_expr* se, Environment* env) {
         result = args_tp;
     } else {
         if (is_false_literal(args_tp->ptr.se_ptr->car)) {
-            result = create_atom_tp(TYPE_BOOL, 1);
+            result = create_atom_tp(TYPE_BOOL, true);
         } else {
-            result = create_atom_tp(TYPE_BOOL, 0);
+            result = create_atom_tp(TYPE_BOOL, false);
         }
         delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
         free(args_tp);
@@ -628,7 +629,7 @@ typed_ptr* eval_cond(const s_expr* se, Environment* env) {
                 eval_interm = create_error_tp(EVAL_ERROR_BAD_SYNTAX);
                 break;
             }
-            Symbol_Node* else_stn = symbol_lookup_string(env, "else");
+            Symbol_Node* else_stn = symbol_lookup_name(env, "else");
             if (cond_clause->car->type == TYPE_SYMBOL && \
                 cond_clause->car->ptr.idx == else_stn->symbol_idx) {
                 s_expr* next_clause = s_expr_next(arg_se);
@@ -700,7 +701,7 @@ typed_ptr* eval_list_pred(const s_expr* se, Environment* env) {
         result = args_tp;
     } else {
         typed_ptr* arg = args_tp->ptr.se_ptr->car;
-        result = create_atom_tp(TYPE_BOOL, 1);
+        result = create_atom_tp(TYPE_BOOL, true);
         if (arg->type != TYPE_S_EXPR) {
             result->ptr.idx = 0;
         } else {
@@ -737,7 +738,7 @@ typed_ptr* eval_atom_pred(const s_expr* se, Environment* env, type t) {
         result = args_tp;
     } else {
         typed_ptr* arg = args_tp->ptr.se_ptr->car;
-        result = create_atom_tp(TYPE_BOOL, (arg->type == t) ? 1 : 0);
+        result = create_atom_tp(TYPE_BOOL, arg->type == t);
         if (arg->type == TYPE_S_EXPR && is_empty_list(arg->ptr.se_ptr)) {
             result->ptr.idx = 0;
         }
@@ -861,14 +862,14 @@ Symbol_Node* collect_parameters(typed_ptr* tp, Environment* env) {
 // In all cases, the Symbol_Node list returned is the caller's responsibility
 //   to free, and may be safely (shallow) freed.
 Symbol_Node* bind_args(Environment* env, Function_Node* fn, typed_ptr* args) {
-    if (fn->arg_list == NULL && is_empty_list(args->ptr.se_ptr)) {
+    if (fn->param_list == NULL && is_empty_list(args->ptr.se_ptr)) {
         return NULL;
     } else if (is_empty_list(args->ptr.se_ptr)) {
         return create_error_symbol_node(EVAL_ERROR_FEW_ARGS);
-    } else if (fn->arg_list == NULL) {
+    } else if (fn->param_list == NULL) {
         return create_error_symbol_node(EVAL_ERROR_MANY_ARGS);
     } else {
-        Symbol_Node* curr_param = fn->arg_list;
+        Symbol_Node* curr_param = fn->param_list;
         s_expr* arg_se = args->ptr.se_ptr;
         Symbol_Node* bound_args = NULL;
         bound_args = create_symbol_node(0, \
@@ -916,7 +917,7 @@ Environment* make_eval_env(Environment* env, Symbol_Node* bound_args) {
     Environment* eval_env = copy_environment(env);
     Symbol_Node* curr_arg = bound_args;
     while (curr_arg != NULL) {
-        Symbol_Node* found = symbol_lookup_string(eval_env, curr_arg->name);
+        Symbol_Node* found = symbol_lookup_name(eval_env, curr_arg->name);
         if (found == NULL) {
             fprintf(stderr, "parameter name not found - something is wrong\n");
             exit(-1);

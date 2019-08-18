@@ -193,8 +193,8 @@ interpreter_error register_symbol(s_expr_stack** stack, \
             tp = create_atom_tp(TYPE_NUM, value);
         }
     } else {
-        Symbol_Node* found = symbol_lookup_string(env, name);
-        found = (found == NULL) ? symbol_lookup_string(temp_env, name) : found;
+        Symbol_Node* found = symbol_lookup_name(env, name);
+        found = (found == NULL) ? symbol_lookup_name(temp_env, name) : found;
         if (found == NULL) {
             tp = install_symbol(temp_env, name, TYPE_UNDEF, (tp_value){.idx=0});
         } else {

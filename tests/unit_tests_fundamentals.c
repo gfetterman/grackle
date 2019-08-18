@@ -36,17 +36,17 @@ void unit_tests_fundamentals(test_env* t_env) {
 void test_create_typed_ptr(test_env* te) {
     print_test_announce("create_typed_ptr()");
     typed_ptr* out = NULL;
-    bool pass = 1;
+    bool pass = true;
     for (unsigned int idx = 0; pass && (idx < NUM_BUILTIN_TYPES); idx++) {
         if (type_list[idx] == TYPE_S_EXPR) {
             out = create_typed_ptr(type_list[idx], TEST_S_EXPR_TP_VAL);
             if (!check_typed_ptr(out, TYPE_S_EXPR, TEST_S_EXPR_TP_VAL)) {
-                pass = 0;
+                pass = false;
             }
         } else {
             out = create_typed_ptr(type_list[idx], TEST_NUM_TP_VAL);
             if (!check_typed_ptr(out, type_list[idx], TEST_NUM_TP_VAL)) {
-                pass = 0;
+                pass = false;
             }
         }
         free(out);
@@ -60,14 +60,14 @@ void test_create_typed_ptr(test_env* te) {
 void test_create_atom_tp(test_env* te) {
     print_test_announce("create_atom_tp()");
     typed_ptr* out = NULL;
-    bool pass = 1;
+    bool pass = true;
     for (unsigned int idx = 0; pass && (idx < NUM_BUILTIN_TYPES); idx++) {
         if (type_list[idx] == TYPE_S_EXPR) {
             continue;
         } else {
             out = create_atom_tp(type_list[idx], TEST_NUM);
             if (!check_typed_ptr(out, type_list[idx], TEST_NUM_TP_VAL)) {
-                pass = 0;
+                pass = false;
             }
         }
         free(out);
@@ -80,10 +80,10 @@ void test_create_atom_tp(test_env* te) {
 
 void test_create_s_expr_tp(test_env* te) {
     print_test_announce("create_s_expr_tp()");
-    bool pass = 1;
+    bool pass = true;
     typed_ptr* out = create_s_expr_tp(TEST_S_EXPR);
     if (!check_typed_ptr(out, TYPE_S_EXPR, TEST_S_EXPR_TP_VAL)) {
-        pass = 0;
+        pass = false;
     }
     free(out);
     print_test_result(pass);
@@ -94,10 +94,10 @@ void test_create_s_expr_tp(test_env* te) {
 
 void test_create_error_tp(test_env* te) {
     print_test_announce("create_error_tp()");
-    bool pass = 1;
+    bool pass = true;
     typed_ptr* out = create_error_tp(EVAL_ERROR_EXIT);
     if (!check_typed_ptr(out, TYPE_ERROR, (tp_value){.idx=EVAL_ERROR_EXIT})) {
-        pass = 0;
+        pass = false;
     }
     free(out);
     print_test_result(pass);
@@ -110,13 +110,13 @@ void test_copy_typed_ptr(test_env* te) {
     print_test_announce("copy_typed_ptr()");
     typed_ptr* original = create_atom_tp(TYPE_NUM, TEST_NUM);
     typed_ptr* copied = copy_typed_ptr(original);
-    bool pass = 1;
+    bool pass = true;
     if (!match_typed_ptrs(original, copied)) {
-        pass = 0;
+        pass = false;
     }
     original->ptr.idx = 100;
     if (match_typed_ptrs(original, copied)) {
-        pass = 0;
+        pass = false;
     }
     free(original);
     free(copied);
@@ -131,11 +131,11 @@ void test_create_s_expr(test_env* te) {
     typed_ptr* input_car = create_atom_tp(TYPE_NUM, TEST_NUM);
     typed_ptr* input_cdr = create_atom_tp(TYPE_NUM, 100);
     s_expr* out = create_s_expr(input_car, input_cdr);
-    bool pass = 1;
+    bool pass = true;
     if (out == NULL || \
         out->car != input_car || \
         out->cdr != input_cdr) {
-        pass = 0;
+        pass = false;
     }
     free(input_car);
     free(input_cdr);
@@ -149,11 +149,11 @@ void test_create_s_expr(test_env* te) {
 void test_create_empty_s_expr(test_env* te) {
     print_test_announce("create_empty_s_expr()");
     s_expr* out = create_empty_s_expr();
-    bool pass = 1;
+    bool pass = true;
     if (out == NULL || \
         out->car != NULL || \
         out->cdr != NULL) {
-        pass = 0;
+        pass = false;
     }
     free(out);
     print_test_result(pass);
@@ -167,9 +167,9 @@ void test_copy_s_expr(test_env* te) {
     // copy(NULL) -> NULL
     s_expr* original = NULL;
     s_expr* copied = copy_s_expr(original);
-    bool pass = 1;
+    bool pass = true;
     if (copied != NULL) {
-        pass = 0;
+        pass = false;
     }
     // copy(empty s-expression) -> new empty s-expression
     original = create_empty_s_expr();
@@ -177,7 +177,7 @@ void test_copy_s_expr(test_env* te) {
     if (copied == NULL || \
         !is_empty_list(copied) || \
         copied == original) {
-        pass = 0;
+        pass = false;
     }
     free(original);
     free(copied);
@@ -195,7 +195,7 @@ void test_copy_s_expr(test_env* te) {
     copied = copy_s_expr(original);
     typed_ptr* copied_tp = create_s_expr_tp(copied);
     if (!check_pair(copied_tp, atom_list, 2, NULL)) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(original, true);
     delete_s_expr_recursive(copied, true);
@@ -210,7 +210,7 @@ void test_copy_s_expr(test_env* te) {
     copied = copy_s_expr(original);
     copied_tp = create_s_expr_tp(copied);
     if (!check_s_expr(copied_tp, atom_list, 1, NULL)) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(original, true);
     delete_s_expr_recursive(copied, true);
@@ -226,7 +226,7 @@ void test_copy_s_expr(test_env* te) {
     copied = copy_s_expr(original);
     copied_tp = create_s_expr_tp(copied);
     if (!check_s_expr(copied_tp, atom_list, 4, NULL)) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(original, true);
     delete_s_expr_recursive(copied, true);
@@ -252,7 +252,7 @@ void test_copy_s_expr(test_env* te) {
     if (copied == NULL || \
         !check_s_expr(copied->car, atom_list, 2, NULL) || \
         !check_s_expr(copied->cdr, atom_list + 2, 2, NULL)) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(original, true);
     delete_s_expr_recursive(copied, true);
@@ -339,16 +339,16 @@ void test_s_expr_next(test_env* te) {
     se = create_s_expr(third_atom, create_s_expr_tp(se));
     se = create_s_expr(second_atom, create_s_expr_tp(se));
     se = create_s_expr(first_atom, create_s_expr_tp(se));
-    bool pass = 1;
+    bool pass = true;
     s_expr* curr_se = se;
     for (unsigned int idx = 0; idx < 4; idx++) {
         if (!match_typed_ptrs(curr_se->car, atom_list[idx])) {
-            pass = 0;
+            pass = false;
         }
         curr_se = s_expr_next(curr_se);
     }
     if (!is_empty_list(curr_se)) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(se, true);
     print_test_result(pass);
@@ -360,19 +360,19 @@ void test_s_expr_next(test_env* te) {
 void test_is_empty_list(test_env* te) {
     print_test_announce("is_empty_list()");
     s_expr* se = create_empty_s_expr();
-    bool pass = 1;
+    bool pass = true;
     if (!is_empty_list(se)) {
-        pass = 0;
+        pass = false;
     }
     se->car = create_atom_tp(TYPE_NUM, 64);
     se->cdr = create_atom_tp(TYPE_NUM, 128);
     if (is_empty_list(se)) {
-        pass = 0;
+        pass = false;
     }
     free(se->cdr);
     se->cdr = create_s_expr_tp(create_empty_s_expr());
     if (is_empty_list(se)) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(se, true);
     print_test_result(pass);
@@ -383,23 +383,23 @@ void test_is_empty_list(test_env* te) {
 
 void test_is_false_literal(test_env* te) {
     print_test_announce("is_false_literal()");
-    typed_ptr* tp = create_atom_tp(TYPE_BOOL, 0);
-    bool pass = 1;
+    typed_ptr* tp = create_atom_tp(TYPE_BOOL, false);
+    bool pass = true;
     if (!is_false_literal(tp)) {
-        pass = 0;
+        pass = false;
     }
-    tp->ptr.idx = 1;
+    tp->ptr.idx = true;
     if (is_false_literal(tp)) {
-        pass = 0;
+        pass = false;
     }
     tp->type = TYPE_NUM;
     if (is_false_literal(tp)) {
-        pass = 0;
+        pass = false;
     }
     tp->type = TYPE_S_EXPR;
     tp->ptr.se_ptr = NULL;
     if (is_false_literal(tp)) {
-        pass = 0;
+        pass = false;
     }
     free(tp);
     print_test_result(pass);
@@ -411,20 +411,20 @@ void test_is_false_literal(test_env* te) {
 void test_is_pair(test_env* te) {
     print_test_announce("is_pair()");
     s_expr* se = create_empty_s_expr();
-    bool pass = 1;
+    bool pass = true;
     if (is_pair(se)) {
-        pass = 0;
+        pass = false;
     }
     free(se);
     se = create_s_expr(create_atom_tp(TYPE_NUM, 64), \
                        create_atom_tp(TYPE_NUM, 128));
     if (!is_pair(se)) {
-        pass = 0;
+        pass = false;
     }
     free(se->cdr);
     se->cdr = create_s_expr_tp(create_empty_s_expr());
     if (is_pair(se)) {
-        pass = 0;
+        pass = false;
     }
     delete_s_expr_recursive(se, true);
     print_test_result(pass);

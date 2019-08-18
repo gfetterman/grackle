@@ -18,7 +18,7 @@ void test_copy_environment(test_env* te);
 void test_delete_environment_shared_full(test_env* te);
 void test_install_symbol_regular_and_blind(test_env* te);
 void test_install_function(test_env* te);
-void test_symbol_lookup_string(test_env* te);
+void test_symbol_lookup_name(test_env* te);
 void test_symbol_lookup_index(test_env* te);
 void test_builtin_lookup_index(test_env* te);
 void test_value_lookup_index(test_env* te);

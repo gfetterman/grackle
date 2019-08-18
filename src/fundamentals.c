@@ -113,7 +113,7 @@ bool is_empty_list(const s_expr* se) {
 }
 
 bool is_false_literal(const typed_ptr* tp) {
-    return (tp->type == TYPE_BOOL && tp->ptr.idx == 0);
+    return (tp->type == TYPE_BOOL && tp->ptr.idx == false);
 }
 
 bool is_pair(const s_expr* se) {
