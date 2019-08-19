@@ -89,17 +89,11 @@ typed_ptr* eval_builtin(const s_expr* se, Environment* env) {
         case BUILTIN_LISTPRED:
             result = eval_list_pred(se, env);
             break;
-        case BUILTIN_PAIRPRED:
-            result = eval_atom_pred(se, env, TYPE_S_EXPR);
-            break;
-        case BUILTIN_NUMBERPRED:
-            result = eval_atom_pred(se, env, TYPE_FIXNUM);
-            break;
-        case BUILTIN_BOOLPRED:
-            result = eval_atom_pred(se, env, TYPE_BOOL);
-            break;
+        case BUILTIN_PAIRPRED: // fall-through
+        case BUILTIN_NUMBERPRED: // fall-through
+        case BUILTIN_BOOLPRED: // fall-through
         case BUILTIN_VOIDPRED:
-            result = eval_atom_pred(se, env, TYPE_VOID);
+            result = eval_atom_pred(se, env);
             break;
         case BUILTIN_LAMBDA:
             result = eval_lambda(se, env);
@@ -740,12 +734,12 @@ typed_ptr* eval_list_pred(const s_expr* se, Environment* env) {
         typed_ptr* arg = args_tp->ptr.se_ptr->car;
         result = create_atom_tp(TYPE_BOOL, true);
         if (arg->type != TYPE_S_EXPR) {
-            result->ptr.idx = 0;
+            result->ptr.idx = false;
         } else {
             s_expr* arg_se = arg->ptr.se_ptr;
             while (!is_empty_list(arg_se)) {
                 if (arg_se->cdr->type != TYPE_S_EXPR) {
-                    result->ptr.idx = 0;
+                    result->ptr.idx = false;
                     break;
                 }
                 arg_se = s_expr_next(arg_se);
@@ -758,9 +752,7 @@ typed_ptr* eval_list_pred(const s_expr* se, Environment* env) {
 }
 
 // Evaluates an s-expression whose car is a built-in function in the set
-//   {BUILTIN_xxxxPRED | xxxx in {PAIR, BOOL, NUM, VOID}}.
-// For convenience, the (C, not Lisp) function takes the type to be tested
-//   against as an additional parameter.
+//   {BUILTIN_xxxxPRED | xxxx in {PAIR, BOOL, FIXNUM, VOID}}.
 // This function takes one argument, which is evaluated.
 // There is no restriction on the type of the argument.
 // Returns a typed_ptr containing an error code (if the evaluation failed) or
@@ -768,16 +760,33 @@ typed_ptr* eval_list_pred(const s_expr* se, Environment* env) {
 // In either case, the returned typed_ptr is the caller's responsibility to
 //   free, and is safe to (shallow) free without harm to the symbol table, list
 //   area, or any other object.
-typed_ptr* eval_atom_pred(const s_expr* se, Environment* env, type t) {
+typed_ptr* eval_atom_pred(const s_expr* se, Environment* env) {
+    type target_type = TYPE_UNDEF;
+    switch (se->car->ptr.idx) {
+        case BUILTIN_PAIRPRED:
+            target_type = TYPE_S_EXPR;
+            break;
+        case BUILTIN_NUMBERPRED:
+            target_type = TYPE_FIXNUM;
+            break;
+        case BUILTIN_BOOLPRED:
+            target_type = TYPE_BOOL;
+            break;
+        case BUILTIN_VOIDPRED:
+            target_type = TYPE_VOID;
+            break;
+        default:
+            return create_error_tp(EVAL_ERROR_UNDEF_BUILTIN);
+    }
     typed_ptr* result = NULL;
     typed_ptr* args_tp = collect_arguments(se, env, 1, 1, true);
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
         typed_ptr* arg = args_tp->ptr.se_ptr->car;
-        result = create_atom_tp(TYPE_BOOL, arg->type == t);
+        result = create_atom_tp(TYPE_BOOL, arg->type == target_type);
         if (arg->type == TYPE_S_EXPR && is_empty_list(arg->ptr.se_ptr)) {
-            result->ptr.idx = 0;
+            result->ptr.idx = false;
         }
         delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
         free(args_tp);

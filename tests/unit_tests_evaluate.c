@@ -2086,42 +2086,6 @@ void test_eval_list_pred(test_env* te) {
     return;
 }
 
-typed_ptr* wrapper_eval_undef_pred(const s_expr* se, Environment* env) {
-    return eval_atom_pred(se, env, TYPE_UNDEF);
-}
-
-typed_ptr* wrapper_eval_error_pred(const s_expr* se, Environment* env) {
-    return eval_atom_pred(se, env, TYPE_ERROR);
-}
-
-typed_ptr* wrapper_eval_void_pred(const s_expr* se, Environment* env) {
-    return eval_atom_pred(se, env, TYPE_VOID);
-}
-
-typed_ptr* wrapper_eval_num_pred(const s_expr* se, Environment* env) {
-    return eval_atom_pred(se, env, TYPE_FIXNUM);
-}
-
-typed_ptr* wrapper_eval_bool_pred(const s_expr* se, Environment* env) {
-    return eval_atom_pred(se, env, TYPE_BOOL);
-}
-
-typed_ptr* wrapper_eval_builtin_pred(const s_expr* se, Environment* env) {
-    return eval_atom_pred(se, env, TYPE_BUILTIN);
-}
-
-typed_ptr* wrapper_eval_pair_pred(const s_expr* se, Environment* env) {
-    return eval_atom_pred(se, env, TYPE_S_EXPR);
-}
-
-typed_ptr* wrapper_eval_symbol_pred(const s_expr* se, Environment* env) {
-    return eval_atom_pred(se, env, TYPE_SYMBOL);
-}
-
-typed_ptr* wrapper_eval_function_pred(const s_expr* se, Environment* env) {
-    return eval_atom_pred(se, env, TYPE_FUNCTION);
-}
-
 void test_eval_atom_pred(test_env* te) {
     print_test_announce("eval_list_pred()");
     Environment* env = create_environment(0, 0);
@@ -2131,90 +2095,81 @@ void test_eval_atom_pred(test_env* te) {
     typed_ptr* x_sym;
     x_sym = install_symbol(env, "x", &fn_tp);
     bool pass = true;
-    #define NUM_TYPES 9
-    type type_list[NUM_TYPES] = {TYPE_UNDEF, TYPE_ERROR, TYPE_VOID, \
-                                 TYPE_FIXNUM, TYPE_BOOL, TYPE_BUILTIN, \
-                                 TYPE_S_EXPR, TYPE_SYMBOL, TYPE_FUNCTION};
-    typed_ptr* (*pred_fns[NUM_TYPES])(const s_expr*, Environment*) = \
-                                {wrapper_eval_undef_pred, \
-                                 wrapper_eval_error_pred, \
-                                 wrapper_eval_void_pred, \
-                                 wrapper_eval_num_pred, \
-                                 wrapper_eval_bool_pred, \
-                                 wrapper_eval_builtin_pred, \
-                                 wrapper_eval_pair_pred, \
-                                 wrapper_eval_symbol_pred, \
-                                 wrapper_eval_function_pred};
+    #define NUM_TYPES 4
+    type type_list[NUM_TYPES] = {TYPE_S_EXPR, TYPE_FIXNUM, \
+                                 TYPE_BOOL, TYPE_VOID};
+    builtin_code bi_codes[NUM_TYPES] = {BUILTIN_PAIRPRED, BUILTIN_NUMBERPRED, \
+                                        BUILTIN_BOOLPRED, BUILTIN_VOIDPRED};
     s_expr* cmd = NULL;
     typed_ptr* expected = NULL;
     // ([any_atomic]?) -> EVAL_ERROR_FEW_ARGS
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
-        cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
+        cmd = unit_list(create_atom_tp(TYPE_BUILTIN, bi_codes[i]));
         expected = create_error_tp(EVAL_ERROR_FEW_ARGS);
-        pass = run_test_expect(pred_fns[i], cmd, env, expected) && pass;
+        pass = run_test_expect(eval_atom_pred, cmd, env, expected) && pass;
     }
     // ([any_atomic]? 1 2) -> EVAL_ERROR_MANY_ARGS
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
-        cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
+        cmd = unit_list(create_atom_tp(TYPE_BUILTIN, bi_codes[i]));
         s_expr_append(cmd, create_number_tp(1));
         s_expr_append(cmd, create_number_tp(2));
         expected = create_error_tp(EVAL_ERROR_MANY_ARGS);
-        pass = run_test_expect(pred_fns[i], cmd, env, expected) && pass;
+        pass = run_test_expect(eval_atom_pred, cmd, env, expected) && pass;
     }
     // there's currently no way to run these predicates on an undefined symbol,
     //   because they just get an EVAL_ERROR_UNDEF_SYM error
     // so we skip testing this predicate
     // ([any_atomic]? TEST_ERROR_DUMMY) -> TEST_ERROR_DUMMY
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
-        cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
+        cmd = unit_list(create_atom_tp(TYPE_BUILTIN, bi_codes[i]));
         s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
         expected = create_error_tp(TEST_ERROR_DUMMY);
-        pass = run_test_expect(pred_fns[i], cmd, env, expected) && pass;
+        pass = run_test_expect(eval_atom_pred, cmd, env, expected) && pass;
     }
     // ([any_atomic]? <void>) -> #t if [void] else #f
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
-        cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
+        cmd = unit_list(create_atom_tp(TYPE_BUILTIN, bi_codes[i]));
         s_expr_append(cmd, create_void_tp());
         expected = create_atom_tp(TYPE_BOOL, type_list[i] == TYPE_VOID);
-        pass = run_test_expect(pred_fns[i], cmd, env, expected) && pass;
+        pass = run_test_expect(eval_atom_pred, cmd, env, expected) && pass;
     }
     // ([any_atomic]? 1) -> #t if [num] else #f
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
-        cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
+        cmd = unit_list(create_atom_tp(TYPE_BUILTIN, bi_codes[i]));
         s_expr_append(cmd, create_number_tp(1));
         expected = create_atom_tp(TYPE_BOOL, type_list[i] == TYPE_FIXNUM);
-        pass = run_test_expect(pred_fns[i], cmd, env, expected) && pass;
+        pass = run_test_expect(eval_atom_pred, cmd, env, expected) && pass;
     }
     // ([any_atomic]? #f) -> #t if [bool] else #f
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
-        cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
+        cmd = unit_list(create_atom_tp(TYPE_BUILTIN, bi_codes[i]));
         s_expr_append(cmd, create_atom_tp(TYPE_BOOL, true));
         expected = create_atom_tp(TYPE_BOOL, type_list[i] == TYPE_BOOL);
-        pass = run_test_expect(pred_fns[i], cmd, env, expected) && pass;
+        pass = run_test_expect(eval_atom_pred, cmd, env, expected) && pass;
     }
     // ([any_atomic]? +) -> #t if [builtin] else #f
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
-        cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
+        cmd = unit_list(create_atom_tp(TYPE_BUILTIN, bi_codes[i]));
         s_expr_append(cmd, ADD);
         expected = create_atom_tp(TYPE_BOOL, type_list[i] == TYPE_BUILTIN);
-        pass = run_test_expect(pred_fns[i], cmd, env, expected) && pass;
+        pass = run_test_expect(eval_atom_pred, cmd, env, expected) && pass;
     }
     // ([any_atomic]? (cons 1 2)) -> #t if [pair] else #f
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
-        cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
+        cmd = unit_list(create_atom_tp(TYPE_BUILTIN, bi_codes[i]));
         s_expr* cons_subexpr = unit_list(CONS_SYM);
         s_expr_append(cons_subexpr, create_number_tp(1));
         s_expr_append(cons_subexpr, create_number_tp(2));
         s_expr_append(cmd, create_s_expr_tp(cons_subexpr));
         expected = create_atom_tp(TYPE_BOOL, type_list[i] == TYPE_S_EXPR);
-        pass = run_test_expect(pred_fns[i], cmd, env, expected) && pass;
+        pass = run_test_expect(eval_atom_pred, cmd, env, expected) && pass;
     }
     // ([any_atomic]? (list 1 2)) -> #t if [pair] else #f
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
-        cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
+        cmd = unit_list(create_atom_tp(TYPE_BUILTIN, bi_codes[i]));
         s_expr_append(cmd, create_s_expr_tp(list_one_two_s_expr(env)));
         expected = create_atom_tp(TYPE_BOOL, type_list[i] == TYPE_S_EXPR);
-        pass = run_test_expect(pred_fns[i], cmd, env, expected) && pass;
+        pass = run_test_expect(eval_atom_pred, cmd, env, expected) && pass;
     }
     // ([any_atomic]? 'x) -> #t if [symbol] else #f
     //   there's not currently any way to obtain a bare symbol typed-pointer
@@ -2222,26 +2177,26 @@ void test_eval_atom_pred(test_env* te) {
     //   able to test this...
     // (define ...) + ([any_atomic]? fn) -> #t if [function] else #f
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
-        cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
+        cmd = unit_list(create_atom_tp(TYPE_BUILTIN, bi_codes[i]));
         s_expr_append(cmd, copy_typed_ptr(x_sym));
         expected = create_atom_tp(TYPE_BOOL, type_list[i] == TYPE_FUNCTION);
-        pass = run_test_expect(pred_fns[i], cmd, env, expected) && pass;
+        pass = run_test_expect(eval_atom_pred, cmd, env, expected) && pass;
     }
     // ([any_atomic]? null) -> #f
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
-        cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
+        cmd = unit_list(create_atom_tp(TYPE_BUILTIN, bi_codes[i]));
         s_expr_append(cmd, NULL_SYM);
         expected = create_atom_tp(TYPE_BOOL, false);
-        pass = run_test_expect(pred_fns[i], cmd, env, expected) && pass;
+        pass = run_test_expect(eval_atom_pred, cmd, env, expected) && pass;
     }
     // ([any_atomic]? (/ 0)) -> EVAL_ERROR_DIV_ZERO
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
-        cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
+        cmd = unit_list(create_atom_tp(TYPE_BUILTIN, bi_codes[i]));
         s_expr* divide_subexpr = unit_list(DIVIDE);
         s_expr_append(divide_subexpr, create_number_tp(0));
         s_expr_append(cmd, create_s_expr_tp(divide_subexpr));
         expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
-        pass = run_test_expect(pred_fns[i], cmd, env, expected) && pass;
+        pass = run_test_expect(eval_atom_pred, cmd, env, expected) && pass;
     }
     delete_environment_full(env);
     free(cons_sym);
