@@ -29,56 +29,6 @@ void unit_tests_evaluate(test_env* te) {
 
 // test helpers
 
-s_expr* unit_list(typed_ptr* tp) {
-    return create_s_expr(tp, create_s_expr_tp(create_empty_s_expr()));
-}
-
-typed_ptr* builtin_tp_from_name(Environment* env, const char name[]) {
-    Symbol_Node* found = symbol_lookup_name(env, name);
-    if (found == NULL || found->type != TYPE_BUILTIN) {
-        return NULL;
-    } else {
-        return create_atom_tp(TYPE_BUILTIN, found->value.idx);
-    }
-}
-
-typed_ptr* symbol_tp_from_name(Environment* env, const char name[]) {
-    Symbol_Node* found = symbol_lookup_name(env, name);
-    return (found == NULL) ? NULL : \
-                             create_atom_tp(TYPE_SYMBOL, found->symbol_idx);
-}
-
-bool tp_is_empty_list(const typed_ptr* tp) {
-    return (tp != NULL && \
-            tp->type == TYPE_S_EXPR && \
-            is_empty_list(tp->ptr.se_ptr));
-}
-
-typed_ptr* create_number_tp(long value) {
-    return create_typed_ptr(TYPE_FIXNUM, (tp_value){.idx=value});
-}
-
-bool match_error(const typed_ptr* tp, interpreter_error err) {
-    return (tp != NULL && tp->type == TYPE_ERROR && tp->ptr.idx == err);
-}
-
-bool deep_match_typed_ptrs(typed_ptr* first, typed_ptr* second) {
-    if (first == NULL && second == NULL) {
-        return true;
-    } else if (first == NULL || second == NULL) {
-        return false;
-    } else if (first->type != second->type) {
-        return false;
-    } else {
-        switch (first->type) {
-            case TYPE_S_EXPR:
-                return match_s_exprs(first->ptr.se_ptr, second->ptr.se_ptr);
-            default:
-                return first->ptr.idx == second->ptr.idx;
-        }
-    }
-}
-
 // NOTE: frees cmd AND expected
 bool run_test_expect(typed_ptr* (*function)(const s_expr*, Environment*), \
                      s_expr* cmd, \
@@ -96,6 +46,19 @@ bool run_test_expect(typed_ptr* (*function)(const s_expr*, Environment*), \
     }
     free(expected);
     return passed;
+}
+
+bool compare_expect_bool(Environment* env, \
+                         builtin_code compare_op, \
+                         unsigned int num_args, \
+                         long args[], \
+                         bool expected) {
+    s_expr* cmd = unit_list(create_atom_tp(TYPE_BUILTIN, compare_op));
+    for (unsigned int i = 0; i < num_args; i++) {
+        s_expr_append(cmd, create_number_tp(args[i]));
+    }
+    typed_ptr* expected_tp = create_atom_tp(TYPE_BOOL, expected);
+    return run_test_expect(eval_comparison, cmd, env, expected_tp);
 }
 
 // set up some useful "constants"
@@ -504,6 +467,8 @@ void test_collect_arguments(test_env* te) {
     bool pass = true;
     Environment* env = create_environment(0, 0);
     setup_environment(env);
+    s_expr empty_s_expr = {NULL, NULL};
+    typed_ptr empty_se_tp = {.type=TYPE_S_EXPR, .ptr={.se_ptr=&empty_s_expr}};
     // arg s-expr is a pair -> error
     s_expr* call_pair = create_s_expr(create_atom_tp(TYPE_BUILTIN, 0), \
                                       create_atom_tp(TYPE_FIXNUM, 1000));
@@ -528,7 +493,7 @@ void test_collect_arguments(test_env* te) {
     s_expr* call_no_args = create_empty_s_expr();
     s_expr_append(call_no_args, create_atom_tp(TYPE_BUILTIN, 0));
     out = collect_arguments(call_no_args, env, 0, 0, true);
-    if (!tp_is_empty_list(out) || \
+    if (!deep_match_typed_ptrs(out, &empty_se_tp) || \
         out->ptr.se_ptr == s_expr_next(call_no_args)) {
         pass = false;
     }
@@ -536,7 +501,7 @@ void test_collect_arguments(test_env* te) {
     free(out);
     //    -> and without evaluate_all_args
     out = collect_arguments(call_no_args, env, 0, 0, false);
-    if (!tp_is_empty_list(out) || \
+    if (!deep_match_typed_ptrs(out, &empty_se_tp) || \
         out->ptr.se_ptr == s_expr_next(call_no_args)) {
         pass = false;
     }
@@ -544,7 +509,7 @@ void test_collect_arguments(test_env* te) {
     free(out);
     // empty arg s-expr, with min_args == 0 & max_args > 0
     out = collect_arguments(call_no_args, env, 0, 1, true);
-    if (!tp_is_empty_list(out) || \
+    if (!deep_match_typed_ptrs(out, &empty_se_tp) || \
         out->ptr.se_ptr == s_expr_next(call_no_args)) {
         pass = false;
     }
@@ -552,7 +517,7 @@ void test_collect_arguments(test_env* te) {
     free(out);
     // empty arg s-expr, with min_args == 0 & max_args < 0
     out = collect_arguments(call_no_args, env, 0, -1, true);
-    if (!tp_is_empty_list(out) || \
+    if (!deep_match_typed_ptrs(out, &empty_se_tp) || \
         out->ptr.se_ptr == s_expr_next(call_no_args)) {
         pass = false;
     }
@@ -1191,19 +1156,6 @@ void test_eval_arithmetic(test_env* te) {
     te->passed += pass;
     te->run++;
     return;
-}
-
-bool compare_expect_bool(Environment* env, \
-                         builtin_code compare_op, \
-                         unsigned int num_args, \
-                         long args[], \
-                         bool expected) {
-    s_expr* cmd = unit_list(create_atom_tp(TYPE_BUILTIN, compare_op));
-    for (unsigned int i = 0; i < num_args; i++) {
-        s_expr_append(cmd, create_number_tp(args[i]));
-    }
-    typed_ptr* expected_tp = create_atom_tp(TYPE_BOOL, expected);
-    return run_test_expect(eval_comparison, cmd, env, expected_tp);
 }
 
 void test_eval_comparison(test_env* te) {
