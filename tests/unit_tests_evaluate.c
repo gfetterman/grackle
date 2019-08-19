@@ -1818,7 +1818,7 @@ void test_eval_and_or(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(define_x_one));
     s_expr_append(cmd, create_atom_tp(TYPE_BOOL, true));
     s_expr_append(cmd, create_s_expr_tp(define_x_two));
-    expected = create_atom_tp(TYPE_VOID, 0);
+    expected = create_void_tp();
     pass = run_test_expect(eval_and_or, cmd, env, expected) && pass;
     typed_ptr* curr_x_val = value_lookup_index(env, x_sym);
     if (curr_x_val == NULL || \
@@ -1906,7 +1906,7 @@ void test_eval_and_or(test_env* te) {
     cmd = unit_list(copy_typed_ptr(or_builtin));
     s_expr_append(cmd, create_s_expr_tp(unit_list(copy_typed_ptr(cond_sym))));
     s_expr_append(cmd, create_atom_tp(TYPE_BOOL, true));
-    expected = create_atom_tp(TYPE_VOID, 0);
+    expected = create_void_tp();
     pass = run_test_expect(eval_and_or, cmd, env, expected) && pass;
     // (or #f 1) -> 1
     cmd = unit_list(copy_typed_ptr(or_builtin));
@@ -1957,7 +1957,7 @@ void test_eval_and_or(test_env* te) {
     s_expr_append(define_x_six, create_number_tp(6));
     s_expr_append(cmd, create_s_expr_tp(bool_pred_define_x_five));
     s_expr_append(cmd, create_s_expr_tp(define_x_six));
-    expected = create_atom_tp(TYPE_VOID, 0);
+    expected = create_void_tp();
     pass = run_test_expect(eval_and_or, cmd, env, expected) && pass;
     curr_x_val = value_lookup_index(env, x_sym);
     if (curr_x_val == NULL || \
@@ -1976,7 +1976,7 @@ void test_eval_and_or(test_env* te) {
     s_expr_append(define_x_eight, create_number_tp(8));
     s_expr_append(cmd, create_s_expr_tp(define_x_seven));
     s_expr_append(cmd, create_s_expr_tp(define_x_eight));
-    expected = create_atom_tp(TYPE_VOID, 0);
+    expected = create_void_tp();
     pass = run_test_expect(eval_and_or, cmd, env, expected) && pass;
     curr_x_val = value_lookup_index(env, x_sym);
     if (curr_x_val == NULL || \
@@ -2222,7 +2222,7 @@ void test_eval_atom_pred(test_env* te) {
     // ([any_atomic]? <void>) -> #t if [void] else #f
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
         cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
-        s_expr_append(cmd, create_atom_tp(TYPE_VOID, 0));
+        s_expr_append(cmd, create_void_tp());
         expected = create_atom_tp(TYPE_BOOL, type_list[i] == TYPE_VOID);
         pass = run_test_expect(pred_fns[i], cmd, env, expected) && pass;
     }
@@ -2501,7 +2501,7 @@ void test_eval_cond(test_env* te) {
     bool pass = true;
     // (cond) -> <void>
     s_expr* cmd = unit_list(copy_typed_ptr(cond_builtin));
-    typed_ptr* expected = create_atom_tp(TYPE_VOID, 0);
+    typed_ptr* expected = create_void_tp();
     pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
     // (cond 1) -> EVAL_ERROR_BAD_SYNTAX
     cmd = unit_list(copy_typed_ptr(cond_builtin));
@@ -2558,14 +2558,14 @@ void test_eval_cond(test_env* te) {
     cmd = unit_list(copy_typed_ptr(cond_builtin));
     first_case = unit_list(create_atom_tp(TYPE_BOOL, false));
     s_expr_append(cmd, create_s_expr_tp(first_case));
-    expected = create_atom_tp(TYPE_VOID, 0);
+    expected = create_void_tp();
     pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
     // (cond (#f 2)) -> <void>
     cmd = unit_list(copy_typed_ptr(cond_builtin));
     first_case = unit_list(create_atom_tp(TYPE_BOOL, false));
     s_expr_append(first_case, create_number_tp(2));
     s_expr_append(cmd, create_s_expr_tp(first_case));
-    expected = create_atom_tp(TYPE_VOID, 0);
+    expected = create_void_tp();
     pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
     // (cond (#t 1) 2) -> currently 1, but it should be EVAL_ERROR_BAD_SYNTAX
     cmd = unit_list(copy_typed_ptr(cond_builtin));
@@ -2629,7 +2629,7 @@ void test_eval_cond(test_env* te) {
     third_case = unit_list(create_atom_tp(TYPE_BOOL, false));
     s_expr_append(third_case, create_number_tp(3));
     s_expr_append(cmd, create_s_expr_tp(third_case));
-    expected = create_atom_tp(TYPE_VOID, 0);
+    expected = create_void_tp();
     pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
     // (cond (else 1)) -> 1
     cmd = unit_list(copy_typed_ptr(cond_builtin));
@@ -2700,7 +2700,7 @@ void test_eval_cond(test_env* te) {
     first_case = unit_list(create_atom_tp(TYPE_BOOL, false));
     s_expr_append(first_case, create_s_expr_tp(divide_zero_s_expr(env)));
     s_expr_append(cmd, create_s_expr_tp(first_case));
-    expected = create_atom_tp(TYPE_VOID, 0);
+    expected = create_void_tp();
     pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
     // (cond (#t 1) ((/ 0) 2)) -> 1
     cmd = unit_list(copy_typed_ptr(cond_builtin));
@@ -2804,7 +2804,7 @@ void test_eval_define(test_env* te) {
     cmd = unit_list(copy_typed_ptr(define_builtin));
     s_expr_append(cmd, copy_typed_ptr(x_sym));
     s_expr_append(cmd, create_number_tp(1));
-    expected = create_atom_tp(TYPE_VOID, 0);
+    expected = create_void_tp();
     pass = run_test_expect(eval_define, cmd, env, expected) && pass;
     typed_ptr* x_value = value_lookup_index(env, x_sym);
     expected = create_number_tp(1);
@@ -2817,7 +2817,7 @@ void test_eval_define(test_env* te) {
     cmd = unit_list(copy_typed_ptr(define_builtin));
     s_expr_append(cmd, copy_typed_ptr(x_sym));
     s_expr_append(cmd, create_s_expr_tp(add_one_one_s_expr(env)));
-    expected = create_atom_tp(TYPE_VOID, 0);
+    expected = create_void_tp();
     pass = run_test_expect(eval_define, cmd, env, expected) && pass;
     x_value = value_lookup_index(env, x_sym);
     expected = create_number_tp(2);
@@ -2883,7 +2883,7 @@ void test_eval_define(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(fn_name_args));
     typed_ptr* body = create_number_tp(1);
     s_expr_append(cmd, copy_typed_ptr(body));
-    expected = create_atom_tp(TYPE_VOID, 0);
+    expected = create_void_tp();
     pass = run_test_expect(eval_define, cmd, env, expected) && pass;
     x_value = value_lookup_index(env, x_sym);
     Function_Node* x_fn = function_lookup_index(env, x_value);
@@ -2900,7 +2900,7 @@ void test_eval_define(test_env* te) {
     fn_name_args = unit_list(copy_typed_ptr(x_sym));
     s_expr_append(cmd, create_s_expr_tp(fn_name_args));
     s_expr_append(cmd, create_s_expr_tp(add_one_one_s_expr(env)));
-    expected = create_atom_tp(TYPE_VOID, 0);
+    expected = create_void_tp();
     pass = run_test_expect(eval_define, cmd, env, expected) && pass;
     x_value = value_lookup_index(env, x_sym);
     x_fn = function_lookup_index(env, x_value);
@@ -2932,7 +2932,7 @@ void test_eval_define(test_env* te) {
     s_expr_append(add_y_z, copy_typed_ptr(y_sym));
     s_expr_append(add_y_z, copy_typed_ptr(z_sym));
     s_expr_append(cmd, create_s_expr_tp(add_y_z));
-    expected = create_atom_tp(TYPE_VOID, 0);
+    expected = create_void_tp();
     pass = run_test_expect(eval_define, cmd, env, expected) && pass;
     x_value = value_lookup_index(env, x_sym);
     x_fn = function_lookup_index(env, x_value);
@@ -2958,7 +2958,7 @@ void test_eval_define(test_env* te) {
     fn_name_args = unit_list(copy_typed_ptr(x_sym));
     s_expr_append(cmd, create_s_expr_tp(fn_name_args));
     s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
-    expected = create_atom_tp(TYPE_VOID, 0);
+    expected = create_void_tp();
     pass = run_test_expect(eval_define, cmd, env, expected) && pass;
     x_value = value_lookup_index(env, x_sym);
     x_fn = function_lookup_index(env, x_value);
@@ -3037,7 +3037,7 @@ void test_eval_setvar(test_env* te) {
     cmd = unit_list(copy_typed_ptr(setvar_builtin));
     s_expr_append(cmd, copy_typed_ptr(x_sym));
     s_expr_append(cmd, create_number_tp(1));
-    expected = create_atom_tp(TYPE_VOID, 0);
+    expected = create_void_tp();
     pass = run_test_expect(eval_set_variable, cmd, env, expected) && pass;
     typed_ptr* x_value = value_lookup_index(env, x_sym);
     if (x_value == NULL || \
@@ -3050,7 +3050,7 @@ void test_eval_setvar(test_env* te) {
     cmd = unit_list(copy_typed_ptr(setvar_builtin));
     s_expr_append(cmd, copy_typed_ptr(x_sym));
     s_expr_append(cmd, create_s_expr_tp(add_one_one_s_expr(env)));
-    expected = create_atom_tp(TYPE_VOID, 0);
+    expected = create_void_tp();
     pass = run_test_expect(eval_set_variable, cmd, env, expected) && pass;
     x_value = value_lookup_index(env, x_sym);
     if (x_value == NULL || \
@@ -3063,7 +3063,7 @@ void test_eval_setvar(test_env* te) {
     cmd = unit_list(copy_typed_ptr(setvar_builtin));
     s_expr_append(cmd, copy_typed_ptr(x_sym));
     s_expr_append(cmd, create_s_expr_tp(list_one_two_s_expr(env)));
-    expected = create_atom_tp(TYPE_VOID, 0);
+    expected = create_void_tp();
     pass = run_test_expect(eval_set_variable, cmd, env, expected) && pass;
     x_value = value_lookup_index(env, x_sym);
     s_expr* result_list = unit_list(create_number_tp(1));
@@ -3165,7 +3165,7 @@ void test_eval_builtin(test_env* te) {
     cmd = unit_list(create_atom_tp(TYPE_BUILTIN, BUILTIN_DEFINE));
     s_expr_append(cmd, copy_typed_ptr(x_sym));
     s_expr_append(cmd, create_number_tp(1));
-    expected = create_atom_tp(TYPE_VOID, 0);
+    expected = create_void_tp();
     pass = run_test_expect(eval_builtin, cmd, env, expected) && pass;
     expected = create_number_tp(1);
     typed_ptr* x_value = value_lookup_index(env, x_sym);
@@ -3178,7 +3178,7 @@ void test_eval_builtin(test_env* te) {
     cmd = unit_list(create_atom_tp(TYPE_BUILTIN, BUILTIN_SETVAR));
     s_expr_append(cmd, copy_typed_ptr(x_sym));
     s_expr_append(cmd, create_number_tp(2));
-    expected = create_atom_tp(TYPE_VOID, 0);
+    expected = create_void_tp();
     pass = run_test_expect(eval_builtin, cmd, env, expected) && pass;
     expected = create_number_tp(2);
     x_value = value_lookup_index(env, x_sym);
@@ -3263,7 +3263,7 @@ void test_eval_builtin(test_env* te) {
     pass = run_test_expect(eval_builtin, cmd, env, expected) && pass;
     // (void? <void>) -> #t
     cmd = unit_list(create_atom_tp(TYPE_BUILTIN, BUILTIN_VOIDPRED));
-    s_expr_append(cmd, create_atom_tp(TYPE_VOID, 0));
+    s_expr_append(cmd, create_void_tp());
     expected = create_atom_tp(TYPE_BOOL, true);
     pass = run_test_expect(eval_builtin, cmd, env, expected) && pass;
     // (lambda () 1) -> <procedure> + side effect
@@ -3356,7 +3356,7 @@ void test_eval_s_expr(test_env* te) {
     s_expr_append(body, copy_typed_ptr(x_sym));
     s_expr_append(body, create_number_tp(2));
     s_expr_append(cmd, create_s_expr_tp(body));
-    expected = create_atom_tp(TYPE_VOID, 0);
+    expected = create_void_tp();
     run_test_expect(eval_define, cmd, env, expected);
     cmd = unit_list(copy_typed_ptr(x2_sym));
     s_expr_append(cmd, create_number_tp(10));
@@ -3413,7 +3413,7 @@ void test_eval_function(test_env* te) {
     s_expr_append(body, create_s_expr_tp(multiply_x_two));
     s_expr_append(body, copy_typed_ptr(y_sym));
     s_expr_append(cmd, create_s_expr_tp(body));
-    typed_ptr* expected = create_atom_tp(TYPE_VOID, 0);
+    typed_ptr* expected = create_void_tp();
     run_test_expect(eval_define, cmd, env, expected);
     // (<undefined function> 1) -> EVAL_ERROR_UNDEF_FUNCTION
     cmd = unit_list(create_atom_tp(TYPE_FUNCTION, 1000));
@@ -3496,8 +3496,8 @@ void test_evaluate(test_env* te) {
     expected = create_error_tp(EVAL_ERROR_NOT_ID);
     pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
     // eval[ <void> ] -> <void>
-    cmd = unit_list(create_atom_tp(TYPE_VOID, 0));
-    expected = create_atom_tp(TYPE_VOID, 0);
+    cmd = unit_list(create_void_tp());
+    expected = create_void_tp();
     pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
     // eval[ 1 ] -> 1
     cmd = unit_list(create_number_tp(1));

@@ -8,8 +8,9 @@ void unit_tests_fundamentals(test_env* t_env);
 
 void test_create_typed_ptr(test_env* te);
 void test_create_atom_tp(test_env* te);
-void test_create_s_expr_tp(test_env* te);
 void test_create_error_tp(test_env* te);
+void test_create_void_tp(test_env* te);
+void test_create_s_expr_tp(test_env* te);
 void test_copy_typed_ptr(test_env* te);
 void test_create_s_expr(test_env* te);
 void test_create_empty_s_expr(test_env* te);
