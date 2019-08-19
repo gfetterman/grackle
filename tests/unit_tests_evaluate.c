@@ -2318,11 +2318,11 @@ void test_eval_lambda(test_env* te) {
     s_expr_append(cmd, copy_typed_ptr(x_sym));
     expected = create_error_tp(EVAL_ERROR_FEW_ARGS);
     pass = run_test_expect(eval_lambda, cmd, env, expected) && pass;
-    // (lambda 1 1) -> EVAL_ERROR_BAD_ARG_TYPE
+    // (lambda 1 1) -> EVAL_ERROR_BAD_SYNTAX
     cmd = unit_list(copy_typed_ptr(lambda_builtin));
     s_expr_append(cmd, create_number_tp(1));
     s_expr_append(cmd, create_number_tp(1));
-    expected = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
+    expected = create_error_tp(EVAL_ERROR_BAD_SYNTAX);
     pass = run_test_expect(eval_lambda, cmd, env, expected) && pass;
     // (lambda (x 1) 2) -> EVAL_ERROR_NOT_ID
     cmd = unit_list(copy_typed_ptr(lambda_builtin));
@@ -2339,11 +2339,11 @@ void test_eval_lambda(test_env* te) {
     s_expr_append(cmd, create_number_tp(1));
     expected = create_error_tp(EVAL_ERROR_BAD_SYMBOL);
     pass = run_test_expect(eval_lambda, cmd, env, expected) && pass;
-    // (lambda x 1) -> currently EVAL_ERROR_BAD_ARG_TYPE; should be ok
+    // (lambda x 1) -> EVAL_ERROR_BAD_SYNTAX
     cmd = unit_list(copy_typed_ptr(lambda_builtin));
     s_expr_append(cmd, copy_typed_ptr(x_sym));
     s_expr_append(cmd, create_number_tp(1));
-    expected = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
+    expected = create_error_tp(EVAL_ERROR_BAD_SYNTAX);
     pass = run_test_expect(eval_lambda, cmd, env, expected) && pass;
     // (lambda (x) 1 2) -> currently EVAL_ERROR_MANY_ARGS; should be ok
     cmd = unit_list(copy_typed_ptr(lambda_builtin));
@@ -2353,11 +2353,11 @@ void test_eval_lambda(test_env* te) {
     s_expr_append(cmd, create_number_tp(2));
     expected = create_error_tp(EVAL_ERROR_MANY_ARGS);
     pass = run_test_expect(eval_lambda, cmd, env, expected) && pass;
-    // (lambda null 1) -> currently EVAL_ERROR_BAD_ARG_TYPE; should be ok
+    // (lambda null 1) -> EVAL_ERROR_BAD_SYNTAX
     cmd = unit_list(copy_typed_ptr(lambda_builtin));
     s_expr_append(cmd, NULL_SYM);
     s_expr_append(cmd, create_number_tp(1));
-    expected = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
+    expected = create_error_tp(EVAL_ERROR_BAD_SYNTAX);
     pass = run_test_expect(eval_lambda, cmd, env, expected) && pass;
     // (lambda (x) 1) -> <#procedure> + side effects
     cmd = unit_list(copy_typed_ptr(lambda_builtin));
@@ -2567,13 +2567,13 @@ void test_eval_cond(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(first_case));
     expected = create_void_tp();
     pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
-    // (cond (#t 1) 2) -> currently 1, but it should be EVAL_ERROR_BAD_SYNTAX
+    // (cond (#t 1) 2) -> EVAL_ERROR_BAD_SYNTAX
     cmd = unit_list(copy_typed_ptr(cond_builtin));
     first_case = unit_list(create_atom_tp(TYPE_BOOL, true));
     s_expr_append(first_case, create_number_tp(1));
     s_expr_append(cmd, create_s_expr_tp(first_case));
     s_expr_append(cmd, create_number_tp(2));
-    expected = create_number_tp(1);
+    expected = create_error_tp(EVAL_ERROR_BAD_SYNTAX);
     pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
     // (cond (#t 1) (#t 2)) -> 1
     cmd = unit_list(copy_typed_ptr(cond_builtin));
@@ -2729,7 +2729,7 @@ void test_eval_cond(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(first_case));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
-    // (cond (EVAL_ERROR_NOT_ID 1)) -> ???
+    // (cond (EVAL_ERROR_NOT_ID 1)) -> EVAL_ERROR_NOT_ID
     cmd = unit_list(copy_typed_ptr(cond_builtin));
     first_case = unit_list(create_error_tp(EVAL_ERROR_NOT_ID));
     s_expr_append(first_case, create_number_tp(1));

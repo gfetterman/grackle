@@ -362,7 +362,7 @@ void end_to_end_lambda_tests(test_env* t_env) {
     printf("# lambda #\n");
     e2e_atom_test("(lambda)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(lambda 1)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    e2e_atom_test("(lambda 1 2)", TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE, t_env);
+    e2e_atom_test("(lambda 1 2)", TYPE_ERROR, EVAL_ERROR_BAD_SYNTAX, t_env);
     e2e_atom_test("(lambda ())", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("((lambda () 1))", TYPE_FIXNUM, 1, t_env);
     e2e_atom_test("((lambda () 1) 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);

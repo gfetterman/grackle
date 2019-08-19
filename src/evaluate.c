@@ -641,82 +641,85 @@ typed_ptr* eval_cond(const s_expr* se, Environment* env) {
     typed_ptr* args_tp = collect_arguments(se, env, 0, -1, false);
     if (args_tp->type == TYPE_ERROR) {
         return args_tp;
-    } else {
-        typed_ptr* eval_interm = create_void_tp();
-        s_expr* arg_se = s_expr_next(se);
-        if (is_empty_list(arg_se)) {
+    }
+    s_expr* lookahead = args_tp->ptr.se_ptr;
+    while (!is_empty_list(lookahead)) {
+        if (lookahead->car->type != TYPE_S_EXPR) {
             delete_s_expr_recursive(args_tp->ptr.se_ptr, false);
             free(args_tp);
-            return eval_interm;
+            return create_error_tp(EVAL_ERROR_BAD_SYNTAX);
         }
-        bool pred_true = false;
-        s_expr* then_bodies = NULL;
-        while (!is_empty_list(arg_se)) {
-            if (arg_se->car->type != TYPE_S_EXPR) {
-                free(eval_interm);
-                eval_interm = create_error_tp(EVAL_ERROR_BAD_SYNTAX);
-                break;
-            }
-            s_expr* cond_clause = arg_se->car->ptr.se_ptr;
-            if (is_empty_list(cond_clause)) {
-                free(eval_interm);
-                eval_interm = create_error_tp(EVAL_ERROR_BAD_SYNTAX);
-                break;
-            }
-            Symbol_Node* else_stn = symbol_lookup_name(env, "else");
-            if (cond_clause->car->type == TYPE_SYMBOL && \
-                cond_clause->car->ptr.idx == else_stn->symbol_idx) {
-                s_expr* next_clause = s_expr_next(arg_se);
-                if (!is_empty_list(next_clause)) {
-                    free(eval_interm);
-                    eval_interm = create_error_tp(EVAL_ERROR_NONTERMINAL_ELSE);
-                    break;
-                }
-                then_bodies = s_expr_next(cond_clause);
-                if (is_empty_list(then_bodies)) {
-                    free(eval_interm);
-                    eval_interm = create_error_tp(EVAL_ERROR_EMPTY_ELSE);
-                    break;
-                }
-                pred_true = true;
-            }
-            free(eval_interm);
-            eval_interm = evaluate(cond_clause->car, env);
-            if (eval_interm->type == TYPE_ERROR) {
-                break;
-            } else if (!is_false_literal(eval_interm)) {
-                pred_true = true;
-                then_bodies = s_expr_next(cond_clause);
-                break;
-            }
-            arg_se = s_expr_next(arg_se);
-        }
-        typed_ptr* result = NULL;
-        if (!pred_true) { // no cond-clauses were true, or there was an error
-            if (eval_interm->type == TYPE_ERROR) {
-                result = eval_interm;
-            } else {
-                free(eval_interm);
-                result = create_void_tp();
-            }
-        } else {
-            while (!is_empty_list(then_bodies)) {
-                if (eval_interm->type == TYPE_S_EXPR) {
-                    delete_s_expr_recursive(eval_interm->ptr.se_ptr, true);
-                }
-                free(eval_interm);
-                eval_interm = evaluate(then_bodies->car, env);
-                if (eval_interm->type == TYPE_ERROR) {
-                    break;
-                }
-                then_bodies = s_expr_next(then_bodies);
-            }
-            result = eval_interm;
-        }
+        lookahead = s_expr_next(lookahead);
+    }
+    typed_ptr* eval_interm = create_void_tp();
+    s_expr* arg_se = s_expr_next(se);
+    if (is_empty_list(arg_se)) {
         delete_s_expr_recursive(args_tp->ptr.se_ptr, false);
         free(args_tp);
-        return result;
+        return eval_interm;
     }
+    bool pred_true = false;
+    s_expr* then_bodies = NULL;
+    while (!is_empty_list(arg_se)) {
+        s_expr* cond_clause = arg_se->car->ptr.se_ptr;
+        if (is_empty_list(cond_clause)) {
+            free(eval_interm);
+            eval_interm = create_error_tp(EVAL_ERROR_BAD_SYNTAX);
+            break;
+        }
+        Symbol_Node* else_stn = symbol_lookup_name(env, "else");
+        if (cond_clause->car->type == TYPE_SYMBOL && \
+            cond_clause->car->ptr.idx == else_stn->symbol_idx) {
+            s_expr* next_clause = s_expr_next(arg_se);
+            if (!is_empty_list(next_clause)) {
+                free(eval_interm);
+                eval_interm = create_error_tp(EVAL_ERROR_NONTERMINAL_ELSE);
+                break;
+            }
+            then_bodies = s_expr_next(cond_clause);
+            if (is_empty_list(then_bodies)) {
+                free(eval_interm);
+                eval_interm = create_error_tp(EVAL_ERROR_EMPTY_ELSE);
+                break;
+            }
+            pred_true = true;
+        }
+        free(eval_interm);
+        eval_interm = evaluate(cond_clause->car, env);
+        if (eval_interm->type == TYPE_ERROR) {
+            break;
+        } else if (!is_false_literal(eval_interm)) {
+            pred_true = true;
+            then_bodies = s_expr_next(cond_clause);
+            break;
+        }
+        arg_se = s_expr_next(arg_se);
+    }
+    typed_ptr* result = NULL;
+    if (!pred_true) { // no cond-clauses were true, or there was an error
+        if (eval_interm->type == TYPE_ERROR) {
+            result = eval_interm;
+        } else {
+            free(eval_interm);
+            result = create_void_tp();
+        }
+    } else {
+        while (!is_empty_list(then_bodies)) {
+            if (eval_interm->type == TYPE_S_EXPR) {
+                delete_s_expr_recursive(eval_interm->ptr.se_ptr, true);
+            }
+            free(eval_interm);
+            eval_interm = evaluate(then_bodies->car, env);
+            if (eval_interm->type == TYPE_ERROR) {
+                break;
+            }
+            then_bodies = s_expr_next(then_bodies);
+        }
+        result = eval_interm;
+    }
+    delete_s_expr_recursive(args_tp->ptr.se_ptr, false);
+    free(args_tp);
+    return result;
 }
 
 // Evaluates an s-expression whose car is the built-in function 
@@ -803,7 +806,7 @@ typed_ptr* eval_lambda(const s_expr* se, Environment* env) {
         typed_ptr* first_arg = args_tp->ptr.se_ptr->car;
         typed_ptr* second_arg = s_expr_next(args_tp->ptr.se_ptr)->car;
         if (first_arg->type != TYPE_S_EXPR) {
-            result = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
+            result = create_error_tp(EVAL_ERROR_BAD_SYNTAX);
         } else {
             Symbol_Node* params = collect_parameters(first_arg, env);
             if (params != NULL && params->type == TYPE_ERROR) {
