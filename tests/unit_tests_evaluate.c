@@ -975,7 +975,7 @@ void test_eval_arithmetic(test_env* te) {
     // (+ 2 (+ 2 2)) -> 6
     cmd = unit_list(ADD);
     s_expr_append(cmd, create_number_tp(2));
-    s_expr* add_two_two = unit_list(ADD);
+    s_expr* add_two_two = unit_list(ADD_SYM);
     s_expr_append(add_two_two, create_number_tp(2));
     s_expr_append(add_two_two, create_number_tp(2));
     s_expr_append(cmd, create_s_expr_tp(copy_s_expr(add_two_two)));
@@ -3549,6 +3549,10 @@ void test_evaluate(test_env* te) {
     // eval[ 'x ] (assuming x is defined to be 1) -> 1
     cmd = unit_list(copy_typed_ptr(x_sym));
     expected = create_number_tp(1);
+    pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
+    // eval[ <symbol not in symbol table> ] -> EVAL_ERROR_BAD_SYMBOL
+    cmd = unit_list(create_atom_tp(TYPE_SYMBOL, 1000));
+    expected = create_error_tp(EVAL_ERROR_BAD_SYMBOL);
     pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
     // eval[ <procedure from above> ] -> <procedure from above>
     cmd = unit_list(create_atom_tp(TYPE_FUNCTION, 0));

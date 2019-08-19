@@ -29,6 +29,9 @@ typed_ptr* evaluate(const typed_ptr* tp, Environment* env) {
                 break;
             case TYPE_SYMBOL:
                 result = value_lookup_index(env, tp);
+                if (result == NULL) {
+                    result = create_error_tp(EVAL_ERROR_BAD_SYMBOL);
+                }
                 break;
             default:
                 result = create_error_tp(EVAL_ERROR_UNDEF_TYPE);
