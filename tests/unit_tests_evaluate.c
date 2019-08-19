@@ -473,7 +473,7 @@ void test_collect_arguments(test_env* te) {
     s_expr* call_pair = create_s_expr(create_atom_tp(TYPE_BUILTIN, 0), \
                                       create_atom_tp(TYPE_FIXNUM, 1000));
     typed_ptr* out = collect_arguments(call_pair, env, 0, -1, true);
-    if (!match_error(out, EVAL_ERROR_ILLEGAL_PAIR)) {
+    if (!check_error(out, EVAL_ERROR_ILLEGAL_PAIR)) {
         pass = false;
     }
     delete_s_expr_recursive(call_pair, true);
@@ -484,7 +484,7 @@ void test_collect_arguments(test_env* te) {
     s_expr_next(call_bad_list)->car = create_atom_tp(TYPE_FIXNUM, 1000);
     s_expr_next(call_bad_list)->cdr = create_atom_tp(TYPE_FIXNUM, 2000);
     out = collect_arguments(call_bad_list, env, 0, -1, true);
-    if (!match_error(out, EVAL_ERROR_ILLEGAL_PAIR)) {
+    if (!check_error(out, EVAL_ERROR_ILLEGAL_PAIR)) {
         pass = false;
     }
     delete_s_expr_recursive(call_bad_list, true);
@@ -525,7 +525,7 @@ void test_collect_arguments(test_env* te) {
     free(out);
     // empty arg s-expr, with min_args > 0
     out = collect_arguments(call_no_args, env, 1, 1, true);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
+    if (!check_error(out, EVAL_ERROR_FEW_ARGS)) {
         pass = false;
     }
     free(out);
@@ -536,7 +536,7 @@ void test_collect_arguments(test_env* te) {
     typed_ptr* value_1 = create_atom_tp(TYPE_FIXNUM, 1000);
     s_expr_append(call_one_arg, value_1);
     out = collect_arguments(call_one_arg, env, 0, 0, true);
-    if (!match_error(out, EVAL_ERROR_MANY_ARGS)) {
+    if (!check_error(out, EVAL_ERROR_MANY_ARGS)) {
         pass = false;
     }
     free(out);
@@ -612,13 +612,13 @@ void test_collect_arguments(test_env* te) {
     free(out);
     // one-elt arg s-expr, with min_args == 2 & max_args == 2
     out = collect_arguments(call_one_arg, env, 2, 2, true);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
+    if (!check_error(out, EVAL_ERROR_FEW_ARGS)) {
         pass = false;
     }
     free(out);
     // one-elt arg s-expr, with min_args == 2 & max_args == -1
     out = collect_arguments(call_one_arg, env, 2, -1, true);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
+    if (!check_error(out, EVAL_ERROR_FEW_ARGS)) {
         pass = false;
     }
     free(out);
@@ -632,13 +632,13 @@ void test_collect_arguments(test_env* te) {
     s_expr_append(value_2->ptr.se_ptr, create_atom_tp(TYPE_BOOL, true));
     s_expr_append(call_two_args, value_2);
     out = collect_arguments(call_two_args, env, 0, 0, false);
-    if (!match_error(out, EVAL_ERROR_MANY_ARGS)) {
+    if (!check_error(out, EVAL_ERROR_MANY_ARGS)) {
         pass = false;
     }
     free(out);
     // two-elt arg s-expr, with min_args == 0 & max_args == 1
     out = collect_arguments(call_two_args, env, 0, 1, false);
-    if (!match_error(out, EVAL_ERROR_MANY_ARGS)) {
+    if (!check_error(out, EVAL_ERROR_MANY_ARGS)) {
         pass = false;
     }
     free(out);
@@ -677,7 +677,7 @@ void test_collect_arguments(test_env* te) {
     free(out);
     // two-elt arg s-expr, with min_args == 1 & max_args == 1
     out = collect_arguments(call_two_args, env, 1, 1, false);
-    if (!match_error(out, EVAL_ERROR_MANY_ARGS)) {
+    if (!check_error(out, EVAL_ERROR_MANY_ARGS)) {
         pass = false;
     }
     free(out);
@@ -749,13 +749,13 @@ void test_collect_arguments(test_env* te) {
     free(out);
     // two-elt arg s-expr, with min_args == 3 & max_args == 3
     out = collect_arguments(call_two_args, env, 3, 3, false);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
+    if (!check_error(out, EVAL_ERROR_FEW_ARGS)) {
         pass = false;
     }
     free(out);
     // two-elt arg s-expr, with min_args == 3 & max_args == -1
     out = collect_arguments(call_two_args, env, 3, -1, false);
-    if (!match_error(out, EVAL_ERROR_FEW_ARGS)) {
+    if (!check_error(out, EVAL_ERROR_FEW_ARGS)) {
         pass = false;
     }
     free(out);
@@ -795,7 +795,7 @@ void test_collect_arguments(test_env* te) {
     s_expr_append(plus_error, create_atom_tp(TYPE_BOOL, false));
     s_expr_append(call_with_eval, create_s_expr_tp(plus_error));
     out = collect_arguments(call_with_eval, env, 3, 3, true);
-    if (!match_error(out, EVAL_ERROR_NEED_NUM)) {
+    if (!check_error(out, EVAL_ERROR_NEED_NUM)) {
         pass = false;
     }
     free(out);

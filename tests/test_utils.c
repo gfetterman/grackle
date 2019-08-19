@@ -22,7 +22,7 @@ bool check_typed_ptr(typed_ptr* tp, type t, tp_value ptr) {
     }
 }
 
-bool match_error(const typed_ptr* tp, interpreter_error err) {
+bool check_error(const typed_ptr* tp, interpreter_error err) {
     return (tp != NULL && tp->type == TYPE_ERROR && tp->ptr.idx == err);
 }
 
