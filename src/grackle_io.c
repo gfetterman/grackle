@@ -50,6 +50,10 @@ void print_error(const typed_ptr* tp) {
         printf("error: ");
     }
     switch (tp->ptr.idx) {
+        case TEST_ERROR_DUMMY:
+            printf("dummy testing error (there is a bug if this appears");
+            printf("outside of tests)");
+            break;
         case PARSE_ERROR_NONE:
             printf("none (this indicates an interpreter problem)");
             break;
