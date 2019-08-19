@@ -21,14 +21,18 @@ typed_ptr* create_atom_tp(type type, long idx) {
 
 // The returned typed_ptr is the caller's responsibility to free; it can be
 //   safely (shallow) freed without harm to any other object.
-typed_ptr* create_s_expr_tp(s_expr* se) {
-    return create_typed_ptr(TYPE_S_EXPR, (tp_value){.se_ptr=se});
+typed_ptr* create_error_tp(interpreter_error err_code) {
+    return create_atom_tp(TYPE_ERROR, err_code);
+}
+
+typed_ptr* create_void_tp() {
+    return create_atom_tp(TYPE_VOID, 0);
 }
 
 // The returned typed_ptr is the caller's responsibility to free; it can be
 //   safely (shallow) freed without harm to any other object.
-typed_ptr* create_error_tp(interpreter_error err_code) {
-    return create_atom_tp(TYPE_ERROR, err_code);
+typed_ptr* create_s_expr_tp(s_expr* se) {
+    return create_typed_ptr(TYPE_S_EXPR, (tp_value){.se_ptr=se});
 }
 
 // The returned typed_ptr is the caller's responsibility to free; it can be

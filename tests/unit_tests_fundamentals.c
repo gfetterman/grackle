@@ -19,8 +19,9 @@ void unit_tests_fundamentals(test_env* t_env) {
     printf("# fundamentals.c #\n");
     test_create_typed_ptr(t_env);
     test_create_atom_tp(t_env);
-    test_create_s_expr_tp(t_env);
     test_create_error_tp(t_env);
+    test_create_void_tp(t_env);
+    test_create_s_expr_tp(t_env);
     test_copy_typed_ptr(t_env);
     test_create_s_expr(t_env);
     test_create_empty_s_expr(t_env);
@@ -78,11 +79,11 @@ void test_create_atom_tp(test_env* te) {
     return;
 }
 
-void test_create_s_expr_tp(test_env* te) {
-    print_test_announce("create_s_expr_tp()");
+void test_create_error_tp(test_env* te) {
+    print_test_announce("create_error_tp()");
     bool pass = true;
-    typed_ptr* out = create_s_expr_tp(TEST_S_EXPR);
-    if (!check_typed_ptr(out, TYPE_S_EXPR, TEST_S_EXPR_TP_VAL)) {
+    typed_ptr* out = create_error_tp(EVAL_ERROR_EXIT);
+    if (!check_typed_ptr(out, TYPE_ERROR, (tp_value){.idx=EVAL_ERROR_EXIT})) {
         pass = false;
     }
     free(out);
@@ -92,11 +93,25 @@ void test_create_s_expr_tp(test_env* te) {
     return;
 }
 
-void test_create_error_tp(test_env* te) {
-    print_test_announce("create_error_tp()");
+void test_create_void_tp(test_env* te) {
+    print_test_announce("create_void_tp()");
     bool pass = true;
-    typed_ptr* out = create_error_tp(EVAL_ERROR_EXIT);
-    if (!check_typed_ptr(out, TYPE_ERROR, (tp_value){.idx=EVAL_ERROR_EXIT})) {
+    typed_ptr* out = create_void_tp();
+    if (!check_typed_ptr(out, TYPE_VOID, (tp_value){.idx=0})) {
+        pass = false;
+    }
+    free(out);
+    print_test_result(pass);
+    te->passed += pass;
+    te->run++;
+    return;
+}
+
+void test_create_s_expr_tp(test_env* te) {
+    print_test_announce("create_s_expr_tp()");
+    bool pass = true;
+    typed_ptr* out = create_s_expr_tp(TEST_S_EXPR);
+    if (!check_typed_ptr(out, TYPE_S_EXPR, TEST_S_EXPR_TP_VAL)) {
         pass = false;
     }
     free(out);

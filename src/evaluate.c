@@ -389,7 +389,7 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
                 } else {
                     blind_install_symbol(env, sym_entry->name, value);
                     free(value);
-                    result = create_atom_tp(TYPE_VOID, 0);
+                    result = create_void_tp();
                 }
             }
         } else if (first_arg->type == TYPE_S_EXPR) { // define function
@@ -433,7 +433,7 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
                                              sym_entry->name, \
                                              fn);
                         free(fn);
-                        result = create_atom_tp(TYPE_VOID, 0);
+                        result = create_void_tp();
                     }
                 }
             }
@@ -482,7 +482,7 @@ typed_ptr* eval_set_variable(const s_expr* se, Environment* env) {
                 } else {
                     blind_install_symbol(env, sym_entry->name, value);
                     free(value);
-                    result = create_atom_tp(TYPE_VOID, 0);
+                    result = create_void_tp();
                 }
             }
         }
@@ -642,7 +642,7 @@ typed_ptr* eval_cond(const s_expr* se, Environment* env) {
     if (args_tp->type == TYPE_ERROR) {
         return args_tp;
     } else {
-        typed_ptr* eval_interm = create_atom_tp(TYPE_VOID, 0);
+        typed_ptr* eval_interm = create_void_tp();
         s_expr* arg_se = s_expr_next(se);
         if (is_empty_list(arg_se)) {
             delete_s_expr_recursive(args_tp->ptr.se_ptr, false);
@@ -697,7 +697,7 @@ typed_ptr* eval_cond(const s_expr* se, Environment* env) {
                 result = eval_interm;
             } else {
                 free(eval_interm);
-                result = create_atom_tp(TYPE_VOID, 0);
+                result = create_void_tp();
             }
         } else {
             while (!is_empty_list(then_bodies)) {

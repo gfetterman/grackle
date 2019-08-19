@@ -102,8 +102,9 @@ typedef struct S_EXPR {
 
 typed_ptr* create_typed_ptr(type type, tp_value ptr);
 typed_ptr* create_atom_tp(type type, long idx);
-typed_ptr* create_s_expr_tp(s_expr* se);
 typed_ptr* create_error_tp(interpreter_error err_code);
+typed_ptr* create_void_tp();
+typed_ptr* create_s_expr_tp(s_expr* se);
 typed_ptr* copy_typed_ptr(const typed_ptr* tp);
 
 s_expr* create_s_expr(typed_ptr* car, typed_ptr* cdr);
