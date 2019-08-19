@@ -14,21 +14,25 @@ int main() {
     setup_environment(env);
     while (!exit) {
         get_input(PROMPT, input, BUF_SIZE);
-        typed_ptr* output = parse(input, env);
-        if (output->type == TYPE_ERROR) {
-            print_error(output);
+        typed_ptr* parse_output = parse(input, env);
+        if (parse_output->type == TYPE_ERROR) {
+            print_error(parse_output);
             printf("\n");
         } else {
-            output = evaluate(output, env);
-            print_typed_ptr(output, env);
+            typed_ptr* eval_output = evaluate(parse_output, env);
+            print_typed_ptr(eval_output, env);
             printf("\n");
-            if (output->type == TYPE_ERROR && \
-                output->ptr.idx == EVAL_ERROR_EXIT) {
+            if (eval_output->type == TYPE_ERROR && \
+                eval_output->ptr.idx == EVAL_ERROR_EXIT) {
                 exit = true;
             }
-            //delete_s_expr_recursive(super_se, true);
+            delete_s_expr_recursive(parse_output->ptr.se_ptr, true);
+            if (eval_output->type == TYPE_S_EXPR) {
+                delete_s_expr_recursive(eval_output->ptr.se_ptr, true);
+            }
+            free(eval_output);
         }
-        free(output);
+        free(parse_output);
     }
     delete_environment_full(env);
     printf("exiting...\n");
