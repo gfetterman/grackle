@@ -92,7 +92,8 @@ typed_ptr* eval_builtin(const s_expr* se, Environment* env) {
         case BUILTIN_PAIRPRED: // fall-through
         case BUILTIN_NUMBERPRED: // fall-through
         case BUILTIN_BOOLPRED: // fall-through
-        case BUILTIN_VOIDPRED:
+        case BUILTIN_VOIDPRED: // fall-through
+        case BUILTIN_PROCPRED:
             result = eval_atom_pred(se, env);
             break;
         case BUILTIN_LAMBDA:
@@ -775,6 +776,9 @@ typed_ptr* eval_atom_pred(const s_expr* se, Environment* env) {
         case BUILTIN_VOIDPRED:
             target_type = TYPE_VOID;
             break;
+        case BUILTIN_PROCPRED:
+            target_type = TYPE_BUILTIN; // or TYPE_FUNCTION - see below
+            break;
         default:
             return create_error_tp(EVAL_ERROR_UNDEF_BUILTIN);
     }
@@ -784,7 +788,13 @@ typed_ptr* eval_atom_pred(const s_expr* se, Environment* env) {
         result = args_tp;
     } else {
         typed_ptr* arg = args_tp->ptr.se_ptr->car;
+        // general case
         result = create_atom_tp(TYPE_BOOL, arg->type == target_type);
+        // special case: (procedure? +) -> #t AND (procedure? <user-fn>) -> #t
+        if (target_type == TYPE_BUILTIN && arg->type == TYPE_FUNCTION) {
+            result->ptr.idx = true;
+        }
+        // special case: (pair? '()) -> #f
         if (arg->type == TYPE_S_EXPR && is_empty_list(arg->ptr.se_ptr)) {
             result->ptr.idx = false;
         }

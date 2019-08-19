@@ -191,6 +191,8 @@ void end_to_end_predicate_tests(test_env* t_env) {
     e2e_atom_test("(pair? (cons 1 2))", TYPE_BOOL, true, t_env);
     e2e_atom_test("(pair? null)", TYPE_BOOL, false, t_env);
     e2e_atom_test("(pair? (cond))", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(pair? +)", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(pair? (lambda () 1))", TYPE_BOOL, false, t_env);
     e2e_atom_test("(pair?)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(pair? 1 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("(pair? (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
@@ -201,6 +203,8 @@ void end_to_end_predicate_tests(test_env* t_env) {
     e2e_atom_test("(list? (cons 1 2))", TYPE_BOOL, false, t_env);
     e2e_atom_test("(list? null)", TYPE_BOOL, true, t_env);
     e2e_atom_test("(list? (cond))", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(list? +)", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(list? (lambda () 1))", TYPE_BOOL, false, t_env);
     e2e_atom_test("(list?)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(list? 1 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("(list? (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
@@ -211,6 +215,8 @@ void end_to_end_predicate_tests(test_env* t_env) {
     e2e_atom_test("(number? (cons 1 2))", TYPE_BOOL, false, t_env);
     e2e_atom_test("(number? null)", TYPE_BOOL, false, t_env);
     e2e_atom_test("(number? (cond))", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(number? +)", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(number? (lambda () 1))", TYPE_BOOL, false, t_env);
     e2e_atom_test("(number?)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(number? 1 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("(number? (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
@@ -221,6 +227,8 @@ void end_to_end_predicate_tests(test_env* t_env) {
     e2e_atom_test("(boolean? (cons 1 2))", TYPE_BOOL, false, t_env);
     e2e_atom_test("(boolean? null)", TYPE_BOOL, false, t_env);
     e2e_atom_test("(boolean? (cond))", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(boolean? +)", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(boolean? (lambda () 1))", TYPE_BOOL, false, t_env);
     e2e_atom_test("(boolean?)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(boolean? 1 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("(boolean? (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
@@ -231,9 +239,23 @@ void end_to_end_predicate_tests(test_env* t_env) {
     e2e_atom_test("(void? (cons 1 2))", TYPE_BOOL, false, t_env);
     e2e_atom_test("(void? null)", TYPE_BOOL, false, t_env);
     e2e_atom_test("(void? (cond))", TYPE_BOOL, true, t_env);
+    e2e_atom_test("(void? +)", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(void? (lambda () 1))", TYPE_BOOL, false, t_env);
     e2e_atom_test("(void?)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(void? 1 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("(void? (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
+    printf("## procedure? ##\n");
+    e2e_atom_test("(procedure? 1)", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(procedure? #t)", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(procedure? (list 1 2 3))", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(procedure? (cons 1 2))", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(procedure? null)", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(procedure? (cond))", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(procedure? +)", TYPE_BOOL, true, t_env);
+    e2e_atom_test("(procedure? (lambda () 1))", TYPE_BOOL, true, t_env);
+    e2e_atom_test("(procedure?)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
+    e2e_atom_test("(procedure? 1 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
+    e2e_atom_test("(procedure? (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     return;
 }
 
