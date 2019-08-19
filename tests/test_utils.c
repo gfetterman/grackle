@@ -22,6 +22,10 @@ bool check_typed_ptr(typed_ptr* tp, type t, tp_value ptr) {
     }
 }
 
+bool check_error(const typed_ptr* tp, interpreter_error err) {
+    return (tp != NULL && tp->type == TYPE_ERROR && tp->ptr.idx == err);
+}
+
 bool check_pair(typed_ptr* tp, \
                 typed_ptr** tp_list, \
                 unsigned int tp_list_len, \
@@ -94,16 +98,6 @@ bool match_typed_ptrs(typed_ptr* first, typed_ptr* second) {
     }
 }
 
-void print_test_announce(char function[]) {
-    printf("unit test: %-40s", function);
-    return;
-}
-
-void print_test_result(bool pass) {
-    printf("%s\n", (pass) ? "PASSED" : "FAILED <=");
-    return;
-}
-
 bool match_s_exprs(const s_expr* first, const s_expr* second) {
     if (first == NULL && second == NULL) {
         return true;
@@ -140,6 +134,37 @@ bool match_s_exprs(const s_expr* first, const s_expr* second) {
     }
 }
 
+bool deep_match_typed_ptrs(typed_ptr* first, typed_ptr* second) {
+    if (first == NULL && second == NULL) {
+        return true;
+    } else if (first == NULL || second == NULL) {
+        return false;
+    } else if (first->type != second->type) {
+        return false;
+    } else {
+        switch (first->type) {
+            case TYPE_S_EXPR:
+                return match_s_exprs(first->ptr.se_ptr, second->ptr.se_ptr);
+            default:
+                return first->ptr.idx == second->ptr.idx;
+        }
+    }
+}
+
+void print_test_announce(char function[]) {
+    printf("unit test: %-40s", function);
+    return;
+}
+
+void print_test_result(bool pass) {
+    printf("%s\n", (pass) ? "PASSED" : "FAILED <=");
+    return;
+}
+
+s_expr* unit_list(typed_ptr* tp) {
+    return create_s_expr(tp, create_s_expr_tp(create_empty_s_expr()));
+}
+
 void s_expr_append(s_expr* se, typed_ptr* tp) {
     // assume: se is a valid s-expression
     while (!is_empty_list(se)) {
@@ -148,4 +173,23 @@ void s_expr_append(s_expr* se, typed_ptr* tp) {
     se->car = tp;
     se->cdr = create_s_expr_tp(create_empty_s_expr());
     return;
+}
+
+typed_ptr* builtin_tp_from_name(Environment* env, const char name[]) {
+    Symbol_Node* found = symbol_lookup_name(env, name);
+    if (found == NULL || found->type != TYPE_BUILTIN) {
+        return NULL;
+    } else {
+        return create_atom_tp(TYPE_BUILTIN, found->value.idx);
+    }
+}
+
+typed_ptr* symbol_tp_from_name(Environment* env, const char name[]) {
+    Symbol_Node* found = symbol_lookup_name(env, name);
+    return (found == NULL) ? NULL : \
+                             create_atom_tp(TYPE_SYMBOL, found->symbol_idx);
+}
+
+typed_ptr* create_number_tp(long value) {
+    return create_typed_ptr(TYPE_FIXNUM, (tp_value){.idx=value});
 }

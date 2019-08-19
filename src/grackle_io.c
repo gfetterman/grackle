@@ -121,9 +121,8 @@ void print_error(const typed_ptr* tp) {
         case EVAL_ERROR_CAR_NOT_CALLABLE:
             printf("evaluation: car of s-expression was not a callable");
             break;
-        case EVAL_ERROR_NOT_ID:
-            printf("evaluation: first argument to 'set!' must be an ");
-            printf("identifier");
+        case EVAL_ERROR_NOT_SYMBOL:
+            printf("evaluation: expected an identifier");
             break;
         case EVAL_ERROR_MISSING_PROCEDURE:
             printf("evaluation: missing procedure expression; probably ");

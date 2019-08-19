@@ -70,7 +70,7 @@ typedef enum {PARSE_ERROR_NONE, \
               EVAL_ERROR_MANY_ARGS, \
               EVAL_ERROR_BAD_ARG_TYPE, \
               EVAL_ERROR_NEED_NUM, \
-              EVAL_ERROR_NOT_ID, \
+              EVAL_ERROR_NOT_SYMBOL, \
               EVAL_ERROR_FIXNUM_UNDER, \
               EVAL_ERROR_FIXNUM_OVER, \
               EVAL_ERROR_DIV_ZERO, \

@@ -362,7 +362,7 @@ void end_to_end_lambda_tests(test_env* t_env) {
     printf("# lambda #\n");
     e2e_atom_test("(lambda)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(lambda 1)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    e2e_atom_test("(lambda 1 2)", TYPE_ERROR, EVAL_ERROR_BAD_ARG_TYPE, t_env);
+    e2e_atom_test("(lambda 1 2)", TYPE_ERROR, EVAL_ERROR_BAD_SYNTAX, t_env);
     e2e_atom_test("(lambda ())", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("((lambda () 1))", TYPE_FIXNUM, 1, t_env);
     e2e_atom_test("((lambda () 1) 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
@@ -378,7 +378,7 @@ void end_to_end_lambda_tests(test_env* t_env) {
     char* lam_0_many = "((lambda (x) (* x 10)) 3 4)";
     e2e_atom_test(lam_0_many, TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     char* lam_not_id = "((lambda (x 2) (* x 10)) 3)";
-    e2e_atom_test(lam_not_id, TYPE_ERROR, EVAL_ERROR_NOT_ID, t_env);
+    e2e_atom_test(lam_not_id, TYPE_ERROR, EVAL_ERROR_NOT_SYMBOL, t_env);
     e2e_atom_test("((lambda (x y) (* x y)) 3 4)", TYPE_FIXNUM, 12, t_env);
     char* lam_1_few = "((lambda (x y) (* x y)) 3)";
     e2e_atom_test(lam_1_few, TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
@@ -392,7 +392,7 @@ void end_to_end_setvar_tests(test_env* t_env) {
     e2e_atom_test("(set!)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(set! x)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(set! x 1)", TYPE_ERROR, EVAL_ERROR_UNDEF_SYM, t_env);
-    e2e_atom_test("(set! 1 2)", TYPE_ERROR, EVAL_ERROR_NOT_ID, t_env);
+    e2e_atom_test("(set! 1 2)", TYPE_ERROR, EVAL_ERROR_NOT_SYMBOL, t_env);
     char* set_line1 = "(define x 1)";
     char* set_line2 = "(set! x (+ 1 1))";
     char* set_line3 = "(+ x 1)";
@@ -412,7 +412,7 @@ void end_to_end_define_tests(test_env* t_env) {
     printf("# define #\n");
     e2e_atom_test("(define)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(define x)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    e2e_atom_test("(define 1 2)", TYPE_ERROR, EVAL_ERROR_NOT_ID, t_env);
+    e2e_atom_test("(define 1 2)", TYPE_ERROR, EVAL_ERROR_BAD_SYNTAX, t_env);
     e2e_atom_test("(define x (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     char* def_line1 = "(define x (+ 1 2))";
     char* def_line2 = "(+ x 10)";
@@ -422,7 +422,7 @@ void end_to_end_define_tests(test_env* t_env) {
     e2e_atom_test("(define ())", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(define () 1)", TYPE_ERROR, EVAL_ERROR_BAD_SYNTAX, t_env);
     e2e_atom_test("(define (x))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    e2e_atom_test("(define (x 1) 1)", TYPE_ERROR, EVAL_ERROR_NOT_ID, t_env);
+    e2e_atom_test("(define (x 1) 1)", TYPE_ERROR, EVAL_ERROR_NOT_SYMBOL, t_env);
     e2e_atom_test("(define (x) (-))", TYPE_VOID, 0, t_env);
     char* def_fnx_zero_param = "(define (x) 10)";
     char* def_fnx_zero_param_se = "(define (x) (+ 1 2))";
