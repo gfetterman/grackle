@@ -975,7 +975,7 @@ void test_eval_arithmetic(test_env* te) {
     // (+ 2 (+ 2 2)) -> 6
     cmd = unit_list(ADD);
     s_expr_append(cmd, create_number_tp(2));
-    s_expr* add_two_two = unit_list(ADD_SYM);
+    s_expr* add_two_two = unit_list(ADD);
     s_expr_append(add_two_two, create_number_tp(2));
     s_expr_append(add_two_two, create_number_tp(2));
     s_expr_append(cmd, create_s_expr_tp(copy_s_expr(add_two_two)));
@@ -3314,15 +3314,24 @@ void test_eval_s_expr(test_env* te) {
     x_sym = install_symbol(env, "x", &undef);
     x2_sym = install_symbol(env, "x2", &undef);
     bool pass = true;
+    // NULL -> EVAL_ERROR_NULL_S_EXPR
+    s_expr* cmd = NULL;
+    typed_ptr* expected = create_error_tp(EVAL_ERROR_NULL_S_EXPR);
+    pass = run_test_expect(eval_s_expr, cmd, env, expected) && pass;
     // () -> EVAL_ERROR_MISSING_PROCEDURE
-    s_expr* cmd = create_empty_s_expr();
-    s_expr* nested_cmd = create_empty_s_expr();
-    s_expr_append(cmd, create_s_expr_tp(nested_cmd));
-    typed_ptr* expected = create_error_tp(EVAL_ERROR_MISSING_PROCEDURE);
+    cmd = create_empty_s_expr();
+    expected = create_error_tp(EVAL_ERROR_MISSING_PROCEDURE);
+    pass = run_test_expect(eval_s_expr, cmd, env, expected) && pass;
+    // <malformed s-expression> -> EVAL_ERROR_MALFORMED_S_EXPR
+    cmd = create_s_expr(create_number_tp(1), NULL);
+    expected = create_error_tp(EVAL_ERROR_MALFORMED_S_EXPR);
+    pass = run_test_expect(eval_s_expr, cmd, env, expected) && pass;
+    cmd = create_s_expr(NULL, create_number_tp(1));
+    expected = create_error_tp(EVAL_ERROR_MALFORMED_S_EXPR);
     pass = run_test_expect(eval_s_expr, cmd, env, expected) && pass;
     // ((/ 0) 1) -> EVAL_ERROR_DIV_ZERO
     cmd = create_empty_s_expr();
-    nested_cmd = create_empty_s_expr();
+    s_expr* nested_cmd = create_empty_s_expr();
     s_expr_append(nested_cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     s_expr_append(nested_cmd, create_number_tp(1));
     s_expr_append(cmd, create_s_expr_tp(nested_cmd));
@@ -3337,11 +3346,9 @@ void test_eval_s_expr(test_env* te) {
     expected = create_error_tp(EVAL_ERROR_CAR_NOT_CALLABLE);
     pass = run_test_expect(eval_s_expr, cmd, env, expected) && pass;
     // ('+ 1 1) -> 2
-    cmd = create_empty_s_expr();
-    nested_cmd = unit_list(ADD_SYM);
-    s_expr_append(nested_cmd, create_number_tp(1));
-    s_expr_append(nested_cmd, create_number_tp(1));
-    s_expr_append(cmd, create_s_expr_tp(nested_cmd));
+    cmd = unit_list(ADD_SYM);
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, create_number_tp(1));
     expected = create_number_tp(2);
     pass = run_test_expect(eval_s_expr, cmd, env, expected) && pass;
     // ('x2 10) [if x2 previously defined as doubling function] -> 20
@@ -3355,31 +3362,25 @@ void test_eval_s_expr(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(body));
     expected = create_atom_tp(TYPE_VOID, 0);
     run_test_expect(eval_define, cmd, env, expected);
-    cmd = create_empty_s_expr();
-    nested_cmd = unit_list(copy_typed_ptr(x2_sym));
-    s_expr_append(nested_cmd, create_number_tp(10));
-    s_expr_append(cmd, create_s_expr_tp(nested_cmd));
+    cmd = unit_list(copy_typed_ptr(x2_sym));
+    s_expr_append(cmd, create_number_tp(10));
     expected = create_number_tp(20);
     pass = run_test_expect(eval_s_expr, cmd, env, expected) && pass;
     // ((lambda (x) (* x 3)) 10) -> 30
     cmd = create_empty_s_expr();
-    nested_cmd = create_empty_s_expr();
     s_expr* lambda = unit_list(LAMBDA_SYM);
     s_expr_append(lambda, create_s_expr_tp(unit_list(copy_typed_ptr(x_sym))));
     body = unit_list(MULTIPLY_SYM);
     s_expr_append(body, copy_typed_ptr(x_sym));
     s_expr_append(body, create_number_tp(3));
     s_expr_append(lambda, create_s_expr_tp(body));
-    s_expr_append(nested_cmd, create_s_expr_tp(lambda));
-    s_expr_append(nested_cmd, create_number_tp(10));
-    s_expr_append(cmd, create_s_expr_tp(nested_cmd));
+    s_expr_append(cmd, create_s_expr_tp(lambda));
+    s_expr_append(cmd, create_number_tp(10));
     expected = create_number_tp(30);
     pass = run_test_expect(eval_s_expr, cmd, env, expected) && pass;
     // ('/ 0) -> EVAL_ERROR_DIV_ZERO
-    cmd = create_empty_s_expr();
-    nested_cmd = unit_list(DIVIDE_SYM);
-    s_expr_append(nested_cmd, create_number_tp(0));
-    s_expr_append(cmd, create_s_expr_tp(nested_cmd));
+    cmd = unit_list(DIVIDE_SYM);
+    s_expr_append(cmd, create_number_tp(0));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_s_expr, cmd, env, expected) && pass;
     delete_environment_full(env);
@@ -3474,6 +3475,10 @@ void test_eval_function(test_env* te) {
     return;
 }
 
+typed_ptr* wrapper_evaluate(const s_expr* cmd, Environment* env) {
+    return evaluate(cmd->car, env);
+}
+
 void test_evaluate(test_env* te) {
     print_test_announce("evaluate()");
     Environment* env = create_environment(0, 0);
@@ -3483,46 +3488,51 @@ void test_evaluate(test_env* te) {
     x_sym = install_symbol(env, "x", &number);
     bool pass = true;
     // eval[ NULL ] -> EVAL_ERROR_NULL_S_EXPR
-    s_expr* cmd = NULL;
+    s_expr* cmd = create_empty_s_expr();
     typed_ptr* expected = create_error_tp(EVAL_ERROR_NULL_S_EXPR);
-    pass = run_test_expect(evaluate, cmd, env, expected) && pass;
-    // eval[ () ] -> EVAL_ERROR_MISSING_PROCEDURE
-    cmd = create_empty_s_expr();
-    expected = create_error_tp(EVAL_ERROR_MISSING_PROCEDURE);
-    pass = run_test_expect(evaluate, cmd, env, expected) && pass;
-    // eval[ <malformed s-expression> ] -> EVAL_ERROR_MALFORMED_S_EXPR
-    cmd = create_s_expr(create_number_tp(1), NULL);
-    expected = create_error_tp(EVAL_ERROR_MALFORMED_S_EXPR);
-    pass = run_test_expect(evaluate, cmd, env, expected) && pass;
-    cmd = create_s_expr(NULL, create_number_tp(1));
-    expected = create_error_tp(EVAL_ERROR_MALFORMED_S_EXPR);
-    pass = run_test_expect(evaluate, cmd, env, expected) && pass;
+    pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
     // eval[ <undefined> ] -> EVAL_ERROR_UNDEF_SYM
     cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
     expected = create_error_tp(EVAL_ERROR_UNDEF_SYM);
-    pass = run_test_expect(evaluate, cmd, env, expected) && pass;
+    pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
     // eval[ EVAL_ERROR_NOT_ID ] -> EVAL_ERROR_NOT_ID
     cmd = unit_list(create_error_tp(EVAL_ERROR_NOT_ID));
     expected = create_error_tp(EVAL_ERROR_NOT_ID);
-    pass = run_test_expect(evaluate, cmd, env, expected) && pass;
+    pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
     // eval[ <void> ] -> <void>
     cmd = unit_list(create_atom_tp(TYPE_VOID, 0));
     expected = create_atom_tp(TYPE_VOID, 0);
-    pass = run_test_expect(evaluate, cmd, env, expected) && pass;
+    pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
     // eval[ 1 ] -> 1
     cmd = unit_list(create_number_tp(1));
     expected = create_number_tp(1);
-    pass = run_test_expect(evaluate, cmd, env, expected) && pass;
+    pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
     // eval[ #t ] -> #t
     cmd = unit_list(create_atom_tp(TYPE_BOOL, true));
     expected = create_atom_tp(TYPE_BOOL, true);
-    pass = run_test_expect(evaluate, cmd, env, expected) && pass;
+    pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
+    // eval[ <procedure:+> ] -> <procedure:+>
+    cmd = unit_list(create_atom_tp(TYPE_BUILTIN, BUILTIN_ADD));
+    expected = create_atom_tp(TYPE_BUILTIN, BUILTIN_ADD);
+    pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
+    // eval[ () ] -> EVAL_ERROR_MISSING_PROCEDURE
+    cmd = unit_list(create_s_expr_tp(create_empty_s_expr()));
+    expected = create_error_tp(EVAL_ERROR_MISSING_PROCEDURE);
+    pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
+    // eval[ <malformed s-expression> ] -> EVAL_ERROR_MALFORMED_S_EXPR
+    cmd = unit_list(create_s_expr_tp(create_s_expr(create_number_tp(1), NULL)));
+    expected = create_error_tp(EVAL_ERROR_MALFORMED_S_EXPR);
+    pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
+    cmd = unit_list(create_s_expr_tp(create_s_expr(NULL, create_number_tp(1))));
+    expected = create_error_tp(EVAL_ERROR_MALFORMED_S_EXPR);
+    pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
     // eval[ (+ 1 1) ] -> 2
     cmd = unit_list(create_atom_tp(TYPE_BUILTIN, BUILTIN_ADD));
     s_expr_append(cmd, create_number_tp(1));
     s_expr_append(cmd, create_number_tp(1));
+    cmd = unit_list(create_s_expr_tp(cmd));
     expected = create_number_tp(2);
-    pass = run_test_expect(evaluate, cmd, env, expected) && pass;
+    pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
     // eval[ ((lambda (x) (* x 10)) 2) ] -> <procedure>
     cmd = create_empty_s_expr();
     s_expr* lambda = unit_list(LAMBDA_SYM);
@@ -3533,21 +3543,21 @@ void test_evaluate(test_env* te) {
     s_expr_append(lambda, create_s_expr_tp(multiply_x_ten));
     s_expr_append(cmd, create_s_expr_tp(lambda));
     s_expr_append(cmd, create_number_tp(2));
-    expected = create_atom_tp(TYPE_FUNCTION, 0);
-    pass = run_test_expect(evaluate, cmd, env, expected) && pass;
+    cmd = unit_list(create_s_expr_tp(cmd));
+    expected = create_atom_tp(TYPE_FIXNUM, 20);
+    pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
     // eval[ 'x ] (assuming x is defined to be 1) -> 1
     cmd = unit_list(copy_typed_ptr(x_sym));
     expected = create_number_tp(1);
-    pass = run_test_expect(evaluate, cmd, env, expected) && pass;
-    // eval[ (<procedure from above> 2) ] -> 20
+    pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
+    // eval[ <procedure from above> ] -> <procedure from above>
     cmd = unit_list(create_atom_tp(TYPE_FUNCTION, 0));
-    s_expr_append(cmd, create_number_tp(2));
-    expected = create_atom_tp(TYPE_FIXNUM, 20);
-    pass = run_test_expect(evaluate, cmd, env, expected) && pass;
+    expected = create_atom_tp(TYPE_FUNCTION, 0);
+    pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
     // eval[ <undefined type> ] -> EVAL_ERROR_UNDEF_TYPE
     cmd = unit_list(create_atom_tp(1000, 1));
     expected = create_error_tp(EVAL_ERROR_UNDEF_TYPE);
-    pass = run_test_expect(evaluate, cmd, env, expected) && pass;
+    pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
     delete_environment_full(env);
     free(x_sym);
     print_test_result(pass);

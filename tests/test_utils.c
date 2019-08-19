@@ -3,10 +3,8 @@
 typed_ptr* parse_and_evaluate(char command[], Environment* env) {
     typed_ptr* output = parse(command, env);
     if (output->type != TYPE_ERROR) {
-        s_expr* empty = create_empty_s_expr();
-        s_expr* super_se = create_s_expr(output, create_s_expr_tp(empty));
-        output = evaluate(super_se, env);
-        delete_s_expr_recursive(super_se, true);
+        output = evaluate(output, env);
+        //delete_s_expr_recursive(super_se, true);
     }
     return output;
 }
