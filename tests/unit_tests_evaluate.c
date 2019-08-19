@@ -2794,11 +2794,11 @@ void test_eval_define(test_env* te) {
     s_expr_append(cmd, create_number_tp(2));
     expected = create_error_tp(EVAL_ERROR_MANY_ARGS);
     pass = run_test_expect(eval_define, cmd, env, expected) && pass;
-    // (define 1 2) -> EVAL_ERROR_NOT_SYMBOL
+    // (define 1 2) -> EVAL_ERROR_BAD_SYNTAX
     cmd = unit_list(copy_typed_ptr(define_builtin));
     s_expr_append(cmd, create_number_tp(1));
     s_expr_append(cmd, create_number_tp(2));
-    expected = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
+    expected = create_error_tp(EVAL_ERROR_BAD_SYNTAX);
     pass = run_test_expect(eval_define, cmd, env, expected) && pass;
     // (define x 1) -> <void> + side effect
     cmd = unit_list(copy_typed_ptr(define_builtin));

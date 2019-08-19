@@ -412,7 +412,7 @@ void end_to_end_define_tests(test_env* t_env) {
     printf("# define #\n");
     e2e_atom_test("(define)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(define x)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    e2e_atom_test("(define 1 2)", TYPE_ERROR, EVAL_ERROR_NOT_SYMBOL, t_env);
+    e2e_atom_test("(define 1 2)", TYPE_ERROR, EVAL_ERROR_BAD_SYNTAX, t_env);
     e2e_atom_test("(define x (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     char* def_line1 = "(define x (+ 1 2))";
     char* def_line2 = "(+ x 10)";

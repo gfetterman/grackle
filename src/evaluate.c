@@ -438,7 +438,7 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
                 }
             }
         } else {
-            result = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
+            result = create_error_tp(EVAL_ERROR_BAD_SYNTAX);
         }
         delete_s_expr_recursive(args_tp->ptr.se_ptr, false);
         free(args_tp);
