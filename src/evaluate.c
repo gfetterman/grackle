@@ -396,7 +396,7 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
             if (is_empty_list(first_arg->ptr.se_ptr)) {
                 result = create_error_tp(EVAL_ERROR_BAD_SYNTAX);
             } else if (first_arg->ptr.se_ptr->car->type != TYPE_SYMBOL) {
-                result = create_error_tp(EVAL_ERROR_NOT_ID);
+                result = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
             } else {
                 typed_ptr* fn_sym = first_arg->ptr.se_ptr->car;
                 Symbol_Node* sym_entry = symbol_lookup_index(env, fn_sym);
@@ -438,7 +438,7 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
                 }
             }
         } else {
-            result = create_error_tp(EVAL_ERROR_NOT_ID);
+            result = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
         }
         delete_s_expr_recursive(args_tp->ptr.se_ptr, false);
         free(args_tp);
@@ -468,7 +468,7 @@ typed_ptr* eval_set_variable(const s_expr* se, Environment* env) {
         typed_ptr* first_arg = args_tp->ptr.se_ptr->car;
         typed_ptr* second_arg = s_expr_next(args_tp->ptr.se_ptr)->car;
         if (first_arg->type != TYPE_SYMBOL) {
-            result = create_error_tp(EVAL_ERROR_NOT_ID);
+            result = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
         } else {
             Symbol_Node* sym_entry = symbol_lookup_index(env, first_arg);
             if (sym_entry == NULL) {
@@ -844,7 +844,7 @@ Symbol_Node* collect_parameters(typed_ptr* tp, Environment* env) {
         return params;
     }
     if (se->car == NULL || se->car->type != TYPE_SYMBOL) {
-        params = create_error_symbol_node(EVAL_ERROR_NOT_ID);
+        params = create_error_symbol_node(EVAL_ERROR_NOT_SYMBOL);
     } else if (se->cdr == NULL || se->cdr->type != TYPE_S_EXPR) {
         params = create_error_symbol_node(EVAL_ERROR_BAD_ARG_TYPE);
     } else {
@@ -866,7 +866,7 @@ Symbol_Node* collect_parameters(typed_ptr* tp, Environment* env) {
                 }
                 if (se->car == NULL || se->car->type != TYPE_SYMBOL) {
                     delete_symbol_node_list(params);
-                    params = create_error_symbol_node(EVAL_ERROR_NOT_ID);
+                    params = create_error_symbol_node(EVAL_ERROR_NOT_SYMBOL);
                     break;
                 }
                 found = symbol_lookup_index(env, se->car);
