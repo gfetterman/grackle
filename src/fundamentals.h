@@ -48,7 +48,10 @@ typedef enum {BUILTIN_ADD, \
 
 // error codes
 
-typedef enum {PARSE_ERROR_NONE, \
+typedef enum {TEST_ERROR_DUMMY, \
+              // ^  testing errors above     ^
+              // v  parsing errors below     v
+              PARSE_ERROR_NONE, \
               PARSE_ERROR_UNBAL_PAREN, \
               PARSE_ERROR_BARE_SYM, \
               PARSE_ERROR_EMPTY_PAREN, \

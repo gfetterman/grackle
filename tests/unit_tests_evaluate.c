@@ -1106,18 +1106,18 @@ void test_eval_arithmetic(test_env* te) {
         expected = create_error_tp(EVAL_ERROR_NEED_NUM);
         pass = run_test_expect(eval_arithmetic, cmd, env, expected) && pass;
     }
-    // (<arith op> 1 EVAL_ERROR_NOT_SYMBOL) -> EVAL_ERROR_NOT_SYMBOL
-    // (<arith op> EVAL_ERROR_NOT_SYMBOL 1) -> EVAL_ERROR_NOT_SYMBOL
+    // (<arith op> 1 TEST_ERROR_DUMMY) -> TEST_ERROR_DUMMY
+    // (<arith op> TEST_ERROR_DUMMY 1) -> TEST_ERROR_DUMMY
     for (unsigned int i = 0; i < NUM_OPS; i++) {
         cmd = unit_list(copy_typed_ptr(arith_ops[i]));
         s_expr_append(cmd, create_number_tp(1));
-        s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_SYMBOL));
-        expected = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
+        s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
+        expected = create_error_tp(TEST_ERROR_DUMMY);
         pass = run_test_expect(eval_arithmetic, cmd, env, expected) && pass;
         cmd = unit_list(copy_typed_ptr(arith_ops[i]));
-        s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_SYMBOL));
+        s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
         s_expr_append(cmd, create_number_tp(1));
-        expected = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
+        expected = create_error_tp(TEST_ERROR_DUMMY);
         pass = run_test_expect(eval_arithmetic, cmd, env, expected) && pass;
     }
     // (<arith op> 1 (/ 0)) -> EVAL_ERROR_DIV_ZERO
@@ -1339,18 +1339,18 @@ void test_eval_comparison(test_env* te) {
     pass = pass && compare_expect_bool(env, ge, 3, (long[3]){1, 3, 2}, false);
     // (>= 1 2 0) -> #f
     pass = pass && compare_expect_bool(env, ge, 3, (long[3]){1, 2, 0}, false);
-    // (<compare op> 1 EVAL_ERROR_NOT_SYMBOL) -> EVAL_ERROR_NOT_SYMBOL
-    // (<compare op> EVAL_ERROR_NOT_SYMBOL 1) -> EVAL_ERROR_NOT_SYMBOL
+    // (<compare op> 1 TEST_ERROR_DUMMY) -> TEST_ERROR_DUMMY
+    // (<compare op> TEST_ERROR_DUMMY 1) -> TEST_ERROR_DUMMY
     for (unsigned int i = 0; i < NUM_OPS; i++) {
         cmd = unit_list(copy_typed_ptr(compare_ops[i]));
         s_expr_append(cmd, create_number_tp(1));
-        s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_SYMBOL));
-        expected = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
+        s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
+        expected = create_error_tp(TEST_ERROR_DUMMY);
         pass = run_test_expect(eval_comparison, cmd, env, expected) && pass;
         cmd = unit_list(copy_typed_ptr(compare_ops[i]));
-        s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_SYMBOL));
+        s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
         s_expr_append(cmd, create_number_tp(1));
-        expected = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
+        expected = create_error_tp(TEST_ERROR_DUMMY);
         pass = run_test_expect(eval_comparison, cmd, env, expected) && pass;
     }
     // (<compare op> 1 (/ 0)) -> EVAL_ERROR_DIV_ZERO
@@ -1395,9 +1395,9 @@ void test_eval_exit(test_env* te) {
     s_expr_append(cmd, create_number_tp(1));
     expected = create_error_tp(EVAL_ERROR_MANY_ARGS);
     pass = run_test_expect(eval_exit, cmd, env, expected) && pass;
-    // (exit EVAL_ERROR_NOT_SYMBOL) -> EVAL_ERROR_MANY_ARGS
+    // (exit TEST_ERROR_DUMMY) -> EVAL_ERROR_MANY_ARGS
     cmd = unit_list(builtin_tp_from_name(env, "exit"));
-    s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_SYMBOL));
+    s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
     expected = create_error_tp(EVAL_ERROR_MANY_ARGS);
     pass = run_test_expect(eval_exit, cmd, env, expected) && pass;
     // (exit (/ 0)) -> EVAL_ERROR_MANY_ARGS
@@ -1458,17 +1458,17 @@ void test_eval_cons(test_env* te) {
     expected = create_s_expr_tp(create_s_expr(create_atom_tp(TYPE_BOOL, true), \
                                               create_number_tp(2)));
     pass = run_test_expect(eval_cons, cmd, env, expected) && pass;
-    // (cons EVAL_ERROR_NOT_SYMBOL 1) -> EVAL_ERROR_NOT_SYMBOL
+    // (cons TEST_ERROR_DUMMY 1) -> TEST_ERROR_DUMMY
     cmd = unit_list(copy_typed_ptr(cons));
-    s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_SYMBOL));
+    s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
     s_expr_append(cmd, create_number_tp(1));
-    expected = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
+    expected = create_error_tp(TEST_ERROR_DUMMY);
     pass = run_test_expect(eval_cons, cmd, env, expected) && pass;
-    // (cons 1 EVAL_ERROR_NOT_SYMBOL) -> EVAL_ERROR_NOT_SYMBOL
+    // (cons 1 TEST_ERROR_DUMMY) -> TEST_ERROR_DUMMY
     cmd = unit_list(copy_typed_ptr(cons));
     s_expr_append(cmd, create_number_tp(1));
-    s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_SYMBOL));
-    expected = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
+    s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
+    expected = create_error_tp(TEST_ERROR_DUMMY);
     pass = run_test_expect(eval_cons, cmd, env, expected) && pass;
     // (cons (/ 0) 1) -> EVAL_ERROR_DIV_ZERO
     cmd = unit_list(copy_typed_ptr(cons));
@@ -1560,15 +1560,15 @@ void test_eval_car_cdr(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(list_two));
     expected = create_error_tp(EVAL_ERROR_MANY_ARGS);
     pass = run_test_expect(eval_car_cdr, cmd, env, expected) && pass;
-    // (car EVAL_ERROR_NOT_SYMBOL) -> EVAL_ERROR_NOT_SYMBOL
+    // (car TEST_ERROR_DUMMY) -> TEST_ERROR_DUMMY
     cmd = unit_list(copy_typed_ptr(car));
-    s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_SYMBOL));
-    expected = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
+    s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
+    expected = create_error_tp(TEST_ERROR_DUMMY);
     pass = run_test_expect(eval_car_cdr, cmd, env, expected) && pass;
-    // (cdr EVAL_ERROR_NOT_SYMBOL) -> EVAL_ERROR_NOT_SYMBOL
+    // (cdr TEST_ERROR_DUMMY) -> TEST_ERROR_DUMMY
     cmd = unit_list(copy_typed_ptr(cdr));
-    s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_SYMBOL));
-    expected = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
+    s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
+    expected = create_error_tp(TEST_ERROR_DUMMY);
     pass = run_test_expect(eval_car_cdr, cmd, env, expected) && pass;
     // (car (/ 0)) -> EVAL_ERROR_DIV_ZERO
     cmd = unit_list(copy_typed_ptr(car));
@@ -1623,10 +1623,10 @@ void test_eval_list_construction(test_env* te) {
     s_expr_append(expected->ptr.se_ptr, create_atom_tp(TYPE_BOOL, true));
     s_expr_append(expected->ptr.se_ptr, create_number_tp(2));
     pass = run_test_expect(eval_list_construction, cmd, env, expected) && pass;
-    // (list EVAL_ERROR_NOT_SYMBOL) -> EVAL_ERROR_NOT_SYMBOL
+    // (list TEST_ERROR_DUMMY) -> TEST_ERROR_DUMMY
     cmd = unit_list(copy_typed_ptr(list));
-    s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_SYMBOL));
-    expected = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
+    s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
+    expected = create_error_tp(TEST_ERROR_DUMMY);
     pass = run_test_expect(eval_list_construction, cmd, env, expected) && pass;
     // (list (/ 0)) -> EVAL_ERROR_DIV_ZERO
     cmd = unit_list(copy_typed_ptr(list));
@@ -2003,10 +2003,10 @@ void test_eval_not(test_env* te) {
     s_expr_append(cmd, create_atom_tp(TYPE_BOOL, false));
     expected = create_atom_tp(TYPE_BOOL, true);
     pass = pass && run_test_expect(eval_not, cmd, env, expected);
-    // (not EVAL_ERROR_NOT_SYMBOL) -> EVAL_ERROR_NOT_SYMBOL
+    // (not TEST_ERROR_DUMMY) -> TEST_ERROR_DUMMY
     cmd = unit_list(copy_typed_ptr(not_builtin));
-    s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_SYMBOL));
-    expected = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
+    s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
+    expected = create_error_tp(TEST_ERROR_DUMMY);
     pass = pass && run_test_expect(eval_not, cmd, env, expected);
     // (not (/ 0)) -> EVAL_ERROR_DIV_ZERO
     cmd = unit_list(copy_typed_ptr(not_builtin));
@@ -2067,10 +2067,10 @@ void test_eval_list_pred(test_env* te) {
     s_expr_append(cmd, NULL_SYM);
     expected = create_atom_tp(TYPE_BOOL, true);
     pass = run_test_expect(eval_list_pred, cmd, env, expected) && pass;
-    // (list? EVAL_ERROR_NOT_SYMBOL) -> EVAL_ERROR_NOT_SYMBOL
+    // (list? TEST_ERROR_DUMMY) -> TEST_ERROR_DUMMY
     cmd = unit_list(copy_typed_ptr(listpred_builtin));
-    s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_SYMBOL));
-    expected = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
+    s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
+    expected = create_error_tp(TEST_ERROR_DUMMY);
     pass = run_test_expect(eval_list_pred, cmd, env, expected) && pass;
     // (list? (/ 0)) -> EVAL_ERROR_DIV_ZERO
     cmd = unit_list(copy_typed_ptr(listpred_builtin));
@@ -2164,11 +2164,11 @@ void test_eval_atom_pred(test_env* te) {
     // there's currently no way to run these predicates on an undefined symbol,
     //   because they just get an EVAL_ERROR_UNDEF_SYM error
     // so we skip testing this predicate
-    // ([any_atomic]? EVAL_ERROR_NOT_SYMBOL) -> EVAL_ERROR_NOT_SYMBOL
+    // ([any_atomic]? TEST_ERROR_DUMMY) -> TEST_ERROR_DUMMY
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
         cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
-        s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_SYMBOL));
-        expected = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
+        s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
+        expected = create_error_tp(TEST_ERROR_DUMMY);
         pass = run_test_expect(pred_fns[i], cmd, env, expected) && pass;
     }
     // ([any_atomic]? <void>) -> #t if [void] else #f
@@ -2681,19 +2681,19 @@ void test_eval_cond(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(first_case));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
-    // (cond (EVAL_ERROR_NOT_SYMBOL 1)) -> EVAL_ERROR_NOT_SYMBOL
+    // (cond (TEST_ERROR_DUMMY 1)) -> TEST_ERROR_DUMMY
     cmd = unit_list(copy_typed_ptr(cond_builtin));
-    first_case = unit_list(create_error_tp(EVAL_ERROR_NOT_SYMBOL));
+    first_case = unit_list(create_error_tp(TEST_ERROR_DUMMY));
     s_expr_append(first_case, create_number_tp(1));
     s_expr_append(cmd, create_s_expr_tp(first_case));
-    expected = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
+    expected = create_error_tp(TEST_ERROR_DUMMY);
     pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
-    // (cond (#t EVAL_ERROR_NOT_SYMBOL)) -> EVAL_ERROR_NOT_SYMBOL
+    // (cond (#t TEST_ERROR_DUMMY)) -> TEST_ERROR_DUMMY
     cmd = unit_list(copy_typed_ptr(cond_builtin));
     first_case = unit_list(create_atom_tp(TYPE_BOOL, true));
-    s_expr_append(first_case, create_error_tp(EVAL_ERROR_NOT_SYMBOL));
+    s_expr_append(first_case, create_error_tp(TEST_ERROR_DUMMY));
     s_expr_append(cmd, create_s_expr_tp(first_case));
-    expected = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
+    expected = create_error_tp(TEST_ERROR_DUMMY);
     pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
     // (cond ((/ 0) 1)) -> EVAL_ERROR_DIV_ZERO
     cmd = unit_list(copy_typed_ptr(cond_builtin));
@@ -3036,11 +3036,11 @@ void test_eval_setvar(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_set_variable, cmd, env, expected) && pass;
-    // (set! x EVAL_ERROR_NOT_SYMBOL) [with x defined] -> EVAL_ERROR_NOT_SYMBOL
+    // (set! x TEST_ERROR_DUMMY) [with x defined] -> TEST_ERROR_DUMMY
     cmd = unit_list(copy_typed_ptr(setvar_builtin));
     s_expr_append(cmd, copy_typed_ptr(x_sym));
-    s_expr_append(cmd, create_error_tp(EVAL_ERROR_NOT_SYMBOL));
-    expected = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
+    s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
+    expected = create_error_tp(TEST_ERROR_DUMMY);
     pass = run_test_expect(eval_set_variable, cmd, env, expected) && pass;
     delete_environment_full(env);
     free(setvar_builtin);
@@ -3443,9 +3443,9 @@ void test_evaluate(test_env* te) {
     cmd = unit_list(create_atom_tp(TYPE_UNDEF, 0));
     expected = create_error_tp(EVAL_ERROR_UNDEF_SYM);
     pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
-    // eval[ EVAL_ERROR_NOT_SYMBOL ] -> EVAL_ERROR_NOT_SYMBOL
-    cmd = unit_list(create_error_tp(EVAL_ERROR_NOT_SYMBOL));
-    expected = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
+    // eval[ TEST_ERROR_DUMMY ] -> TEST_ERROR_DUMMY
+    cmd = unit_list(create_error_tp(TEST_ERROR_DUMMY));
+    expected = create_error_tp(TEST_ERROR_DUMMY);
     pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
     // eval[ <void> ] -> <void>
     cmd = unit_list(create_void_tp());
