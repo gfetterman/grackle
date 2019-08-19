@@ -1,14 +1,15 @@
 #include "test_utils.h"
 
 typed_ptr* parse_and_evaluate(char command[], Environment* env) {
-    typed_ptr* output = parse(command, env);
-    if (output->type != TYPE_ERROR) {
-        s_expr* empty = create_empty_s_expr();
-        s_expr* super_se = create_s_expr(output, create_s_expr_tp(empty));
-        output = evaluate(super_se, env);
-        delete_s_expr_recursive(super_se, true);
+    typed_ptr* parse_output = parse(command, env);
+    if (parse_output->type == TYPE_ERROR) {
+        return parse_output;
+    } else {
+        typed_ptr* eval_output = evaluate(parse_output, env);
+        delete_s_expr_recursive(parse_output->ptr.se_ptr, true);
+        free(parse_output);
+        return eval_output;
     }
-    return output;
 }
 
 bool check_typed_ptr(typed_ptr* tp, type t, tp_value ptr) {

@@ -9,7 +9,7 @@
 #include "fundamentals.h"
 #include "environment.h"
 
-typed_ptr* evaluate(const s_expr* se, Environment* env);
+typed_ptr* evaluate(const typed_ptr* tp, Environment* env);
 
 // evaluating different types
 
