@@ -234,10 +234,11 @@ void test_register_symbol(test_env* te) {
     // passing a valid number
     char symbol_num[] = "1000";
     out = register_symbol(&stack, env, temp_env, symbol_num);
+    typed_ptr* expected_tp = create_number_tp(1000);
     if (out != PARSE_ERROR_NONE || \
         stack->se == NULL || \
         stack->se->car == NULL || \
-        !check_typed_ptr(stack->se->car, TYPE_FIXNUM, (tp_value){.idx=1000}) || \
+        !match_typed_ptrs(stack->se->car, expected_tp) || \
         symbol_lookup_name(env, symbol_num) != NULL || \
         symbol_lookup_name(temp_env, symbol_num) != NULL) {
         pass = false;

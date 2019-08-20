@@ -18,16 +18,7 @@ typedef struct TEST_ENV {
 
 typed_ptr* parse_and_evaluate(char command[], Environment* env);
 
-bool check_typed_ptr(typed_ptr* tp, type t, tp_value ptr);
 bool check_error(const typed_ptr* tp, interpreter_error err);
-bool check_pair(typed_ptr* tp, \
-                typed_ptr** tp_list, \
-                unsigned int tp_list_len, \
-                Environment* env);
-bool check_s_expr(typed_ptr* tp, \
-                  typed_ptr** tp_list, \
-                  unsigned int tp_list_len, \
-                  Environment* env);
 
 bool match_typed_ptrs(typed_ptr* first, typed_ptr* second);
 bool match_s_exprs(const s_expr* first, const s_expr* second);

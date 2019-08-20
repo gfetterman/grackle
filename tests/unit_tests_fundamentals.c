@@ -41,12 +41,16 @@ void test_create_typed_ptr(test_env* te) {
     for (unsigned int idx = 0; pass && (idx < NUM_BUILTIN_TYPES); idx++) {
         if (type_list[idx] == TYPE_S_EXPR) {
             out = create_typed_ptr(type_list[idx], TEST_S_EXPR_TP_VAL);
-            if (!check_typed_ptr(out, TYPE_S_EXPR, TEST_S_EXPR_TP_VAL)) {
+            if (out == NULL || \
+                out->type != TYPE_S_EXPR || \
+                out->ptr.se_ptr != TEST_S_EXPR_TP_VAL.se_ptr) {
                 pass = false;
             }
         } else {
             out = create_typed_ptr(type_list[idx], TEST_NUM_TP_VAL);
-            if (!check_typed_ptr(out, type_list[idx], TEST_NUM_TP_VAL)) {
+            if (out == NULL || \
+                out->type != type_list[idx] || \
+                out->ptr.idx != TEST_NUM_TP_VAL.idx) {
                 pass = false;
             }
         }
@@ -67,7 +71,9 @@ void test_create_atom_tp(test_env* te) {
             continue;
         } else {
             out = create_atom_tp(type_list[idx], TEST_NUM);
-            if (!check_typed_ptr(out, type_list[idx], TEST_NUM_TP_VAL)) {
+            if (out == NULL || \
+                out->type != type_list[idx] || \
+                out->ptr.idx != TEST_NUM_TP_VAL.idx) {
                 pass = false;
             }
         }
@@ -82,8 +88,8 @@ void test_create_atom_tp(test_env* te) {
 void test_create_error_tp(test_env* te) {
     print_test_announce("create_error_tp()");
     bool pass = true;
-    typed_ptr* out = create_error_tp(EVAL_ERROR_EXIT);
-    if (!check_typed_ptr(out, TYPE_ERROR, (tp_value){.idx=EVAL_ERROR_EXIT})) {
+    typed_ptr* out = create_error_tp(TEST_ERROR_DUMMY);
+    if (!check_error(out, TEST_ERROR_DUMMY)) {
         pass = false;
     }
     free(out);
@@ -97,7 +103,9 @@ void test_create_void_tp(test_env* te) {
     print_test_announce("create_void_tp()");
     bool pass = true;
     typed_ptr* out = create_void_tp();
-    if (!check_typed_ptr(out, TYPE_VOID, (tp_value){.idx=0})) {
+    if (out == NULL || \
+        out->type != TYPE_VOID || \
+        out->ptr.idx != 0) {
         pass = false;
     }
     free(out);
@@ -111,7 +119,9 @@ void test_create_s_expr_tp(test_env* te) {
     print_test_announce("create_s_expr_tp()");
     bool pass = true;
     typed_ptr* out = create_s_expr_tp(TEST_S_EXPR);
-    if (!check_typed_ptr(out, TYPE_S_EXPR, TEST_S_EXPR_TP_VAL)) {
+    if (out == NULL || \
+        out->type != TYPE_S_EXPR || \
+        out->ptr.se_ptr != TEST_S_EXPR_TP_VAL.se_ptr) {
         pass = false;
     }
     free(out);
@@ -205,11 +215,10 @@ void test_copy_s_expr(test_env* te) {
     typed_ptr* second_atom = create_atom_tp(TYPE_FIXNUM, second_value);
     typed_ptr* third_atom = create_atom_tp(TYPE_FIXNUM, third_value);
     typed_ptr* fourth_atom = create_atom_tp(TYPE_FIXNUM, fourth_value);
-    typed_ptr* atom_list[] = {first_atom, second_atom, third_atom, fourth_atom};
     original = create_s_expr(first_atom, second_atom);
     copied = copy_s_expr(original);
     typed_ptr* copied_tp = create_s_expr_tp(copied);
-    if (!check_pair(copied_tp, atom_list, 2, NULL)) {
+    if (!match_s_exprs(original, copied)) {
         pass = false;
     }
     delete_s_expr_recursive(original, true);
@@ -218,13 +227,11 @@ void test_copy_s_expr(test_env* te) {
     // copy(one-atomic-element list) -> new one-atomic-element list
     first_atom = create_atom_tp(TYPE_FIXNUM, first_value);
     second_atom = create_atom_tp(TYPE_FIXNUM, second_value);
-    atom_list[0] = first_atom;
-    atom_list[1] = second_atom;
     original = create_s_expr(first_atom, \
                              create_s_expr_tp(create_empty_s_expr()));
     copied = copy_s_expr(original);
     copied_tp = create_s_expr_tp(copied);
-    if (!check_s_expr(copied_tp, atom_list, 1, NULL)) {
+    if (!match_s_exprs(original, copied)) {
         pass = false;
     }
     delete_s_expr_recursive(original, true);
@@ -232,7 +239,6 @@ void test_copy_s_expr(test_env* te) {
     free(copied_tp);
     // copy(multi-atomic-element list) -> new multi-atomic-element list
     first_atom = create_atom_tp(TYPE_FIXNUM, first_value);
-    atom_list[0] = first_atom;
     original = create_empty_s_expr();
     original = create_s_expr(fourth_atom, create_s_expr_tp(original));
     original = create_s_expr(third_atom, create_s_expr_tp(original));
@@ -240,7 +246,7 @@ void test_copy_s_expr(test_env* te) {
     original = create_s_expr(first_atom, create_s_expr_tp(original));
     copied = copy_s_expr(original);
     copied_tp = create_s_expr_tp(copied);
-    if (!check_s_expr(copied_tp, atom_list, 4, NULL)) {
+    if (!match_s_exprs(original, copied)) {
         pass = false;
     }
     delete_s_expr_recursive(original, true);
@@ -251,10 +257,6 @@ void test_copy_s_expr(test_env* te) {
     second_atom = create_atom_tp(TYPE_FIXNUM, second_value);
     third_atom = create_atom_tp(TYPE_FIXNUM, third_value);
     fourth_atom = create_atom_tp(TYPE_FIXNUM, fourth_value);
-    atom_list[0] = first_atom;
-    atom_list[1] = second_atom;
-    atom_list[2] = third_atom;
-    atom_list[3] = fourth_atom;
     original = create_empty_s_expr();
     original = create_s_expr(fourth_atom, create_s_expr_tp(original));
     original = create_s_expr(third_atom, create_s_expr_tp(original));
@@ -264,9 +266,7 @@ void test_copy_s_expr(test_env* te) {
     original = create_s_expr(create_s_expr_tp(branch), \
                              create_s_expr_tp(original));
     copied = copy_s_expr(original);
-    if (copied == NULL || \
-        !check_s_expr(copied->car, atom_list, 2, NULL) || \
-        !check_s_expr(copied->cdr, atom_list + 2, 2, NULL)) {
+    if (!match_s_exprs(original, copied)) {
         pass = false;
     }
     delete_s_expr_recursive(original, true);

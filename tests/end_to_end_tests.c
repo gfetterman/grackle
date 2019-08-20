@@ -11,28 +11,31 @@ void e2e_autofail_test(char cmd[], test_env* te) {
 void e2e_atom_test(char cmd[], type t, long val, test_env* te) {
     printf("test command: %-40s", cmd);
     typed_ptr* output = parse_and_evaluate(cmd, te->env);
-    bool pass = check_typed_ptr(output, t, (tp_value){.idx=val});
+    typed_ptr* expected = create_atom_tp(t, val);
+    bool pass = match_typed_ptrs(output, expected);
     if (output->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(output->ptr.se_ptr, true);
     }
     free(output);
+    free(expected);
     printf("%s\n", (pass) ? "PASSED" : "FAILED <=");
     te->passed += (pass) ? 1 : 0;
     te->run++;
     return;
 }
 
-void e2e_pair_test(char cmd[], \
-                   typed_ptr** tp_list, \
-                   unsigned int tp_list_len, \
-                   test_env* te) {
+void e2e_pair_test(char cmd[], typed_ptr* car, typed_ptr* cdr, test_env* te) {
     printf("test command: %-40s", cmd);
+    bool pass = false;
     typed_ptr* output = parse_and_evaluate(cmd, te->env);
-    bool pass = check_pair(output, tp_list, tp_list_len, te->env);
+    typed_ptr* expected = create_s_expr_tp(create_s_expr(car, cdr));
+    pass = deep_match_typed_ptrs(output, expected);
     if (output->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(output->ptr.se_ptr, true);
     }
     free(output);
+    free(expected->ptr.se_ptr);
+    free(expected);
     printf("%s\n", (pass) ? "PASSED" : "FAILED <=");
     te->passed += (pass) ? 1 : 0;
     te->run++;
@@ -45,11 +48,17 @@ void e2e_s_expr_test(char cmd[], \
                      test_env* te) {
     printf("test command: %-40s", cmd);
     typed_ptr* output = parse_and_evaluate(cmd, te->env);
-    bool pass = check_s_expr(output, tp_list, tp_list_len, te->env);
+    typed_ptr* expected = create_s_expr_tp(create_empty_s_expr());
+    for (unsigned int i = 0; i < tp_list_len; i++) {
+        s_expr_append(expected->ptr.se_ptr, copy_typed_ptr(tp_list[i]));
+    }
+    bool pass = deep_match_typed_ptrs(output, expected);
     if (output->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(output->ptr.se_ptr, true);
     }
     free(output);
+    delete_s_expr_recursive(expected->ptr.se_ptr, false);
+    free(expected);
     printf("%s\n", (pass) ? "PASSED" : "FAILED <=");
     te->passed += (pass) ? 1 : 0;
     te->run++;
@@ -69,8 +78,13 @@ void e2e_multiline_atom_test(char* cmds[], \
         printf("              %-40s", cmds[i]);
         output = parse_and_evaluate(cmds[i], te->env);
     }
-    bool pass = check_typed_ptr(output, t, (tp_value){.idx=val});
+    typed_ptr* expected = create_atom_tp(t, val);
+    bool pass = match_typed_ptrs(output, expected);
+    if (output->type == TYPE_S_EXPR) {
+        delete_s_expr_recursive(output->ptr.se_ptr, true);
+    }
     free(output);
+    free(expected);
     printf("%s\n", (pass) ? "PASSED" : "FAILED <=");
     te->passed += (pass) ? 1 : 0;
     te->run++;
@@ -366,7 +380,7 @@ void end_to_end_cons_tests(test_env* t_env) {
     printf("# cons #\n");
     e2e_atom_test("(cons)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(cons 1)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
-    e2e_pair_test("(cons 1 2)", cons_test_num_pair, 2, t_env);
+    e2e_pair_test("(cons 1 2)", num_1, num_2, t_env);
     e2e_s_expr_test("(cons 1 null)", cons_test_num_pair, 1, t_env);
     e2e_s_expr_test("(cons 1 (cons 2 null))", cons_test_num_pair, 2, t_env);
     e2e_atom_test("(cons 1 2 3)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
