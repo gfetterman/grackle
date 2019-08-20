@@ -280,6 +280,8 @@ void setup_symbol_table(Environment* env) {
     blind_install_symbol(env, "number?", &ATOM_TP(tbi, BUILTIN_NUMBERPRED));
     blind_install_symbol(env, "boolean?", &ATOM_TP(tbi, BUILTIN_BOOLPRED));
     blind_install_symbol(env, "void?", &ATOM_TP(tbi, BUILTIN_VOIDPRED));
+    blind_install_symbol(env, "procedure?", &ATOM_TP(tbi, BUILTIN_PROCPRED));
+    blind_install_symbol(env, "null?", &ATOM_TP(tbi, BUILTIN_NULLPRED));
     blind_install_symbol(env, "=", &ATOM_TP(tbi, BUILTIN_NUMBEREQ));
     blind_install_symbol(env, ">", &ATOM_TP(tbi, BUILTIN_NUMBERGT));
     blind_install_symbol(env, "<", &ATOM_TP(tbi, BUILTIN_NUMBERLT));
