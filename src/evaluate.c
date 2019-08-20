@@ -96,6 +96,9 @@ typed_ptr* eval_builtin(const s_expr* se, Environment* env) {
         case BUILTIN_PROCPRED:
             result = eval_atom_pred(se, env);
             break;
+        case BUILTIN_NULLPRED:
+            result = eval_null_pred(se, env);
+            break;
         case BUILTIN_LAMBDA:
             result = eval_lambda(se, env);
             break;
@@ -797,6 +800,23 @@ typed_ptr* eval_atom_pred(const s_expr* se, Environment* env) {
         // special case: (pair? '()) -> #f
         if (arg->type == TYPE_S_EXPR && is_empty_list(arg->ptr.se_ptr)) {
             result->ptr.idx = false;
+        }
+        delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
+        free(args_tp);
+    }
+    return result;
+}
+
+typed_ptr* eval_null_pred(const s_expr* se, Environment* env) {
+    typed_ptr* result = NULL;
+    typed_ptr* args_tp = collect_arguments(se, env, 1, 1, true);
+    if (args_tp->type == TYPE_ERROR) {
+        result = args_tp;
+    } else {
+        typed_ptr* arg = args_tp->ptr.se_ptr->car;
+        result = create_atom_tp(TYPE_BOOL, false);
+        if (arg->type == TYPE_S_EXPR && is_empty_list(arg->ptr.se_ptr)) {
+            result->ptr.idx = true;
         }
         delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
         free(args_tp);

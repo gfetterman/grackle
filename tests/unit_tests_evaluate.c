@@ -16,6 +16,7 @@ void unit_tests_evaluate(test_env* te) {
     test_eval_not(te);
     test_eval_list_pred(te);
     test_eval_atom_pred(te);
+    test_eval_null_pred(te);
     test_eval_lambda(te);
     test_eval_cond(te);
     test_eval_define(te);
@@ -2087,7 +2088,7 @@ void test_eval_list_pred(test_env* te) {
 }
 
 void test_eval_atom_pred(test_env* te) {
-    print_test_announce("eval_list_pred()");
+    print_test_announce("eval_atom_pred()");
     Environment* env = create_environment(0, 0);
     setup_environment(env);
     typed_ptr* cons_sym = symbol_tp_from_name(env, "cons");
@@ -2199,6 +2200,73 @@ void test_eval_atom_pred(test_env* te) {
     }
     delete_environment_full(env);
     free(cons_sym);
+    free(x_sym);
+    print_test_result(pass);
+    te->passed += pass;
+    te->run++;
+    return;
+}
+
+void test_eval_null_pred(test_env* te) {
+    print_test_announce("eval_null_pred()");
+    Environment* env = create_environment(0, 0);
+    setup_environment(env);
+    typed_ptr* nullpred_builtin = builtin_tp_from_name(env, "null?");
+    typed_ptr *x_sym = install_symbol(env, "x", &undef);
+    bool pass = true;
+    // (null?) -> EVAL_ERROR_FEW_ARGS
+    s_expr* cmd = unit_list(copy_typed_ptr(nullpred_builtin));
+    typed_ptr* expected = create_error_tp(EVAL_ERROR_FEW_ARGS);
+    pass = run_test_expect(eval_null_pred, cmd, env, expected) && pass;
+    // (null? 1 2) -> EVAL_ERROR_MANY_ARGS
+    cmd = unit_list(copy_typed_ptr(nullpred_builtin));
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, create_number_tp(2));
+    expected = create_error_tp(EVAL_ERROR_MANY_ARGS);
+    pass = run_test_expect(eval_null_pred, cmd, env, expected) && pass;
+    // (null? 1) -> #f
+    cmd = unit_list(copy_typed_ptr(nullpred_builtin));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_atom_tp(TYPE_BOOL, false);
+    pass = run_test_expect(eval_null_pred, cmd, env, expected) && pass;
+    // (null? #t) -> #f
+    cmd = unit_list(copy_typed_ptr(nullpred_builtin));
+    s_expr_append(cmd, create_atom_tp(TYPE_BOOL, true));
+    expected = create_atom_tp(TYPE_BOOL, false);
+    pass = run_test_expect(eval_null_pred, cmd, env, expected) && pass;
+    // (null? (list 1 2)) -> #f
+    // (null? +) -> #f
+    cmd = unit_list(copy_typed_ptr(nullpred_builtin));
+    s_expr_append(cmd, ADD);
+    expected = create_atom_tp(TYPE_BOOL, false);
+    pass = run_test_expect(eval_null_pred, cmd, env, expected) && pass;
+    // (null? null) -> #t
+    cmd = unit_list(copy_typed_ptr(nullpred_builtin));
+    s_expr_append(cmd, NULL_SYM);
+    expected = create_atom_tp(TYPE_BOOL, true);
+    pass = run_test_expect(eval_null_pred, cmd, env, expected) && pass;
+    // (null? (list)) -> #t
+    cmd = unit_list(copy_typed_ptr(nullpred_builtin));
+    s_expr_append(cmd, create_s_expr_tp(unit_list(LIST_SYM)));
+    expected = create_atom_tp(TYPE_BOOL, true);
+    pass = run_test_expect(eval_null_pred, cmd, env, expected) && pass;
+    // (null? <void>) -> #f
+    cmd = unit_list(copy_typed_ptr(nullpred_builtin));
+    s_expr_append(cmd, create_void_tp());
+    expected = create_atom_tp(TYPE_BOOL, false);
+    pass = run_test_expect(eval_null_pred, cmd, env, expected) && pass;
+    // (null? (lambda () 1)) -> #f
+    // (null? TEST_ERROR_DUMMY) -> TEST_ERROR_DUMMY
+    cmd = unit_list(copy_typed_ptr(nullpred_builtin));
+    s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
+    expected = create_error_tp(TEST_ERROR_DUMMY);
+    pass = run_test_expect(eval_null_pred, cmd, env, expected) && pass;
+    // (null? (/ 0)) -> EVAL_ERROR_DIV_ZERO
+    cmd = unit_list(copy_typed_ptr(nullpred_builtin));
+    s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
+    expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+    pass = run_test_expect(eval_null_pred, cmd, env, expected) && pass;
+    delete_environment_full(env);
     free(x_sym);
     print_test_result(pass);
     te->passed += pass;

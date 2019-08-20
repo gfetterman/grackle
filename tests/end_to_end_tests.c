@@ -256,6 +256,18 @@ void end_to_end_predicate_tests(test_env* t_env) {
     e2e_atom_test("(procedure?)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(procedure? 1 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("(procedure? (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
+    printf("## null? ##\n");
+    e2e_atom_test("(null? 1)", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(null? #t)", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(null? (list 1 2 3))", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(null? (cons 1 2))", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(null? null)", TYPE_BOOL, true, t_env);
+    e2e_atom_test("(null? (cond))", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(null? +)", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(null? (lambda () 1))", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(null?)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
+    e2e_atom_test("(null? 1 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
+    e2e_atom_test("(null? (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     return;
 }
 
