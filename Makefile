@@ -1,5 +1,5 @@
 CC = gcc
-CC_OPTS = -Wall -std=gnu99 -I./src
+CC_OPTS = -Wall -std=gnu99 -I./src -o0 -g
 
 VPATH = src:tests
 

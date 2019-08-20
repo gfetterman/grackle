@@ -2267,6 +2267,7 @@ void test_eval_null_pred(test_env* te) {
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_null_pred, cmd, env, expected) && pass;
     delete_environment_full(env);
+    free(nullpred_builtin);
     free(x_sym);
     print_test_result(pass);
     te->passed += pass;
