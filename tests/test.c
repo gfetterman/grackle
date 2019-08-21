@@ -19,6 +19,7 @@ test_env* unit_tests() {
     t_env->passed = 0;
     t_env->run = 0;
     // tests
+    unit_tests_test_utils(t_env);
     unit_tests_fundamentals(t_env);
     unit_tests_environment(t_env);
     unit_tests_parse(t_env);

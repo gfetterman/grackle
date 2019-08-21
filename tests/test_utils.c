@@ -17,7 +17,9 @@ bool check_error(const typed_ptr* tp, interpreter_error err) {
 }
 
 bool match_typed_ptrs(typed_ptr* first, typed_ptr* second) {
-    if (first == NULL || second == NULL) {
+    if (first == NULL && second == NULL) {
+        return true;
+    } else if (first == NULL || second == NULL) {
         return false;
     } else if (first->type != second->type) {
         return false;
@@ -105,6 +107,10 @@ void s_expr_append(s_expr* se, typed_ptr* tp) {
     return;
 }
 
+typed_ptr* create_number_tp(long value) {
+    return create_typed_ptr(TYPE_FIXNUM, (tp_value){.idx=value});
+}
+
 typed_ptr* builtin_tp_from_name(Environment* env, const char name[]) {
     Symbol_Node* found = symbol_lookup_name(env, name);
     if (found == NULL || found->type != TYPE_BUILTIN) {
@@ -118,8 +124,4 @@ typed_ptr* symbol_tp_from_name(Environment* env, const char name[]) {
     Symbol_Node* found = symbol_lookup_name(env, name);
     return (found == NULL) ? NULL : \
                              create_atom_tp(TYPE_SYMBOL, found->symbol_idx);
-}
-
-typed_ptr* create_number_tp(long value) {
-    return create_typed_ptr(TYPE_FIXNUM, (tp_value){.idx=value});
 }
