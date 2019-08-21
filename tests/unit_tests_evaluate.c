@@ -1800,6 +1800,30 @@ void test_eval_and_or(test_env* te) {
         pass = false;
     }
     free(curr_x_val);
+    // (and TEST_ERROR_DUMMY #t) -> TEST_ERROR_DUMMY
+    cmd = unit_list(copy_typed_ptr(and_builtin));
+    s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
+    s_expr_append(cmd, create_atom_tp(TYPE_BOOL, true));
+    expected = create_error_tp(TEST_ERROR_DUMMY);
+    pass = run_test_expect(eval_and_or, cmd, env, expected) && pass;
+    // (and #t TEST_ERROR_DUMMY) -> TEST_ERROR_DUMMY
+    cmd = unit_list(copy_typed_ptr(and_builtin));
+    s_expr_append(cmd, create_atom_tp(TYPE_BOOL, true));
+    s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
+    expected = create_error_tp(TEST_ERROR_DUMMY);
+    pass = run_test_expect(eval_and_or, cmd, env, expected) && pass;
+    // (and (/ 0) #t) -> EVAL_ERROR_DIV_ZERO
+    cmd = unit_list(copy_typed_ptr(and_builtin));
+    s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
+    s_expr_append(cmd, create_atom_tp(TYPE_BOOL, true));
+    expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+    pass = run_test_expect(eval_and_or, cmd, env, expected) && pass;
+    // (and #t (/ 0)) -> EVAL_ERROR_DIV_ZERO
+    cmd = unit_list(copy_typed_ptr(and_builtin));
+    s_expr_append(cmd, create_atom_tp(TYPE_BOOL, true));
+    s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
+    expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+    pass = run_test_expect(eval_and_or, cmd, env, expected) && pass;
     // (or) -> #f
     cmd = unit_list(copy_typed_ptr(or_builtin));
     expected = create_atom_tp(TYPE_BOOL, false);
@@ -1938,6 +1962,30 @@ void test_eval_and_or(test_env* te) {
         pass = false;
     }
     free(curr_x_val);
+    // (or TEST_ERROR_DUMMY #f) -> TEST_ERROR_DUMMY
+    cmd = unit_list(copy_typed_ptr(or_builtin));
+    s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
+    s_expr_append(cmd, create_atom_tp(TYPE_BOOL, false));
+    expected = create_error_tp(TEST_ERROR_DUMMY);
+    pass = run_test_expect(eval_and_or, cmd, env, expected) && pass;
+    // (or #f TEST_ERROR_DUMMY) -> TEST_ERROR_DUMMY
+    cmd = unit_list(copy_typed_ptr(or_builtin));
+    s_expr_append(cmd, create_atom_tp(TYPE_BOOL, false));
+    s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
+    expected = create_error_tp(TEST_ERROR_DUMMY);
+    pass = run_test_expect(eval_and_or, cmd, env, expected) && pass;
+    // (or (/ 0) #f) -> EVAL_ERROR_DIV_ZERO
+    cmd = unit_list(copy_typed_ptr(or_builtin));
+    s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
+    s_expr_append(cmd, create_atom_tp(TYPE_BOOL, false));
+    expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+    pass = run_test_expect(eval_and_or, cmd, env, expected) && pass;
+    // (or #f (/ 0)) -> EVAL_ERROR_DIV_ZERO
+    cmd = unit_list(copy_typed_ptr(or_builtin));
+    s_expr_append(cmd, create_atom_tp(TYPE_BOOL, false));
+    s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
+    expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+    pass = run_test_expect(eval_and_or, cmd, env, expected) && pass;
     delete_environment_full(env);
     free(and_builtin);
     free(or_builtin);
