@@ -12,82 +12,14 @@ typed_ptr* parse_and_evaluate(char command[], Environment* env) {
     }
 }
 
-bool check_typed_ptr(typed_ptr* tp, type t, tp_value ptr) {
-    if (tp == NULL) {
-        return false;
-    } else if (tp->type == TYPE_S_EXPR) {
-        return tp->type == t && tp->ptr.se_ptr == ptr.se_ptr;
-    } else {
-        return tp->type == t && tp->ptr.idx == ptr.idx;
-    }
-}
-
 bool check_error(const typed_ptr* tp, interpreter_error err) {
     return (tp != NULL && tp->type == TYPE_ERROR && tp->ptr.idx == err);
 }
 
-bool check_pair(typed_ptr* tp, \
-                typed_ptr** tp_list, \
-                unsigned int tp_list_len, \
-                Environment* env) {
-    if (tp == NULL || tp->type != TYPE_S_EXPR || tp_list_len != 2) {
-        return false;
-    }
-    s_expr* se = tp->ptr.se_ptr;
-    if (se->car->type == tp_list[0]->type && \
-        se->car->ptr.idx == tp_list[0]->ptr.idx && \
-        se->cdr->type == tp_list[1]->type && \
-        se->cdr->ptr.idx == tp_list[1]->ptr.idx) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-bool check_s_expr(typed_ptr* tp, \
-                  typed_ptr** tp_list, \
-                  unsigned int tp_list_len, \
-                  Environment* env) {
-    // doesn't currently handle nested lists, but that's ok for now
-    if (tp == NULL || tp->type != TYPE_S_EXPR) {
-        return false;
-    }
-    s_expr* curr_se = tp->ptr.se_ptr;
-    if (tp_list_len == 0) {
-        if (is_empty_list(curr_se)) {
-            return true;
-        } else {
-            return false;
-        }
-    } else {
-        unsigned int curr_check_idx = 0;
-        while (!is_empty_list(curr_se)) {
-            if (curr_check_idx >= tp_list_len) {
-                // the output we're checking is too long
-                return false;
-            }
-            typed_ptr* curr_check = tp_list[curr_check_idx];
-            if (curr_se->car->type != curr_check->type || \
-                (curr_check->type == TYPE_S_EXPR && \
-                 curr_se->car->ptr.se_ptr != curr_check->ptr.se_ptr) || \
-                (curr_check->type != TYPE_S_EXPR && \
-                 curr_se->car->ptr.idx != curr_check->ptr.idx)) {
-                    return false;
-            }
-            curr_check_idx++;
-            curr_se = s_expr_next(curr_se);
-        }
-        if (curr_check_idx < tp_list_len) {
-            // the output we're checking is too short
-            return false;
-        } else {
-            return true;
-        }
-    }
-}
-
 bool match_typed_ptrs(typed_ptr* first, typed_ptr* second) {
-    if (first == NULL || second == NULL) {
+    if (first == NULL && second == NULL) {
+        return true;
+    } else if (first == NULL || second == NULL) {
         return false;
     } else if (first->type != second->type) {
         return false;
@@ -175,6 +107,10 @@ void s_expr_append(s_expr* se, typed_ptr* tp) {
     return;
 }
 
+typed_ptr* create_number_tp(long value) {
+    return create_typed_ptr(TYPE_FIXNUM, (tp_value){.idx=value});
+}
+
 typed_ptr* builtin_tp_from_name(Environment* env, const char name[]) {
     Symbol_Node* found = symbol_lookup_name(env, name);
     if (found == NULL || found->type != TYPE_BUILTIN) {
@@ -188,8 +124,4 @@ typed_ptr* symbol_tp_from_name(Environment* env, const char name[]) {
     Symbol_Node* found = symbol_lookup_name(env, name);
     return (found == NULL) ? NULL : \
                              create_atom_tp(TYPE_SYMBOL, found->symbol_idx);
-}
-
-typed_ptr* create_number_tp(long value) {
-    return create_typed_ptr(TYPE_FIXNUM, (tp_value){.idx=value});
 }

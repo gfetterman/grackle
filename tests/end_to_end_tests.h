@@ -10,10 +10,7 @@ void e2e_multiline_atom_test(char* cmds[], \
                              type t, \
                              long val, \
                              test_env* te);
-void e2e_pair_test(char cmd[], \
-                   typed_ptr** tp_list, \
-                   unsigned int tp_list_len, \
-                   test_env* te);
+void e2e_pair_test(char cmd[], typed_ptr* car, typed_ptr* cdr, test_env* te);
 void e2e_s_expr_test(char cmd[], \
                      typed_ptr** tp_list, \
                      unsigned int tp_list_len, \
