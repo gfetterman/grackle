@@ -73,6 +73,7 @@ void test_match_typed_ptrs(test_env* te) {
     first = create_s_expr_tp(unit_list(create_number_tp(1)));
     second = create_s_expr_tp(first->ptr.se_ptr);
     pass = match_typed_ptrs(first, second) && pass;
+    delete_s_expr_recursive(first->ptr.se_ptr, true);
     free(first);
     free(second);
     // match(<s-expr>, <copied s-expr>) -> false

@@ -245,6 +245,7 @@ void test_register_symbol(test_env* te) {
     }
     free(stack->se->car);
     stack->se->car = NULL;
+    free(expected_tp);
     // passing a symbol already in env
     char symbol_env[] = "in-env";
     typed_ptr thousand = {.type=TYPE_FIXNUM, .ptr={.idx=1000}};
