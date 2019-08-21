@@ -5,15 +5,14 @@
 #include "grackle_io.h"
 
 #define PROMPT ">>>"
-#define BUF_SIZE 80
 
 int main() {
-    bool exit = 0;
-    char input[BUF_SIZE];
+    bool exit = false;
+    char* input = NULL;
     Environment* env = create_environment(0, 0);
     setup_environment(env);
     while (!exit) {
-        get_input(PROMPT, input, BUF_SIZE);
+        input = get_input(PROMPT);
         typed_ptr* parse_output = parse(input, env);
         if (parse_output->type == TYPE_ERROR) {
             print_error(parse_output);
@@ -33,6 +32,7 @@ int main() {
             free(eval_output);
         }
         free(parse_output);
+        free(input);
     }
     delete_environment_full(env);
     printf("exiting...\n");
