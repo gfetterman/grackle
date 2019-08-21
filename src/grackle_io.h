@@ -8,7 +8,7 @@
 #include "fundamentals.h"
 #include "environment.h"
 
-void get_input(const char* prompt, char buffer[], unsigned int buffer_size);
+char* get_input(const char* prompt);
 
 void print_typed_ptr(const typed_ptr* tp, const Environment* env);
 

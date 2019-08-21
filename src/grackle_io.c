@@ -1,13 +1,38 @@
 #include "grackle_io.h"
 
-void get_input(const char* prompt, char buffer[], unsigned int buffer_size) {
+#define BUFFER_INCREMENT 100
+
+char* get_input(const char* prompt) {
     printf("%s ", prompt);
-    fgets(buffer, buffer_size, stdin); // yes, this is unsafe
-    // drop newline at end of input
-    if ((strlen(buffer) > 0) && (buffer[strlen(buffer) - 1] == '\n')) {
-        buffer[strlen(buffer) - 1] = '\0';
+    char* final_string = malloc(sizeof(*final_string));
+    if (final_string == NULL) {
+        fprintf(stderr, "malloc failed in get_input()\n");
+        exit(-1);
     }
-    return;
+    final_string[0] = '\0';
+    unsigned long final_string_size = 0;
+    unsigned long num_read = 0;
+    char incr_buffer[BUFFER_INCREMENT];
+    do {
+        char* output = fgets(incr_buffer, BUFFER_INCREMENT, stdin);
+        if (output == NULL) {
+            fprintf(stderr, "fgets failed in get_input()\n");
+            exit(-1);
+        }
+        num_read = strlen(incr_buffer);
+        final_string_size += num_read;
+        final_string = realloc(final_string, final_string_size + 1);
+        if (final_string == NULL) {
+            fprintf(stderr, "realloc failed in get_input()\n");
+            exit(-1);
+        }
+        strcat(final_string, incr_buffer);
+    } while (num_read > 0 && incr_buffer[num_read - 1] != '\n');
+    // drop newline at end of input
+    if (num_read > 0) {
+        final_string[strlen(final_string) - 1] = '\0';
+    }
+    return final_string;
 }
 
 void print_typed_ptr(const typed_ptr* tp, const Environment* env) {
