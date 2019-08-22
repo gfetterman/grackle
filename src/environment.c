@@ -75,6 +75,7 @@ void delete_symbol_node_list(Symbol_Node* sn) {
 //   function table node, but the body points to an s-expression that is
 //   represented elsewhere (and so cannot be safely freed using this pointer).
 Function_Node* create_function_node(unsigned int function_idx, \
+                                    char* name, \
                                     Symbol_Node* param_list, \
                                     Environment* closure_env, \
                                     typed_ptr* body) {
@@ -84,6 +85,7 @@ Function_Node* create_function_node(unsigned int function_idx, \
         exit(-1);
     }
     new_fn->function_idx = function_idx;
+    new_fn->name = strdup(name);
     new_fn->param_list = param_list;
     new_fn->closure_env = closure_env;
     new_fn->body = body;
@@ -179,6 +181,7 @@ void delete_environment_full(Environment* env) {
     Function_Node* curr_fn = env->function_table->head;
     while (curr_fn != NULL) {
         Function_Node* next_fn = curr_fn->next;
+        free(curr_fn->name);
         // free parameter list
         Symbol_Node* curr_param_sn = curr_fn->param_list;
         while (curr_param_sn != NULL) {
@@ -239,11 +242,13 @@ void blind_install_symbol(Environment* env, char* name, typed_ptr* tp) {
 //   problem, and won't be freed by the environment.
 // The typed pointer returned is the caller's responsibility to free.
 typed_ptr* install_function(Environment* env, \
+                            char* name, \
                             Symbol_Node* param_list, \
                             Environment* closure_env, \
                             typed_ptr* body) {
     unsigned int idx = env->function_table->length;
     Function_Node* new_fn = create_function_node(idx, \
+                                                 name, \
                                                  param_list, \
                                                  closure_env, \
                                                  body);

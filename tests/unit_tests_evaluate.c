@@ -236,7 +236,7 @@ void test_bind_args(test_env* te) {
     print_test_announce("bind_args()");
     bool pass = true;
     // no params, no args
-    Function_Node* fn_no_params = create_function_node(0, NULL, NULL, NULL);
+    Function_Node* fn_no_params = create_function_node(0, "", NULL, NULL, NULL);
     typed_ptr* empty_args = create_s_expr_tp(create_empty_s_expr());
     Symbol_Node* bound_args = bind_args(NULL, fn_no_params, empty_args);
     if (bound_args != NULL) {
@@ -259,7 +259,7 @@ void test_bind_args(test_env* te) {
                                                 "x", \
                                                 TYPE_UNDEF, \
                                                 (tp_value){.idx=0});
-    Function_Node* fn_1_param = create_function_node(0, one_param, NULL, NULL);
+    Function_Node* fn_1_param = create_function_node(0, "", one_param, NULL, NULL);
     bound_args = bind_args(NULL, fn_1_param, empty_args);
     if (bound_args == NULL || \
         bound_args->type != TYPE_ERROR || \
@@ -301,6 +301,7 @@ void test_bind_args(test_env* te) {
                                           TYPE_UNDEF, \
                                           (tp_value){.idx=0});
     Function_Node* fn_2_params = create_function_node(0, \
+                                                      "", \
                                                       two_params, \
                                                       NULL, \
                                                       NULL);
@@ -354,16 +355,19 @@ void test_bind_args(test_env* te) {
         pass = false;
     }
     delete_symbol_node_list(bound_args);
+    free(fn_no_params->name);
     free(fn_no_params);
     delete_s_expr_recursive(empty_args->ptr.se_ptr, true);
     free(empty_args);
     delete_s_expr_recursive(one_arg->ptr.se_ptr, true);
     free(one_arg);
     delete_symbol_node_list(one_param);
+    free(fn_1_param->name);
     free(fn_1_param);
     delete_s_expr_recursive(two_args->ptr.se_ptr, true);
     free(two_args);
     delete_symbol_node_list(two_params);
+    free(fn_2_params->name);
     free(fn_2_params);
     delete_s_expr_recursive(three_args->ptr.se_ptr, true);
     free(three_args);
@@ -2396,6 +2400,7 @@ void test_eval_lambda(test_env* te) {
     Function_Node* resulting_fn = function_lookup_index(env, expected);
     if (env->function_table->length != 1 || \
         resulting_fn == NULL || \
+        strcmp(resulting_fn->name, "") || \
         resulting_fn->param_list == NULL || \
         strcmp(resulting_fn->param_list->name, "x") || \
         resulting_fn->param_list->next != NULL || \
@@ -2419,6 +2424,7 @@ void test_eval_lambda(test_env* te) {
     resulting_fn = function_lookup_index(env, expected);
     if (env->function_table->length != 2 || \
         resulting_fn == NULL || \
+        strcmp(resulting_fn->name, "") || \
         resulting_fn->param_list != NULL || \
         resulting_fn->closure_env == NULL || \
         !deep_match_typed_ptrs(resulting_fn->body, body)) {
@@ -2444,6 +2450,7 @@ void test_eval_lambda(test_env* te) {
     resulting_fn = function_lookup_index(env, expected);
     if (env->function_table->length != 3 || \
         resulting_fn == NULL || \
+        strcmp(resulting_fn->name, "") || \
         resulting_fn->param_list == NULL || \
         strcmp(resulting_fn->param_list->name, "x") || \
         resulting_fn->param_list->next == NULL || \
@@ -2472,6 +2479,7 @@ void test_eval_lambda(test_env* te) {
     resulting_fn = function_lookup_index(env, expected);
     if (env->function_table->length != 4 || \
         resulting_fn == NULL || \
+        strcmp(resulting_fn->name, "") || \
         resulting_fn->param_list == NULL || \
         strcmp(resulting_fn->param_list->name, "x") || \
         resulting_fn->param_list->next != NULL || \
@@ -2496,6 +2504,7 @@ void test_eval_lambda(test_env* te) {
     resulting_fn = function_lookup_index(env, expected);
     if (env->function_table->length != 5 || \
         resulting_fn == NULL || \
+        strcmp(resulting_fn->name, "") || \
         resulting_fn->param_list != NULL || \
         resulting_fn->closure_env == NULL || \
         !deep_match_typed_ptrs(resulting_fn->body, body)) {
@@ -2911,6 +2920,7 @@ void test_eval_define(test_env* te) {
     x_value = value_lookup_index(env, x_sym);
     Function_Node* x_fn = function_lookup_index(env, x_value);
     if (x_fn == NULL || \
+        strcmp(x_fn->name, "x") || \
         x_fn->param_list != NULL || \
         x_fn->closure_env == NULL || \
         !deep_match_typed_ptrs(x_fn->body, body)) {
@@ -2929,6 +2939,7 @@ void test_eval_define(test_env* te) {
     x_fn = function_lookup_index(env, x_value);
     body = create_s_expr_tp(add_one_one_s_expr(env));
     if (x_fn == NULL || \
+        strcmp(x_fn->name, "x") || \
         x_fn->param_list != NULL || \
         x_fn->closure_env == NULL || \
         !deep_match_typed_ptrs(x_fn->body, body)) {
@@ -2964,6 +2975,7 @@ void test_eval_define(test_env* te) {
     s_expr_append(add_y_z, copy_typed_ptr(z_sym));
     body = create_s_expr_tp(add_y_z);
     if (x_fn == NULL || \
+        strcmp(x_fn->name, "x") || \
         x_fn->param_list == NULL || \
         strcmp(x_fn->param_list->name, "y") || \
         x_fn->param_list->next == NULL || \
@@ -2987,6 +2999,7 @@ void test_eval_define(test_env* te) {
     x_fn = function_lookup_index(env, x_value);
     body = create_s_expr_tp(divide_zero_s_expr(env));
     if (x_fn == NULL || \
+        strcmp(x_fn->name, "x") || \
         x_fn->param_list != NULL || \
         x_fn->closure_env == NULL || \
         !deep_match_typed_ptrs(x_fn->body, body)) {
