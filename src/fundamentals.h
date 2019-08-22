@@ -46,7 +46,9 @@ typedef enum {BUILTIN_ADD, \
               BUILTIN_VOIDPRED, \
               BUILTIN_PROCPRED, \
               BUILTIN_NULLPRED, \
-              BUILTIN_LAMBDA} builtin_code;
+              BUILTIN_SYMBOLPRED, \
+              BUILTIN_LAMBDA, \
+              BUILTIN_QUOTE} builtin_code;
 
 // error codes
 

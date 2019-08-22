@@ -287,12 +287,14 @@ void setup_symbol_table(Environment* env) {
     blind_install_symbol(env, "void?", &ATOM_TP(tbi, BUILTIN_VOIDPRED));
     blind_install_symbol(env, "procedure?", &ATOM_TP(tbi, BUILTIN_PROCPRED));
     blind_install_symbol(env, "null?", &ATOM_TP(tbi, BUILTIN_NULLPRED));
+    blind_install_symbol(env, "symbol?", &ATOM_TP(tbi, BUILTIN_SYMBOLPRED));
     blind_install_symbol(env, "=", &ATOM_TP(tbi, BUILTIN_NUMBEREQ));
     blind_install_symbol(env, ">", &ATOM_TP(tbi, BUILTIN_NUMBERGT));
     blind_install_symbol(env, "<", &ATOM_TP(tbi, BUILTIN_NUMBERLT));
     blind_install_symbol(env, ">=", &ATOM_TP(tbi, BUILTIN_NUMBERGE));
     blind_install_symbol(env, "<=", &ATOM_TP(tbi, BUILTIN_NUMBERLE));
     blind_install_symbol(env, "lambda", &ATOM_TP(tbi, BUILTIN_LAMBDA));
+    blind_install_symbol(env, "quote", &ATOM_TP(tbi, BUILTIN_QUOTE));
     // special values and keywords
     blind_install_symbol(env, "else", &ATOM_TP(TYPE_UNDEF, 0));
     blind_install_symbol(env, "#t", &ATOM_TP(TYPE_BOOL, true));

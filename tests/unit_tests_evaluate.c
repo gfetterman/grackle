@@ -21,6 +21,7 @@ void unit_tests_evaluate(test_env* te) {
     test_eval_cond(te);
     test_eval_define(te);
     test_eval_setvar(te);
+    test_eval_quote(te);
     test_eval_builtin(te);
     test_eval_s_expr(te);
     test_eval_function(te);
@@ -2148,10 +2149,10 @@ void test_eval_atom_pred(test_env* te) {
     typed_ptr* x_sym;
     x_sym = install_symbol(env, "x", &fn_tp);
     bool pass = true;
-    #define NUM_TYPES 5
+    #define NUM_TYPES 6
     builtin_code bi_codes[NUM_TYPES] = {BUILTIN_PAIRPRED, BUILTIN_NUMBERPRED, \
                                         BUILTIN_BOOLPRED, BUILTIN_VOIDPRED, \
-                                        BUILTIN_PROCPRED};
+                                        BUILTIN_PROCPRED, BUILTIN_SYMBOLPRED};
     s_expr* cmd = NULL;
     typed_ptr* expected = NULL;
     // ([any_atomic]?) -> EVAL_ERROR_FEW_ARGS
@@ -2224,9 +2225,14 @@ void test_eval_atom_pred(test_env* te) {
         pass = run_test_expect(eval_atom_pred, cmd, env, expected) && pass;
     }
     // ([any_atomic]? 'x) -> #t if [symbol] else #f
-    //   there's not currently any way to obtain a bare symbol typed-pointer
-    //   because the arguments are evaluated. Once I write (quote ...) I'll be
-    //   able to test this...
+    for (unsigned int i = 0; i < NUM_TYPES; i++) {
+        cmd = unit_list(create_atom_tp(TYPE_BUILTIN, bi_codes[i]));
+        s_expr* quote_x = unit_list(builtin_tp_from_name(env, "quote"));
+        s_expr_append(quote_x, copy_typed_ptr(x_sym));
+        s_expr_append(cmd, create_s_expr_tp(quote_x));
+        expected = create_atom_tp(TYPE_BOOL, bi_codes[i] == BUILTIN_SYMBOLPRED);
+        pass = run_test_expect(eval_atom_pred, cmd, env, expected) && pass;
+    }
     // (define ...) + ([any_atomic]? fn) -> #t if [function] else #f
     for (unsigned int i = 0; i < NUM_TYPES; i++) {
         cmd = unit_list(create_atom_tp(TYPE_BUILTIN, bi_codes[i]));
@@ -3128,6 +3134,68 @@ void test_eval_setvar(test_env* te) {
     pass = run_test_expect(eval_set_variable, cmd, env, expected) && pass;
     delete_environment_full(env);
     free(setvar_builtin);
+    free(x_sym);
+    print_test_result(pass);
+    te->passed += pass;
+    te->run++;
+    return;
+}
+
+void test_eval_quote(test_env* te) {
+    print_test_announce("eval_quote()");
+    Environment* env = create_environment(0, 0);
+    setup_environment(env);
+    typed_ptr* quote_builtin = builtin_tp_from_name(env, "quote");
+    typed_ptr *x_sym;
+    x_sym = install_symbol(env, "x", &undef);
+    bool pass = true;
+    // (quote) -> EVAL_ERROR_FEW_ARGS
+    s_expr* cmd = unit_list(copy_typed_ptr(quote_builtin));
+    typed_ptr* expected = create_error_tp(EVAL_ERROR_FEW_ARGS);
+    pass = run_test_expect(eval_quote, cmd, env, expected) && pass;
+    // (quote 1 2) -> EVAL_ERROR_MANY_ARGS
+    cmd = unit_list(copy_typed_ptr(quote_builtin));
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, create_number_tp(2));
+    expected = create_error_tp(EVAL_ERROR_MANY_ARGS);
+    pass = run_test_expect(eval_quote, cmd, env, expected) && pass;
+    // (quote 1) -> 1
+    cmd = unit_list(copy_typed_ptr(quote_builtin));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_number_tp(1);
+    pass = run_test_expect(eval_quote, cmd, env, expected) && pass;
+    // (quote +) -> '+
+    cmd = unit_list(copy_typed_ptr(quote_builtin));
+    s_expr_append(cmd, symbol_tp_from_name(env, "+"));
+    expected = symbol_tp_from_name(env, "+");
+    pass = run_test_expect(eval_quote, cmd, env, expected) && pass;
+    // (quote <procedure>) -> <procedure>
+    cmd = unit_list(copy_typed_ptr(quote_builtin));
+    s_expr_append(cmd, builtin_tp_from_name(env, "+"));
+    expected = builtin_tp_from_name(env, "+");
+    pass = run_test_expect(eval_quote, cmd, env, expected) && pass;
+    // (quote (1 #f <void>)) -> '(1 #f <void>)
+    cmd = unit_list(copy_typed_ptr(quote_builtin));
+    s_expr* subexpr = unit_list(create_number_tp(1));
+    s_expr_append(subexpr, create_atom_tp(TYPE_BOOL, false));
+    s_expr_append(subexpr, create_void_tp());
+    s_expr_append(cmd, create_s_expr_tp(subexpr));
+    expected = create_s_expr_tp(copy_s_expr(subexpr));
+    pass = run_test_expect(eval_quote, cmd, env, expected) && pass;
+    // (quote TEST_ERROR_DUMMY) -> TEST_ERROR_DUMMY
+    cmd = unit_list(copy_typed_ptr(quote_builtin));
+    s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
+    expected = create_error_tp(TEST_ERROR_DUMMY);
+    pass = run_test_expect(eval_quote, cmd, env, expected) && pass;
+    // (quote (/ 0)) -> '(/ 0)
+    cmd = unit_list(copy_typed_ptr(quote_builtin));
+    subexpr = unit_list(builtin_tp_from_name(env, "/"));
+    s_expr_append(subexpr, create_number_tp(0));
+    s_expr_append(cmd, create_s_expr_tp(subexpr));
+    expected = create_s_expr_tp(copy_s_expr(subexpr));
+    pass = run_test_expect(eval_quote, cmd, env, expected) && pass;
+    delete_environment_full(env);
+    free(quote_builtin);
     free(x_sym);
     print_test_result(pass);
     te->passed += pass;

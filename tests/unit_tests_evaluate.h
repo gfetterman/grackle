@@ -31,6 +31,7 @@ void test_eval_list_pred(test_env* te);
 void test_eval_atom_pred(test_env* te);
 void test_eval_null_pred(test_env* te);
 void test_eval_lambda(test_env* te);
+void test_eval_quote(test_env* te);
 
 void test_eval_builtin(test_env* te);
 void test_eval_s_expr(test_env* te);
