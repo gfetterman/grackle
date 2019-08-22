@@ -427,6 +427,8 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
                         delete_s_expr_recursive(dummy_lam, false);
                         blind_install_symbol(env, sym_entry->name, fn);
                         Function_Node* fn_fn = function_lookup_index(env, fn);
+                        free(fn_fn->name);
+                        fn_fn->name = strdup(sym_entry->name);
                         blind_install_symbol(fn_fn->closure_env, \
                                              sym_entry->name, \
                                              fn);
@@ -857,7 +859,7 @@ typed_ptr* eval_lambda(const s_expr* se, Environment* env) {
                 if (body->type == TYPE_S_EXPR) {
                     body->ptr.se_ptr = copy_s_expr(body->ptr.se_ptr);
                 }
-                result = install_function(env, params, closure_env, body);
+                result = install_function(env, "", params, closure_env, body);
             }
         }
         delete_s_expr_recursive(args_tp->ptr.se_ptr, false);

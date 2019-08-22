@@ -60,9 +60,15 @@ void print_typed_ptr(const typed_ptr* tp, const Environment* env) {
             break;
         case TYPE_VOID:
             break; // print nothing
-        case TYPE_FUNCTION:
-            printf("#<procedure>");
+        case TYPE_FUNCTION: {
+            char* name = function_lookup_index(env, tp)->name;
+            if (!strcmp(name, "")) {
+                printf("#<procedure>");
+            } else {
+                printf("#<procedure:%s>", name);
+            }
             break;
+        }
         default:
             printf("unrecognized type: %d", tp->type);
             break;
