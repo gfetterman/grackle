@@ -93,7 +93,8 @@ typed_ptr* eval_builtin(const s_expr* se, Environment* env) {
         case BUILTIN_NUMBERPRED: // fall-through
         case BUILTIN_BOOLPRED: // fall-through
         case BUILTIN_VOIDPRED: // fall-through
-        case BUILTIN_PROCPRED:
+        case BUILTIN_PROCPRED: // fall-through
+        case BUILTIN_SYMBOLPRED:
             result = eval_atom_pred(se, env);
             break;
         case BUILTIN_NULLPRED:
@@ -101,6 +102,9 @@ typed_ptr* eval_builtin(const s_expr* se, Environment* env) {
             break;
         case BUILTIN_LAMBDA:
             result = eval_lambda(se, env);
+            break;
+        case BUILTIN_QUOTE:
+            result = eval_quote(se, env);
             break;
         default:
             result = create_error_tp(EVAL_ERROR_UNDEF_BUILTIN);
@@ -784,6 +788,9 @@ typed_ptr* eval_atom_pred(const s_expr* se, Environment* env) {
         case BUILTIN_PROCPRED:
             target_type = TYPE_BUILTIN; // or TYPE_FUNCTION - see below
             break;
+        case BUILTIN_SYMBOLPRED:
+            target_type = TYPE_SYMBOL;
+            break;
         default:
             return create_error_tp(EVAL_ERROR_UNDEF_BUILTIN);
     }
@@ -861,6 +868,22 @@ typed_ptr* eval_lambda(const s_expr* se, Environment* env) {
                 }
                 result = install_function(env, "", params, closure_env, body);
             }
+        }
+        delete_s_expr_recursive(args_tp->ptr.se_ptr, false);
+        free(args_tp);
+    }
+    return result;
+}
+
+typed_ptr* eval_quote(const s_expr* se, Environment* env) {
+    typed_ptr* result = NULL;
+    typed_ptr* args_tp = collect_arguments(se, env, 1, 1, false);
+    if (args_tp->type == TYPE_ERROR) {
+        result = args_tp;
+    } else {
+        result = copy_typed_ptr(args_tp->ptr.se_ptr->car);
+        if (result->type == TYPE_S_EXPR) {
+            result->ptr.se_ptr = copy_s_expr(result->ptr.se_ptr);
         }
         delete_s_expr_recursive(args_tp->ptr.se_ptr, false);
         free(args_tp);
