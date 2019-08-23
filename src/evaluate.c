@@ -885,6 +885,8 @@ typed_ptr* eval_quote(const s_expr* se, Environment* env) {
         if (result->type == TYPE_S_EXPR) {
             result->ptr.se_ptr = copy_s_expr(result->ptr.se_ptr);
         }
+        delete_s_expr_recursive(args_tp->ptr.se_ptr, false);
+        free(args_tp);
     }
     return result;
 }
