@@ -134,6 +134,9 @@ Environment* copy_environment(Environment* env) {
                                                  curr_sn->value);
         if (new_sn->type == TYPE_S_EXPR) {
             new_sn->value.se_ptr = copy_s_expr(new_sn->value.se_ptr);
+        } else if (new_sn->type == TYPE_STRING) {
+            char* contents = new_sn->value.string->contents;
+            new_sn->value.string = create_string(contents);
         }
         new_sn->next = new_env->symbol_table->head;
         new_env->symbol_table->head = new_sn;
@@ -156,6 +159,8 @@ void delete_environment_shared(Environment* env) {
         free(curr->name);
         if (curr->type == TYPE_S_EXPR) {
             delete_s_expr_recursive(curr->value.se_ptr, true);
+        } else if (curr->type == TYPE_STRING) {
+            delete_string(curr->value.string);
         }
         free(curr);
         curr = next;
@@ -173,6 +178,8 @@ void delete_environment_full(Environment* env) {
         free(curr_sn->name);
         if (curr_sn->type == TYPE_S_EXPR) {
             delete_s_expr_recursive(curr_sn->value.se_ptr, true);
+        } else if (curr_sn->type == TYPE_STRING) {
+            delete_string(curr_sn->value.string);
         }
         free(curr_sn);
         curr_sn = next_sn;
@@ -195,6 +202,8 @@ void delete_environment_full(Environment* env) {
         // free body s-expression
         if (curr_fn->body->type == TYPE_S_EXPR) {
             delete_s_expr_recursive(curr_fn->body->ptr.se_ptr, true);
+        } else if (curr_fn->body->type == TYPE_STRING) {
+            delete_string(curr_fn->body->ptr.string);
         }
         free(curr_fn->body);
         free(curr_fn);
@@ -368,12 +377,17 @@ typed_ptr* value_lookup_index(const Environment* env, const typed_ptr* tp) {
     Symbol_Node* curr = env->symbol_table->head;
     while (curr != NULL) {
         if (curr->symbol_idx == tp->ptr.idx) {
-            if (curr->type == TYPE_UNDEF) {
-                return create_error_tp(EVAL_ERROR_UNDEF_SYM);
-            } else if (curr->type == TYPE_S_EXPR) {
-                return create_s_expr_tp(copy_s_expr(curr->value.se_ptr));
-            } else {
-                return create_typed_ptr(curr->type, curr->value);
+            switch (curr->type) {
+                case TYPE_UNDEF:
+                    return create_error_tp(EVAL_ERROR_UNDEF_SYM);
+                case TYPE_S_EXPR:
+                    return create_s_expr_tp(copy_s_expr(curr->value.se_ptr));
+                case TYPE_STRING: {
+                    char* contents = curr->value.string->contents;
+                    return create_string_tp(create_string(contents));
+                }
+                default:
+                    return create_typed_ptr(curr->type, curr->value);
             }
         }
         curr = curr->next;

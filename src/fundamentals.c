@@ -92,15 +92,19 @@ void delete_s_expr_recursive(s_expr* se, bool delete_s_expr_cars) {
             curr->car != NULL && \
             curr->car->type == TYPE_S_EXPR) {
             delete_s_expr_recursive(curr->car->ptr.se_ptr, true);
+        } else if (curr->car != NULL && curr->car->type == TYPE_STRING) {
+            delete_string(curr->car->ptr.string);
         }
         free(curr->car);
         if (curr->cdr != NULL && curr->cdr->type == TYPE_S_EXPR) {
             se = s_expr_next(curr);
-            free(curr->cdr);
         } else {
+            if (curr->cdr != NULL && curr->cdr->type == TYPE_STRING) {
+                delete_string(curr->cdr->ptr.string);
+            }
             se = NULL;
-            free(curr->cdr);
         }
+        free(curr->cdr);
         free(curr);
         curr = se;
     }

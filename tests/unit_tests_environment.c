@@ -264,6 +264,9 @@ void test_copy_environment(test_env* te) {
     se = create_s_expr(create_atom_tp(TYPE_FIXNUM, 256), create_s_expr_tp(se));
     typed_ptr se_tp = {.type=TYPE_S_EXPR, .ptr={.se_ptr=se}};
     blind_install_symbol(original, "test_se_1", &se_tp);
+    String* test_str = create_string("test string");
+    typed_ptr str_tp = {.type=TYPE_STRING, .ptr={.string=test_str}};
+    blind_install_symbol(original, "test_str_1", &str_tp);
     Symbol_Node* params = create_symbol_node(0, "x", TYPE_FIXNUM, TEST_NUM_TP_VAL);
     params->next = create_symbol_node(1, "y", TYPE_FIXNUM, TEST_NUM_TP_VAL);
     Environment* closure = create_environment(0, 0);
@@ -275,8 +278,8 @@ void test_copy_environment(test_env* te) {
     if (copied == NULL || \
         copied->symbol_table == NULL || \
         copied->symbol_table == original->symbol_table || \
-        copied->symbol_table->length != 3 || \
-        copied->symbol_table->offset != 0 || \
+        copied->symbol_table->length != original->symbol_table->length || \
+        copied->symbol_table->offset != original->symbol_table->offset || \
         copied->function_table == NULL || \
         copied->function_table != original->function_table) {
         pass = false;
@@ -291,7 +294,10 @@ void test_copy_environment(test_env* te) {
             osn->type != csn->type || \
             (osn->type == TYPE_S_EXPR && \
              osn->value.se_ptr == csn->value.se_ptr) || \
+            (osn->type == TYPE_STRING && \
+             osn->value.string == csn->value.string) || \
             (osn->type != TYPE_S_EXPR && \
+             osn->type != TYPE_STRING && \
              osn->value.idx != csn->value.idx)) {
             pass = false;
         }
@@ -318,6 +324,9 @@ void test_delete_environment_shared_full(test_env* te) {
     se = create_s_expr(create_atom_tp(TYPE_FIXNUM, 256), create_s_expr_tp(se));
     typed_ptr se_tp = {.type=TYPE_S_EXPR, .ptr={.se_ptr=se}};
     blind_install_symbol(original, "test_se_1", &se_tp);
+    String* test_str = create_string("test string");
+    typed_ptr str_tp = {.type=TYPE_STRING, .ptr={.string=test_str}};
+    blind_install_symbol(original, "test_str_1", &str_tp);
     Symbol_Node* params = create_symbol_node(0, "x", TYPE_FIXNUM, TEST_NUM_TP_VAL);
     params->next = create_symbol_node(1, "y", TYPE_FIXNUM, TEST_NUM_TP_VAL);
     Environment* closure = create_environment(0, 0);
@@ -572,12 +581,15 @@ void test_value_lookup_index(test_env* te) {
     char name_undef[] = "test_symbol_undef";
     typed_ptr number = {.type=TYPE_FIXNUM, .ptr={.idx=TEST_NUM}};
     typed_ptr boolean = {.type=TYPE_BOOL, .ptr={.idx=TEST_NUM}};
-    typed_ptr *symbol_num, *symbol_bool, *symbol_undef, *symbol_se;
+    typed_ptr *symbol_num, *symbol_bool, *symbol_undef, *symbol_se, *symbol_str;
     symbol_num = install_symbol(env, name_num, &number);
     symbol_bool = install_symbol(env, name_bool, &boolean);
     s_expr* se = create_empty_s_expr();
     typed_ptr se_tp = {.type=TYPE_S_EXPR, .ptr={.se_ptr=se}};
     symbol_se = install_symbol(env, name_se, &se_tp);
+    String* test_str = create_string("test string");
+    typed_ptr str_tp = {.type=TYPE_STRING, .ptr={.string=test_str}};
+    symbol_str = install_symbol(env, "test_str_1", &str_tp);
     typed_ptr undef = {.type=TYPE_UNDEF, .ptr={.idx=TEST_NUM}};
     symbol_undef = install_symbol(env, name_undef, &undef);
     typed_ptr* absent_symbol = create_atom_tp(TYPE_SYMBOL, 1000);
@@ -602,6 +614,15 @@ void test_value_lookup_index(test_env* te) {
         out->type != TYPE_S_EXPR || \
         !is_empty_list(out->ptr.se_ptr) || \
         out->ptr.se_ptr == se) {
+        pass = false;
+    }
+    free(out->ptr.se_ptr);
+    free(out);
+    out = value_lookup_index(env, symbol_str);
+    if (out == NULL || \
+        out->type != TYPE_STRING || \
+        strcmp(test_str->contents, out->ptr.string->contents) || \
+        out->ptr.string == test_str) {
         pass = false;
     }
     free(out->ptr.se_ptr);
