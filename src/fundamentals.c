@@ -35,6 +35,10 @@ typed_ptr* create_s_expr_tp(s_expr* se) {
     return create_typed_ptr(TYPE_S_EXPR, (tp_value){.se_ptr=se});
 }
 
+typed_ptr* create_string_tp(String* string) {
+    return create_typed_ptr(TYPE_STRING, (tp_value){.string=string});
+}
+
 // The returned typed_ptr is the caller's responsibility to free; it can be
 //   safely (shallow) freed without harm to any other object.
 typed_ptr* copy_typed_ptr(const typed_ptr* tp) {
@@ -101,6 +105,22 @@ void delete_s_expr_recursive(s_expr* se, bool delete_s_expr_cars) {
         curr = se;
     }
     return;
+}
+
+String* create_string(char* contents) {
+    String* new_str = malloc(sizeof(String));
+    if (new_str == NULL) {
+        fprintf(stderr, "malloc failed in create_string()\n");
+        exit(-1);
+    }
+    new_str->len = strlen(contents);
+    new_str->contents = malloc(sizeof(char) * (new_str->len + 1));
+    if (new_str->contents == NULL) {
+        fprintf(stderr, "malloc failed in create_string()\n");
+        exit(-1);
+    }
+    memcpy(new_str->contents, contents, sizeof(char) * (new_str->len + 1));
+    return new_str;
 }
 
 s_expr* s_expr_next(const s_expr* se) {
