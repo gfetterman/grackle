@@ -123,6 +123,12 @@ String* create_string(char* contents) {
     return new_str;
 }
 
+void delete_string(String* str) {
+    free(str->contents);
+    free(str);
+    return;
+}
+
 s_expr* s_expr_next(const s_expr* se) {
     return se->cdr->ptr.se_ptr;
 }

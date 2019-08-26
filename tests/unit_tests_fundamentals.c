@@ -29,6 +29,7 @@ void unit_tests_fundamentals(test_env* t_env) {
     test_copy_s_expr(t_env);
     test_delete_s_expr_recursive(t_env);
     test_create_string(t_env);
+    test_delete_string(t_env);
     test_s_expr_next(t_env);
     test_is_empty_list(t_env);
     test_is_false_literal(t_env);
@@ -372,6 +373,19 @@ void test_create_string(test_env* te) {
     }
     free(string_obj->contents);
     free(string_obj);
+    print_test_result(pass);
+    te->passed += pass;
+    te->run++;
+    return;
+}
+
+// smoke & Valgrind test
+void test_delete_string(test_env* te) {
+    print_test_announce("delete_string()");
+    bool pass = true;
+    char test_str[] = "test string";
+    String* string_obj = create_string(test_str);
+    delete_string(string_obj);
     print_test_result(pass);
     te->passed += pass;
     te->run++;

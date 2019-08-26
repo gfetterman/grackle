@@ -130,6 +130,7 @@ s_expr* copy_s_expr(const s_expr* se);
 void delete_s_expr_recursive(s_expr* se, bool delete_s_expr_cars);
 
 String* create_string(char* contents);
+void delete_string(String* str);
 
 s_expr* s_expr_next(const s_expr* se);
 
