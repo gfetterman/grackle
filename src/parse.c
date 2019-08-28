@@ -17,7 +17,9 @@ typed_ptr* parse(const char str[], Environment* env) {
     s_expr_stack* stack = NULL;
     unsigned int curr = 0;
     unsigned int symbol_start = 0;
+    unsigned int string_start = 0;
     char* new_symbol = NULL;
+    char* new_string = NULL;
     Environment* temp_env = create_environment(env->symbol_table->length, \
                                                env->function_table->length);
     s_expr* head = create_empty_s_expr();
@@ -51,6 +53,10 @@ typed_ptr* parse(const char str[], Environment* env) {
                     case ')':
                         state = terminate_s_expr(&stack, &error);
                         break;
+                    case '"':
+                        string_start = curr;
+                        state = PARSE_READ_STRING;
+                        break;
                     default:
                         symbol_start = curr;
                         state = PARSE_READ_SYMBOL;
@@ -69,6 +75,11 @@ typed_ptr* parse(const char str[], Environment* env) {
                     case ')':
                         state = terminate_s_expr(&stack, &error);
                         break;
+                    case '"':
+                        string_start = curr;
+                        extend_s_expr(&stack);
+                        state = PARSE_READ_STRING;
+                        break;
                     default:
                         symbol_start = curr;
                         extend_s_expr(&stack);
@@ -77,7 +88,10 @@ typed_ptr* parse(const char str[], Environment* env) {
                 }
                 break;
             case PARSE_READ_SYMBOL:
-                if (str[curr] == ' ' || str[curr] == '(' || str[curr] == ')') {
+                if (str[curr] == ' ' || \
+                    str[curr] == '(' || \
+                    str[curr] == ')' || \
+                    str[curr] == '"') {
                     new_symbol = substring(str, symbol_start, curr);
                     error = register_symbol(&stack, env, temp_env, new_symbol);
                     free(new_symbol);
@@ -99,9 +113,32 @@ typed_ptr* parse(const char str[], Environment* env) {
                     case ')':
                         state = terminate_s_expr(&stack, &error);
                         break;
+                    case '"':
+                        string_start = curr;
+                        state = PARSE_READ_STRING;
+                        break;
                     default: // just keep reading
                         break;
                 }
+                break;
+            case PARSE_READ_STRING:
+                switch (str[curr]) {
+                    case '"':
+                        new_string = substring(str, string_start + 1, curr);
+                        stack->se->car = create_string_tp(create_string(new_string));
+                        free(new_string);
+                        new_string = NULL;
+                        state = PARSE_READY;
+                        break;
+                    case '\\':
+                        state = PARSE_STRING_ESCAPE;
+                        break;
+                    default: // just keep reading
+                        break;
+                }
+                break;
+            case PARSE_STRING_ESCAPE:
+                state = PARSE_READ_STRING;
                 break;
             case PARSE_FINISH:
                 switch (str[curr]) {

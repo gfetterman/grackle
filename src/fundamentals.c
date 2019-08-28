@@ -72,6 +72,9 @@ s_expr* copy_s_expr(const s_expr* se) {
         curr_se->car = copy_typed_ptr(se->car);
         if (curr_se->car->type == TYPE_S_EXPR) {
             curr_se->car->ptr.se_ptr = copy_s_expr(curr_se->car->ptr.se_ptr);
+        } else if (curr_se->car->type == TYPE_STRING) {
+            char* contents = curr_se->car->ptr.string->contents;
+            curr_se->car->ptr.string = create_string(contents);
         } // otherwise it's atomic and a copy of the typed_ptr is enough
         curr_se->cdr = copy_typed_ptr(se->cdr);
         if (curr_se->cdr->type == TYPE_S_EXPR) {

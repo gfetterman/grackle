@@ -13,6 +13,8 @@ typedef enum PARSE_STATE {PARSE_START, \
                           PARSE_NEW_S_EXPR, \
                           PARSE_READY, \
                           PARSE_READ_SYMBOL, \
+                          PARSE_READ_STRING, \
+                          PARSE_STRING_ESCAPE, \
                           PARSE_FINISH, \
                           PARSE_ERROR} Parse_State;
 

@@ -24,6 +24,10 @@ typed_ptr* evaluate(const typed_ptr* tp, Environment* env) {
             case TYPE_FUNCTION:
                 result = copy_typed_ptr(tp);
                 break;
+            case TYPE_STRING:
+                result = copy_typed_ptr(tp);
+                result->ptr.string = create_string(tp->ptr.string->contents);
+                break;
             case TYPE_S_EXPR: 
                 result = eval_s_expr(tp->ptr.se_ptr, env);
                 break;
@@ -979,6 +983,9 @@ Symbol_Node* bind_args(Environment* env, Function_Node* fn, typed_ptr* args) {
                                         arg_se->car->ptr);
         if (bound_args->type == TYPE_S_EXPR) {
             bound_args->value.se_ptr = copy_s_expr(bound_args->value.se_ptr);
+        } else if (bound_args->type == TYPE_STRING) {
+            char* contents = bound_args->value.string->contents;
+            bound_args->value.string = create_string(contents);
         }
         curr_param = curr_param->next;
         arg_se = s_expr_next(arg_se);
@@ -994,7 +1001,10 @@ Symbol_Node* bind_args(Environment* env, Function_Node* fn, typed_ptr* args) {
                                                       arg_se->car->ptr);
             if (new_arg->type == TYPE_S_EXPR) {
                 new_arg->value.se_ptr = copy_s_expr(new_arg->value.se_ptr);
-            }
+        } else if (new_arg->type == TYPE_STRING) {
+            char* contents = new_arg->value.string->contents;
+            new_arg->value.string = create_string(contents);
+        }
             new_arg->next = bound_args;
             bound_args = new_arg;
             curr_param = curr_param->next;
