@@ -399,6 +399,12 @@ void test_install_symbol_regular_and_blind(test_env* te) {
         symbol_lookup_name(env, name4)->value.se_ptr != se) {
         pass = false;
     }
+    // smoke/Valgrind tests for proper deletion of values being replaced
+    se_tp.ptr.se_ptr = create_empty_s_expr();
+    blind_install_symbol(env, name1, &se_tp);
+    typed_ptr str_tp = {.type=TYPE_STRING, .ptr={.string=create_string("a")}};
+    blind_install_symbol(env, name1, &str_tp);
+    blind_install_symbol(env, name1, &boolean);
     delete_environment_full(env);
     print_test_result(pass);
     te->passed += pass;
