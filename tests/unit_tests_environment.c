@@ -625,7 +625,7 @@ void test_value_lookup_index(test_env* te) {
         out->ptr.string == test_str) {
         pass = false;
     }
-    free(out->ptr.se_ptr);
+    delete_string(out->ptr.string);
     free(out);
     out = value_lookup_index(env, symbol_undef);
     if (out == NULL || \
@@ -647,6 +647,7 @@ void test_value_lookup_index(test_env* te) {
     free(symbol_num);
     free(symbol_bool);
     free(symbol_se);
+    free(symbol_str);
     free(symbol_undef);
     free(absent_symbol);
     free(not_a_symbol);

@@ -230,6 +230,9 @@ typed_ptr* install_symbol(Environment* env, char* name, typed_ptr* tp) {
         env->symbol_table->head = sn;
         env->symbol_table->length++;
     } else {
+        if (found->type == TYPE_STRING) {
+            delete_string(found->value.string);
+        }
         found->type = tp->type;
         found->value = tp->ptr;
         idx = found->symbol_idx;

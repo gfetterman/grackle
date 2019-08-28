@@ -28,6 +28,8 @@ int main() {
             delete_s_expr_recursive(parse_output->ptr.se_ptr, true);
             if (eval_output->type == TYPE_S_EXPR) {
                 delete_s_expr_recursive(eval_output->ptr.se_ptr, true);
+            } else if (eval_output->type == TYPE_STRING) {
+                delete_string(eval_output->ptr.string);
             }
             free(eval_output);
         }

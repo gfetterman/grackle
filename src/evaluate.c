@@ -143,9 +143,14 @@ typed_ptr* eval_s_expr(const s_expr* se, Environment* env) {
                 free(subbed_se);
                 break;
             }
+            case TYPE_STRING:
+                delete_string(evaluated_car->ptr.string);
+                result = create_error_tp(EVAL_ERROR_CAR_NOT_CALLABLE);
+                break;
             case TYPE_S_EXPR:
                 delete_s_expr_recursive(evaluated_car->ptr.se_ptr, true);
-                // intentional fall-through
+                result = create_error_tp(EVAL_ERROR_CAR_NOT_CALLABLE);
+                break;
             default:
                 result = create_error_tp(EVAL_ERROR_CAR_NOT_CALLABLE);
                 break;
@@ -715,6 +720,8 @@ typed_ptr* eval_cond(const s_expr* se, Environment* env) {
         while (!is_empty_list(then_bodies)) {
             if (eval_interm->type == TYPE_S_EXPR) {
                 delete_s_expr_recursive(eval_interm->ptr.se_ptr, true);
+            } else if (eval_interm->type == TYPE_STRING) {
+                delete_string(eval_interm->ptr.string);
             }
             free(eval_interm);
             eval_interm = evaluate(then_bodies->car, env);
@@ -869,6 +876,9 @@ typed_ptr* eval_lambda(const s_expr* se, Environment* env) {
                 typed_ptr* body = copy_typed_ptr(second_arg);
                 if (body->type == TYPE_S_EXPR) {
                     body->ptr.se_ptr = copy_s_expr(body->ptr.se_ptr);
+                } else if (body->type == TYPE_STRING) {
+                    char* contents = body->ptr.string->contents;
+                    body->ptr.string = create_string(contents);
                 }
                 result = install_function(env, "", params, closure_env, body);
             }
@@ -888,6 +898,9 @@ typed_ptr* eval_quote(const s_expr* se, Environment* env) {
         result = copy_typed_ptr(args_tp->ptr.se_ptr->car);
         if (result->type == TYPE_S_EXPR) {
             result->ptr.se_ptr = copy_s_expr(result->ptr.se_ptr);
+        } else if (result->type == TYPE_STRING) {
+            char* contents = result->ptr.string->contents;
+            result->ptr.string = create_string(contents);
         }
         delete_s_expr_recursive(args_tp->ptr.se_ptr, false);
         free(args_tp);
@@ -1072,6 +1085,10 @@ typed_ptr* collect_arguments(const s_expr* se, \
             typed_ptr* temp = arg_tail->car;
             arg_tail->car = evaluate(arg_tail->car, env);
             free(temp);
+        }
+        if (!evaluate_all_args && arg_tail->car->type == TYPE_STRING) {
+            char* contents = arg_tail->car->ptr.string->contents;
+            arg_tail->car->ptr.string = create_string(contents);
         }
         if (arg_tail->car->type == TYPE_ERROR) {
             err = copy_typed_ptr(arg_tail->car);
