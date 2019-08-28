@@ -3450,6 +3450,12 @@ void test_eval_s_expr(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(nested_cmd));
     expected = create_error_tp(EVAL_ERROR_CAR_NOT_CALLABLE);
     pass = run_test_expect(eval_s_expr, cmd, env, expected) && pass;
+    // ("test-str" 1 1) -> EVAL_ERROR_CAR_NOT_CALLABLE
+    cmd = unit_list(create_string_tp(create_string("test-str")));
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_error_tp(EVAL_ERROR_CAR_NOT_CALLABLE);
+    pass = run_test_expect(eval_s_expr, cmd, env, expected) && pass;
     // ('+ 1 1) -> 2
     cmd = unit_list(ADD);
     s_expr_append(cmd, create_number_tp(1));
