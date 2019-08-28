@@ -2800,6 +2800,50 @@ void test_eval_cond(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(first_case));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
+    // (cond (#t "hello")) -> "hello"
+    cmd = unit_list(copy_typed_ptr(cond_builtin));
+    first_case = unit_list(create_atom_tp(TYPE_BOOL, true));
+    s_expr_append(first_case, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_s_expr_tp(first_case));
+    expected = create_string_tp(create_string("hello"));
+    pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
+    // (cond (#t 1 "hello")) -> "hello"
+    cmd = unit_list(copy_typed_ptr(cond_builtin));
+    first_case = unit_list(create_atom_tp(TYPE_BOOL, true));
+    s_expr_append(first_case, create_number_tp(1));
+    s_expr_append(first_case, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_s_expr_tp(first_case));
+    expected = create_string_tp(create_string("hello"));
+    pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
+    // (cond (#t "hello" 1)) -> 1
+    cmd = unit_list(copy_typed_ptr(cond_builtin));
+    first_case = unit_list(create_atom_tp(TYPE_BOOL, true));
+    s_expr_append(first_case, create_string_tp(create_string("hello")));
+    s_expr_append(first_case, create_number_tp(1));
+    s_expr_append(cmd, create_s_expr_tp(first_case));
+    expected = create_number_tp(1);
+    pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
+    // (cond ("hello" 1)) -> 1
+    cmd = unit_list(copy_typed_ptr(cond_builtin));
+    first_case = unit_list(create_string_tp(create_string("hello")));
+    s_expr_append(first_case, create_number_tp(1));
+    s_expr_append(cmd, create_s_expr_tp(first_case));
+    expected = create_number_tp(1);
+    pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
+    // (cond ("" 1)) -> 1
+    cmd = unit_list(copy_typed_ptr(cond_builtin));
+    first_case = unit_list(create_string_tp(create_string("")));
+    s_expr_append(first_case, create_number_tp(1));
+    s_expr_append(cmd, create_s_expr_tp(first_case));
+    expected = create_number_tp(1);
+    pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
+    // (cond ("hello"))
+    cmd = unit_list(copy_typed_ptr(cond_builtin));
+    first_case = unit_list(create_atom_tp(TYPE_BOOL, true));
+    s_expr_append(first_case, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_s_expr_tp(first_case));
+    expected = create_string_tp(create_string("hello"));
+    pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
     delete_environment_full(env);
     free(cond_builtin);
     free(equals_sym);
