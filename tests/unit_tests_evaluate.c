@@ -2523,6 +2523,28 @@ void test_eval_lambda(test_env* te) {
     delete_s_expr_recursive(cmd, true);
     free(expected);
     free(out);
+    // (lambda () "hello") -> <#procedure> + side effects
+    cmd = unit_list(copy_typed_ptr(lambda_builtin));
+    s_expr_append(cmd, create_s_expr_tp(create_empty_s_expr()));
+    body = create_string_tp(create_string("hello"));
+    s_expr_append(cmd, body);
+    expected = create_atom_tp(TYPE_FUNCTION, 5);
+    out = eval_lambda(cmd, env);
+    if (!match_typed_ptrs(out, expected)) {
+        pass = false;
+    }
+    resulting_fn = function_lookup_index(env, expected);
+    if (env->function_table->length != 6 || \
+        resulting_fn == NULL || \
+        strcmp(resulting_fn->name, "") || \
+        resulting_fn->param_list != NULL || \
+        resulting_fn->closure_env == NULL || \
+        !deep_match_typed_ptrs(resulting_fn->body, body)) {
+        pass = false;
+    }
+    delete_s_expr_recursive(cmd, true);
+    free(expected);
+    free(out);
     delete_environment_full(env);
     free(lambda_builtin);
     free(x_sym);
@@ -3180,6 +3202,27 @@ void test_eval_setvar(test_env* te) {
     s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
     expected = create_error_tp(TEST_ERROR_DUMMY);
     pass = run_test_expect(eval_set_variable, cmd, env, expected) && pass;
+    // (set! x "goodbye") [with x a string, "hello"] -> <void> + side effect
+    cmd = unit_list(copy_typed_ptr(setvar_builtin));
+    s_expr_append(cmd, copy_typed_ptr(x_sym));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    expected = create_void_tp();
+    run_test_expect(eval_set_variable, cmd, env, expected);
+    cmd = unit_list(copy_typed_ptr(setvar_builtin));
+    s_expr_append(cmd, copy_typed_ptr(x_sym));
+    s_expr_append(cmd, create_string_tp(create_string("goodbye")));
+    expected = create_void_tp();
+    pass = run_test_expect(eval_set_variable, cmd, env, expected) && pass;
+    x_value = value_lookup_index(env, x_sym);
+    if (x_value == NULL || \
+        x_value->type != TYPE_STRING || \
+        strcmp(x_value->ptr.string->contents, "goodbye")) {
+        pass = false;
+    }
+    if (x_value != NULL && x_value->type == TYPE_STRING) {
+        delete_string(x_value->ptr.string);
+    }
+    free(x_value);
     delete_environment_full(env);
     free(setvar_builtin);
     free(x_sym);
