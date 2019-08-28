@@ -3804,6 +3804,10 @@ void test_evaluate(test_env* te) {
     cmd = unit_list(create_atom_tp(1000, 1));
     expected = create_error_tp(EVAL_ERROR_UNDEF_TYPE);
     pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
+    // eval[ "hello" ] -> "hello"
+    cmd = unit_list(create_string_tp(create_string("hello")));
+    expected = create_string_tp(create_string("hello"));
+    pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
     delete_environment_full(env);
     free(x_sym);
     print_test_result(pass);
