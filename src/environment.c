@@ -230,7 +230,9 @@ typed_ptr* install_symbol(Environment* env, char* name, typed_ptr* tp) {
         env->symbol_table->head = sn;
         env->symbol_table->length++;
     } else {
-        if (found->type == TYPE_STRING) {
+        if (found->type == TYPE_S_EXPR) {
+            delete_s_expr_recursive(found->value.se_ptr, true);
+        } else if (found->type == TYPE_STRING) {
             delete_string(found->value.string);
         }
         found->type = tp->type;
