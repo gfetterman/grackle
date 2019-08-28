@@ -41,10 +41,14 @@ bool run_test_expect(typed_ptr* (*function)(const s_expr*, Environment*), \
     delete_s_expr_recursive(cmd, true);
     if (out != NULL && out->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(out->ptr.se_ptr, true);
+    } else if (out != NULL && out->type == TYPE_STRING) {
+        delete_string(out->ptr.string);
     }
     free(out);
     if (expected != NULL && expected->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(expected->ptr.se_ptr, true);
+    } else if (expected != NULL && expected->type == TYPE_STRING) {
+        delete_string(expected->ptr.string);
     }
     free(expected);
     return passed;
@@ -3181,6 +3185,11 @@ void test_eval_quote(test_env* te) {
     s_expr_append(subexpr, create_void_tp());
     s_expr_append(cmd, create_s_expr_tp(subexpr));
     expected = create_s_expr_tp(copy_s_expr(subexpr));
+    pass = run_test_expect(eval_quote, cmd, env, expected) && pass;
+    // (quote "test-str") -> "test-str"
+    cmd = unit_list(copy_typed_ptr(quote_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("test-string")));
+    expected = create_string_tp(create_string("test-string"));
     pass = run_test_expect(eval_quote, cmd, env, expected) && pass;
     // (quote TEST_ERROR_DUMMY) -> TEST_ERROR_DUMMY
     cmd = unit_list(copy_typed_ptr(quote_builtin));
