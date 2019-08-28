@@ -2946,6 +2946,21 @@ void test_eval_define(test_env* te) {
     s_expr_append(cmd, create_number_tp(1));
     expected = create_error_tp(EVAL_ERROR_BAD_SYMBOL);
     pass = run_test_expect(eval_define, cmd, env, expected) && pass;
+    // (define x "hello") -> <void> + side effect
+    cmd = unit_list(copy_typed_ptr(define_builtin));
+    s_expr_append(cmd, copy_typed_ptr(x_sym));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    expected = create_void_tp();
+    pass = run_test_expect(eval_define, cmd, env, expected) && pass;
+    x_value = value_lookup_index(env, x_sym);
+    expected = create_string_tp(create_string("hello"));
+    if (!deep_match_typed_ptrs(x_value, expected)) {
+        pass = false;
+    }
+    delete_string(expected->ptr.string);
+    free(expected);
+    delete_string(x_value->ptr.string);
+    free(x_value);
     // (define (x)) -> EVAL_ERROR_FEW_ARGS
     cmd = unit_list(copy_typed_ptr(define_builtin));
     s_expr_append(cmd, create_s_expr_tp(unit_list(copy_typed_ptr(x_sym))));
@@ -3083,6 +3098,26 @@ void test_eval_define(test_env* te) {
     }
     free(x_value);
     delete_s_expr_recursive(body->ptr.se_ptr, true);
+    free(body);
+    // (define (x) "hello") -> <void> + side effect
+    cmd = unit_list(copy_typed_ptr(define_builtin));
+    fn_name_args = unit_list(copy_typed_ptr(x_sym));
+    s_expr_append(cmd, create_s_expr_tp(fn_name_args));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    expected = create_void_tp();
+    pass = run_test_expect(eval_define, cmd, env, expected) && pass;
+    x_value = value_lookup_index(env, x_sym);
+    x_fn = function_lookup_index(env, x_value);
+    body = create_string_tp(create_string("hello"));
+    if (x_fn == NULL || \
+        strcmp(x_fn->name, "x") || \
+        x_fn->param_list != NULL || \
+        x_fn->closure_env == NULL || \
+        !deep_match_typed_ptrs(x_fn->body, body)) {
+        pass = false;
+    }
+    free(x_value);
+    delete_string(body->ptr.string);
     free(body);
     delete_environment_full(env);
     free(define_builtin);
