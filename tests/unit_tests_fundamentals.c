@@ -294,6 +294,15 @@ void test_copy_s_expr(test_env* te) {
     }
     delete_s_expr_recursive(original, true);
     delete_s_expr_recursive(copied, true);
+    // copy(list containing strings) -> new list containing strings
+    s_expr* str_se = unit_list(create_string_tp(create_string("test")));
+    s_expr_append(str_se, create_string_tp(create_string("test 2")));
+    copied = copy_s_expr(str_se);
+    if (!match_s_exprs(str_se, copied)) {
+        pass = false;
+    }
+    delete_s_expr_recursive(str_se, true);
+    delete_s_expr_recursive(copied, true);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
