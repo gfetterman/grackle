@@ -1,4 +1,5 @@
 #include "unit_tests_parse.h"
+#include "grackle_io.h"
 
 void unit_tests_parse(test_env* te) {
     printf("# parse.c #\n");
@@ -428,12 +429,13 @@ bool test_parse_output(const char cmd[], typed_ptr* expected) {
     Environment* env = create_environment(0, 0);
     typed_ptr* out = parse(cmd, env);
     bool pass = true;
-    if (out == NULL || \
+    if (!deep_match_typed_ptrs(out, expected)) {
+    /*if (out == NULL || \
         out->type != expected->type || \
         (out->type == TYPE_S_EXPR && \
          !match_s_exprs(out->ptr.se_ptr, expected->ptr.se_ptr)) || \
         (out->type != TYPE_S_EXPR && \
-         !match_typed_ptrs(out, expected))) {
+         !match_typed_ptrs(out, expected))) {*/
         pass = false;
     }
     if (out->type == TYPE_S_EXPR) {
@@ -640,6 +642,21 @@ void test_parse(test_env* te) {
         delete_s_expr_recursive(out->ptr.se_ptr, true);
     }
     free(out);
+    // '("str1" d "str2"e "str)3" f"str\"4")'
+    char str_test[] = "(\"str1\" a \"str2\"b \"str)3\" c\"str\\\"4\")";
+    s_expr* expected_se = unit_list(create_string_tp(create_string("str1")));
+    s_expr_append(expected_se, create_atom_tp(TYPE_SYMBOL, 0));
+    s_expr_append(expected_se, create_string_tp(create_string("str2")));
+    s_expr_append(expected_se, create_atom_tp(TYPE_SYMBOL, 1));
+    s_expr_append(expected_se, create_string_tp(create_string("str)3")));
+    s_expr_append(expected_se, create_atom_tp(TYPE_SYMBOL, 2));
+    s_expr_append(expected_se, create_string_tp(create_string("str\\\"4")));
+    expected = create_s_expr_tp(expected_se);
+    pass = test_parse_output(str_test, expected) && pass;
+    // '("str1)'
+    char bad_str_test[] = "(\"str1)";
+    expected = create_error_tp(PARSE_ERROR_UNBAL_PAREN);
+    pass = test_parse_output(bad_str_test, expected) && pass;
     delete_environment_full(env);
     print_test_result(pass);
     te->passed += pass;

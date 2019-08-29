@@ -115,6 +115,7 @@ typed_ptr* parse(const char str[], Environment* env) {
                         break;
                     case '"':
                         string_start = curr;
+                        extend_s_expr(&stack);
                         state = PARSE_READ_STRING;
                         break;
                     default: // just keep reading
