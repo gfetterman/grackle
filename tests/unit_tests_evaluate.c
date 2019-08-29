@@ -624,6 +624,20 @@ void test_collect_arguments(test_env* te) {
     }
     delete_s_expr_recursive(out->ptr.se_ptr, true);
     free(out);
+    // one-elt arg s-expr, with min_args == 1 & max_args == 1, with a string
+    s_expr* call_one_arg_string = unit_list(create_atom_tp(TYPE_BUILTIN, 0));
+    String* str = create_string("test");
+    s_expr_append(call_one_arg_string, create_string_tp(str));
+    out = collect_arguments(call_one_arg_string, env, 1, 1, false);
+    if (out == NULL || \
+        out->type != TYPE_S_EXPR || \
+        !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_one_arg_string)) || \
+        out->ptr.se_ptr->car->ptr.string == str) {
+        pass = false;
+    }
+    delete_s_expr_recursive(out->ptr.se_ptr, true);
+    free(out);
+    delete_s_expr_recursive(call_one_arg_string, true);
     // one-elt arg s-expr, with min_args == 1 & max_args == 2
     out = collect_arguments(call_one_arg, env, 1, 2, true);
     if (out == NULL || \
