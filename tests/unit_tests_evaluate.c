@@ -351,13 +351,37 @@ void test_bind_args(test_env* te) {
     typed_ptr* three_args = create_s_expr_tp(create_empty_s_expr());
     s_expr_append(three_args->ptr.se_ptr, create_atom_tp(TYPE_FIXNUM, 1000));
     s_expr_append(three_args->ptr.se_ptr, create_atom_tp(TYPE_BOOL, true));
-    s_expr_append(three_args->ptr.se_ptr, create_atom_tp(TYPE_FIXNUM, 2000));
+    s_expr_append(three_args->ptr.se_ptr, create_number_tp(2000));
     bound_args = bind_args(NULL, fn_2_params, three_args);
     if (bound_args == NULL || \
         bound_args->type != TYPE_ERROR || \
         bound_args->value.idx != EVAL_ERROR_MANY_ARGS || \
         bound_args->next != NULL) {
         pass = false;
+    }
+    delete_symbol_node_list(bound_args);
+    // two params, two args (including a string)
+    delete_s_expr_recursive(two_args->ptr.se_ptr, true);
+    two_args->ptr.se_ptr = unit_list(create_number_tp(1000));
+    String* str = create_string("test");
+    s_expr_append(two_args->ptr.se_ptr, create_string_tp(str));
+    bound_args = bind_args(NULL, fn_2_params, two_args);
+    if (bound_args == NULL || \
+        strcmp(bound_args->name, "y") || \
+        bound_args->type != TYPE_STRING || \
+        strcmp(bound_args->value.string->contents, "test") || \
+        bound_args->value.string == str || \
+        bound_args->next == NULL || \
+        strcmp(bound_args->next->name, "x") || \
+        bound_args->next->type != TYPE_FIXNUM || \
+        bound_args->next->value.idx != 1000 || \
+        bound_args->next->next != NULL) {
+        pass = false;
+    }
+    for (Symbol_Node* arg = bound_args; arg != NULL; arg = arg->next) {
+        if (arg->type == TYPE_STRING) {
+            delete_string(arg->value.string);
+        }
     }
     delete_symbol_node_list(bound_args);
     free(fn_no_params->name);

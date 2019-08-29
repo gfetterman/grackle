@@ -1014,10 +1014,10 @@ Symbol_Node* bind_args(Environment* env, Function_Node* fn, typed_ptr* args) {
                                                       arg_se->car->ptr);
             if (new_arg->type == TYPE_S_EXPR) {
                 new_arg->value.se_ptr = copy_s_expr(new_arg->value.se_ptr);
-        } else if (new_arg->type == TYPE_STRING) {
-            char* contents = new_arg->value.string->contents;
-            new_arg->value.string = create_string(contents);
-        }
+            } else if (new_arg->type == TYPE_STRING) {
+                char* contents = new_arg->value.string->contents;
+                new_arg->value.string = create_string(contents);
+            }
             new_arg->next = bound_args;
             bound_args = new_arg;
             curr_param = curr_param->next;
