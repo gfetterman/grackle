@@ -233,6 +233,8 @@ interpreter_error register_symbol(s_expr_stack** stack, \
         } else {
             tp = create_atom_tp(TYPE_FIXNUM, value);
         }
+    } else if (string_is_boolean_literal(name)) {
+        tp = create_atom_tp(TYPE_BOOL, (!strcmp(name, "#t")) ? true : false);
     } else {
         Symbol_Node* found = symbol_lookup_name(env, name);
         found = (found == NULL) ? symbol_lookup_name(temp_env, name) : found;
@@ -331,4 +333,8 @@ bool string_is_number(const char str[]) {
         }
     }
     return ok;
+}
+
+bool string_is_boolean_literal(const char str[]) {
+    return (!strcmp(str, "#t") || !strcmp(str, "#f"));
 }

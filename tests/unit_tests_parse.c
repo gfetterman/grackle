@@ -10,6 +10,7 @@ void unit_tests_parse(test_env* te) {
     test_register_symbol(te);
     test_substring(te);
     test_string_is_number(te);
+    test_string_is_boolean_literal(te);
     test_parse(te);
     return;
 }
@@ -232,15 +233,44 @@ void test_register_symbol(test_env* te) {
         pass = false;
     }
     // passing a valid number
-    char symbol_num[] = "1000";
-    out = register_symbol(&stack, env, temp_env, symbol_num);
+    char literal_num[] = "1000";
+    out = register_symbol(&stack, env, temp_env, literal_num);
     typed_ptr* expected_tp = create_number_tp(1000);
     if (out != PARSE_ERROR_NONE || \
         stack->se == NULL || \
         stack->se->car == NULL || \
         !match_typed_ptrs(stack->se->car, expected_tp) || \
-        symbol_lookup_name(env, symbol_num) != NULL || \
-        symbol_lookup_name(temp_env, symbol_num) != NULL) {
+        symbol_lookup_name(env, literal_num) != NULL || \
+        symbol_lookup_name(temp_env, literal_num) != NULL) {
+        pass = false;
+    }
+    free(stack->se->car);
+    stack->se->car = NULL;
+    free(expected_tp);
+    // passing boolean literals
+    char literal_bool_true[] = "#t";
+    out = register_symbol(&stack, env, temp_env, literal_bool_true);
+    expected_tp = create_atom_tp(TYPE_BOOL, true);
+    if (out != PARSE_ERROR_NONE || \
+        stack->se == NULL || \
+        stack->se->car == NULL || \
+        !match_typed_ptrs(stack->se->car, expected_tp) || \
+        symbol_lookup_name(env, literal_bool_true) != NULL || \
+        symbol_lookup_name(temp_env, literal_bool_true) != NULL) {
+        pass = false;
+    }
+    free(stack->se->car);
+    stack->se->car = NULL;
+    free(expected_tp);
+    char literal_bool_false[] = "#f";
+    out = register_symbol(&stack, env, temp_env, literal_bool_false);
+    expected_tp = create_atom_tp(TYPE_BOOL, false);
+    if (out != PARSE_ERROR_NONE || \
+        stack->se == NULL || \
+        stack->se->car == NULL || \
+        !match_typed_ptrs(stack->se->car, expected_tp) || \
+        symbol_lookup_name(env, literal_bool_false) != NULL || \
+        symbol_lookup_name(temp_env, literal_bool_false) != NULL) {
         pass = false;
     }
     free(stack->se->car);
@@ -416,6 +446,28 @@ void test_string_is_number(test_env* te) {
         string_is_number("-.4") || \
         string_is_number("-0.5") || \
         string_is_number("123.456")) {
+        pass = false;
+    }
+    print_test_result(pass);
+    te->passed += pass;
+    te->run++;
+    return;
+}
+
+void test_string_is_boolean_literal(test_env* te) {
+    print_test_announce("string_is_number()");
+    bool pass = true;
+    if (string_is_boolean_literal("") || \
+        string_is_boolean_literal("#") || \
+        string_is_boolean_literal("#a") || \
+        string_is_boolean_literal("t") || \
+        string_is_boolean_literal("f") || \
+        string_is_boolean_literal("true") || \
+        string_is_boolean_literal("false")) {
+        pass = false;
+    }
+    if (!string_is_boolean_literal("#t") || \
+        !string_is_boolean_literal("#f")) {
         pass = false;
     }
     print_test_result(pass);

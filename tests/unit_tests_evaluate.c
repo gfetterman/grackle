@@ -3393,7 +3393,8 @@ void test_eval_string_length(test_env* te) {
     s_expr* cmd = unit_list(copy_typed_ptr(strlen_builtin));
     typed_ptr* expected = create_error_tp(EVAL_ERROR_FEW_ARGS);
     pass = run_test_expect(eval_string_length, cmd, env, expected) && pass;
-    // (string-length 1 2) -> EVAL_ERROR_MANY_ARGS    cmd = unit_list(copy_typed_ptr(strlen_builtin));
+    // (string-length 1 2) -> EVAL_ERROR_MANY_ARGS
+    cmd = unit_list(copy_typed_ptr(strlen_builtin));
     s_expr_append(cmd, create_number_tp(1));
     s_expr_append(cmd, create_number_tp(2));
     expected = create_error_tp(EVAL_ERROR_MANY_ARGS);

@@ -58,6 +58,7 @@ test_env* end_to_end_tests() {
     end_to_end_lambda_tests(t_env);
     end_to_end_setvar_tests(t_env);
     end_to_end_define_tests(t_env);
+    end_to_end_quote_tests(t_env);
     end_to_end_string_length_tests(t_env);
     end_to_end_string_equals_tests(t_env);
     end_to_end_string_append_tests(t_env);

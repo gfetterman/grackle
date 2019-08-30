@@ -319,8 +319,6 @@ void setup_symbol_table(Environment* env) {
                          &ATOM_TP(tbi, BUILTIN_STRINGAPPEND));
     // special values and keywords
     blind_install_symbol(env, "else", &ATOM_TP(TYPE_UNDEF, 0));
-    blind_install_symbol(env, "#t", &ATOM_TP(TYPE_BOOL, true));
-    blind_install_symbol(env, "#f", &ATOM_TP(TYPE_BOOL, false));
     blind_install_symbol(env, "null", &S_EXPR_TP(create_empty_s_expr()));
     #undef ATOM_TP
     #undef S_EXPR_TP
