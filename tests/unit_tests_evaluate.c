@@ -23,6 +23,7 @@ void unit_tests_evaluate(test_env* te) {
     test_eval_setvar(te);
     test_eval_quote(te);
     test_eval_string_length(te);
+    test_eval_string_equals(te);
     test_eval_builtin(te);
     test_eval_s_expr(te);
     test_eval_function(te);
@@ -3382,7 +3383,7 @@ void test_eval_quote(test_env* te) {
 }
 
 void test_eval_string_length(test_env* te) {
-    print_test_announce("eval_quote()");
+    print_test_announce("eval_string_length()");
     Environment* env = create_environment(0, 0);
     setup_environment(env);
     typed_ptr* strlen_builtin = builtin_tp_from_name(env, "string-length");
@@ -3423,6 +3424,98 @@ void test_eval_string_length(test_env* te) {
     pass = run_test_expect(eval_string_length, cmd, env, expected) && pass;
     delete_environment_full(env);
     free(strlen_builtin);
+    print_test_result(pass);
+    te->passed += pass;
+    te->run++;
+    return;
+}
+
+void test_eval_string_equals(test_env* te) {
+    print_test_announce("eval_string_equals()");
+    Environment* env = create_environment(0, 0);
+    setup_environment(env);
+    typed_ptr* streq_builtin = builtin_tp_from_name(env, "string=?");
+    bool pass = true;
+    // (string=?) -> EVAL_ERROR_FEW_ARGS
+    s_expr* cmd = unit_list(copy_typed_ptr(streq_builtin));
+    typed_ptr* expected = create_error_tp(EVAL_ERROR_FEW_ARGS);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    // (string=? 1) -> EVAL_ERROR_FEW_ARGS
+    cmd = unit_list(copy_typed_ptr(streq_builtin));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_error_tp(EVAL_ERROR_FEW_ARGS);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    // (string=? "hello" 1) -> EVAL_ERROR_BAD_ARG_TYPE
+    cmd = unit_list(copy_typed_ptr(streq_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    // (string=? 1 "hello") -> EVAL_ERROR_BAD_ARG_TYPE
+    cmd = unit_list(copy_typed_ptr(streq_builtin));
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    expected = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    // (string=? "" "") -> #t
+    cmd = unit_list(copy_typed_ptr(streq_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("")));
+    s_expr_append(cmd, create_string_tp(create_string("")));
+    expected = create_atom_tp(TYPE_BOOL, true);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    // (string=? "hello" "hello") -> #t
+    cmd = unit_list(copy_typed_ptr(streq_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    expected = create_atom_tp(TYPE_BOOL, true);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    // (string=? "hello" "hell") -> #f
+    cmd = unit_list(copy_typed_ptr(streq_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_string_tp(create_string("hell")));
+    expected = create_atom_tp(TYPE_BOOL, false);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    // (string=? "hello" "jello") -> #f
+    cmd = unit_list(copy_typed_ptr(streq_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_string_tp(create_string("jello")));
+    expected = create_atom_tp(TYPE_BOOL, false);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    // (string=? "hello" "hello" "hello") -> #t
+    cmd = unit_list(copy_typed_ptr(streq_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    expected = create_atom_tp(TYPE_BOOL, true);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    // (string=? "hello" "hello" "world") -> #f
+    cmd = unit_list(copy_typed_ptr(streq_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_string_tp(create_string("world")));
+    expected = create_atom_tp(TYPE_BOOL, false);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    // (string=? "hello" "world" "hello") -> #f
+    cmd = unit_list(copy_typed_ptr(streq_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_string_tp(create_string("world")));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    expected = create_atom_tp(TYPE_BOOL, false);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    // (string=? "hello" TEST_ERROR_DUMMY) -> TEST_ERROR_DUMMY
+    cmd = unit_list(copy_typed_ptr(streq_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
+    expected = create_error_tp(TEST_ERROR_DUMMY);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    // (string=? "hello" (/ 0)) -> EVAL_ERROR_DIV_ZERO
+    cmd = unit_list(copy_typed_ptr(streq_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
+    expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    delete_environment_full(env);
+    free(streq_builtin);
     print_test_result(pass);
     te->passed += pass;
     te->run++;

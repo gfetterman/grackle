@@ -605,3 +605,18 @@ void end_to_end_string_length_tests(test_env* t_env) {
     e2e_atom_test("(string-length (/ 0))", err_t, EVAL_ERROR_DIV_ZERO, t_env);
     return;
 }
+
+void end_to_end_string_equals_tests(test_env* t_env) {
+    printf("# string=? #\n");
+    type err_t = TYPE_ERROR;
+    e2e_atom_test("(string=?)", err_t, EVAL_ERROR_FEW_ARGS, t_env);
+    e2e_atom_test("(string=? 1)", err_t, EVAL_ERROR_FEW_ARGS, t_env);
+    e2e_atom_test("(string=? \"\" 1)", err_t, EVAL_ERROR_BAD_ARG_TYPE, t_env);
+    e2e_atom_test("(string=? \"\" \"\")", TYPE_BOOL, true, t_env);
+    e2e_atom_test("(string=? \"hello\" \"hello\")", TYPE_BOOL, true, t_env);
+    e2e_atom_test("(string=? \"hello\" \"jello\")", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(string=? \"he\" \"he\" \"he\")", TYPE_BOOL, true, t_env);
+    e2e_atom_test("(string=? \"he\" \"he\" \"we\")", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(string=? (/ 0))", err_t, EVAL_ERROR_DIV_ZERO, t_env);
+    return;
+}

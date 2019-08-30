@@ -36,6 +36,7 @@ typed_ptr* eval_null_pred(const s_expr* se, Environment* env);
 typed_ptr* eval_lambda(const s_expr* se, Environment* env);
 typed_ptr* eval_quote(const s_expr* se, Environment* env);
 typed_ptr* eval_string_length(const s_expr* se, Environment* env);
+typed_ptr* eval_string_equals(const s_expr* se, Environment* env);
 
 // helper functions
 

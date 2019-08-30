@@ -114,6 +114,9 @@ typed_ptr* eval_builtin(const s_expr* se, Environment* env) {
         case BUILTIN_STRINGLEN:
             result = eval_string_length(se, env);
             break;
+        case BUILTIN_STRINGEQ:
+            result = eval_string_equals(se, env);
+            break;
         default:
             result = create_error_tp(EVAL_ERROR_UNDEF_BUILTIN);
             break;
@@ -926,6 +929,40 @@ typed_ptr* eval_string_length(const s_expr* se, Environment* env) {
             result = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
         } else {
             result = create_atom_tp(TYPE_FIXNUM, arg->ptr.string->len);
+        }
+        delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
+        free(args_tp);
+    }
+    return result;
+}
+
+typed_ptr* eval_string_equals(const s_expr* se, Environment* env) {
+    typed_ptr* result = NULL;
+    typed_ptr* args_tp = collect_arguments(se, env, 2, -1, true);
+    if (args_tp->type == TYPE_ERROR) {
+        result = args_tp;
+    } else {
+        s_expr* arg_se = args_tp->ptr.se_ptr;
+        typed_ptr* first_arg = arg_se->car;
+        arg_se = s_expr_next(arg_se);
+        if (first_arg->type != TYPE_STRING) {
+            result = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
+        } else {
+            result = create_atom_tp(TYPE_BOOL, true);
+            while (result->ptr.idx == true && !is_empty_list(arg_se)) {
+                typed_ptr* next_arg = arg_se->car;
+                if (next_arg->type != TYPE_STRING) {
+                    free(result);
+                    result = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
+                    break;
+                }
+                if (first_arg->ptr.string->len != next_arg->ptr.string->len || \
+                    strcmp(first_arg->ptr.string->contents, \
+                            next_arg->ptr.string->contents)) {
+                    result->ptr.idx = false;
+                }
+                arg_se = s_expr_next(arg_se);
+            }
         }
         delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
         free(args_tp);

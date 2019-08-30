@@ -313,6 +313,7 @@ void setup_symbol_table(Environment* env) {
     blind_install_symbol(env, \
                          "string-length", \
                          &ATOM_TP(tbi, BUILTIN_STRINGLEN));
+    blind_install_symbol(env, "string=?", &ATOM_TP(tbi, BUILTIN_STRINGEQ));
     // special values and keywords
     blind_install_symbol(env, "else", &ATOM_TP(TYPE_UNDEF, 0));
     blind_install_symbol(env, "#t", &ATOM_TP(TYPE_BOOL, true));

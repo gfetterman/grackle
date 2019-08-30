@@ -59,6 +59,7 @@ test_env* end_to_end_tests() {
     end_to_end_setvar_tests(t_env);
     end_to_end_define_tests(t_env);
     end_to_end_string_length_tests(t_env);
+    end_to_end_string_equals_tests(t_env);
     // cleanup
     delete_environment_full(t_env->env);
     t_env->env = NULL;
