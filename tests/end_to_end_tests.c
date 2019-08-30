@@ -126,6 +126,7 @@ void end_to_end_parse_tests(test_env* t_env) {
     e2e_atom_test("a", TYPE_ERROR, PARSE_ERROR_BARE_SYM, t_env);
     e2e_atom_test("()", TYPE_ERROR, EVAL_ERROR_MISSING_PROCEDURE, t_env);
     e2e_atom_test("(+ 1 1) (+ 1 1)", TYPE_ERROR, PARSE_ERROR_TOO_MANY, t_env);
+    e2e_atom_test("(\"test", TYPE_ERROR, PARSE_ERROR_UNBAL_DOUBLE_QUOTE, t_env);
     return;
 }
 
