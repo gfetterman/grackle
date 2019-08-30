@@ -3349,6 +3349,7 @@ void test_eval_quote(test_env* te) {
     s_expr_append(cmd, builtin_tp_from_name(env, "+"));
     expected = builtin_tp_from_name(env, "+");
     pass = run_test_expect(eval_quote, cmd, env, expected) && pass;
+    cmd = unit_list(copy_typed_ptr(quote_builtin));
     // (quote (1 #f <void>)) -> '(1 #f <void>)
     cmd = unit_list(copy_typed_ptr(quote_builtin));
     s_expr* subexpr = unit_list(create_number_tp(1));

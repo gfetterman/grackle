@@ -622,6 +622,30 @@ void end_to_end_define_tests(test_env* t_env) {
     return;
 }
 
+void end_to_end_quote_tests(test_env* t_env) {
+    printf("# quote #\n");
+    type err_t = TYPE_ERROR;
+    typed_ptr undef = {.type=TYPE_UNDEF, .ptr={.idx=0}};
+    typed_ptr* x_sym = install_symbol(t_env->env, "x", &undef);
+    e2e_atom_test("(quote)", err_t, EVAL_ERROR_FEW_ARGS, t_env);
+    e2e_atom_test("(quote 1 2)", err_t, EVAL_ERROR_MANY_ARGS, t_env);
+    e2e_atom_test("(quote 1)", TYPE_FIXNUM, 1, t_env);
+    e2e_atom_test("(quote x)", TYPE_SYMBOL, x_sym->ptr.idx, t_env);
+    e2e_string_test("(quote \"test\")", "test", t_env);
+    e2e_atom_test("(quote #f)", TYPE_BOOL, false, t_env);
+    typed_ptr* add_sym = symbol_tp_from_name(t_env->env, "+");
+    e2e_atom_test("(quote +)", TYPE_SYMBOL, add_sym->ptr.idx, t_env);
+    typed_ptr* one = create_number_tp(1);
+    typed_ptr* two = create_number_tp(2);
+    typed_ptr* one_two_list[] = {one, two};
+    e2e_s_expr_test("(quote (1 2))", one_two_list, 2, t_env);
+    free(one);
+    free(two);
+    free(x_sym);
+    free(add_sym);
+    return;
+}
+
 void end_to_end_string_length_tests(test_env* t_env) {
     printf("# string-length #\n");
     type err_t = TYPE_ERROR;

@@ -30,6 +30,7 @@ void end_to_end_list_tests(test_env* t_env);
 void end_to_end_lambda_tests(test_env* t_env);
 void end_to_end_setvar_tests(test_env* t_env);
 void end_to_end_define_tests(test_env* t_env);
+void end_to_end_quote_tests(test_env* t_env);
 void end_to_end_string_length_tests(test_env* t_env);
 void end_to_end_string_equals_tests(test_env* t_env);
 void end_to_end_string_append_tests(test_env* t_env);
