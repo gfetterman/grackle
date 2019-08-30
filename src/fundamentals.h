@@ -65,6 +65,7 @@ typedef enum {TEST_ERROR_DUMMY, \
               PARSE_ERROR_INT_UNSPEC, \
               PARSE_ERROR_INT_TOO_LOW, \
               PARSE_ERROR_INT_TOO_HIGH, \
+              PARSE_ERROR_UNBAL_DOUBLE_QUOTE, \
               // ^  parsing errors above     ^
               // v  evaluation errors below  v
               EVAL_ERROR_EXIT, \

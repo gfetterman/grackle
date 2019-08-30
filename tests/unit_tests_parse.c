@@ -654,7 +654,7 @@ void test_parse(test_env* te) {
     pass = test_parse_output(str_test, expected) && pass;
     // '("str1)'
     char bad_str_test[] = "(\"str1)";
-    expected = create_error_tp(PARSE_ERROR_UNBAL_PAREN);
+    expected = create_error_tp(PARSE_ERROR_UNBAL_DOUBLE_QUOTE);
     pass = test_parse_output(bad_str_test, expected) && pass;
     delete_environment_full(env);
     print_test_result(pass);

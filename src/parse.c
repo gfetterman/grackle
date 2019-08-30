@@ -165,7 +165,10 @@ typed_ptr* parse(const char str[], Environment* env) {
         }
         curr++;
     }
-    if (state != PARSE_ERROR && stack != NULL) {
+    if (state == PARSE_READ_STRING || state == PARSE_STRING_ESCAPE) {
+        state = PARSE_ERROR;
+        error = PARSE_ERROR_UNBAL_DOUBLE_QUOTE;
+    } else if (state != PARSE_ERROR && stack != NULL) {
         state = PARSE_ERROR;
         error = PARSE_ERROR_UNBAL_PAREN;
     }
