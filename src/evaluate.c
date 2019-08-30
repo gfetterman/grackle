@@ -98,7 +98,8 @@ typed_ptr* eval_builtin(const s_expr* se, Environment* env) {
         case BUILTIN_BOOLPRED: // fall-through
         case BUILTIN_VOIDPRED: // fall-through
         case BUILTIN_PROCPRED: // fall-through
-        case BUILTIN_SYMBOLPRED:
+        case BUILTIN_SYMBOLPRED: // fall-through
+        case BUILTIN_STRINGPRED:
             result = eval_atom_pred(se, env);
             break;
         case BUILTIN_NULLPRED:
@@ -801,6 +802,9 @@ typed_ptr* eval_atom_pred(const s_expr* se, Environment* env) {
             break;
         case BUILTIN_SYMBOLPRED:
             target_type = TYPE_SYMBOL;
+            break;
+        case BUILTIN_STRINGPRED:
+            target_type = TYPE_STRING;
             break;
         default:
             return create_error_tp(EVAL_ERROR_UNDEF_BUILTIN);

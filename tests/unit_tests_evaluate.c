@@ -2191,10 +2191,11 @@ void test_eval_atom_pred(test_env* te) {
     typed_ptr* x_sym;
     x_sym = install_symbol(env, "x", &fn_tp);
     bool pass = true;
-    #define NUM_TYPES 6
+    #define NUM_TYPES 7
     builtin_code bi_codes[NUM_TYPES] = {BUILTIN_PAIRPRED, BUILTIN_NUMBERPRED, \
                                         BUILTIN_BOOLPRED, BUILTIN_VOIDPRED, \
-                                        BUILTIN_PROCPRED, BUILTIN_SYMBOLPRED};
+                                        BUILTIN_PROCPRED, BUILTIN_SYMBOLPRED, \
+                                        BUILTIN_STRINGPRED};
     s_expr* cmd = NULL;
     typed_ptr* expected = NULL;
     // ([any_atomic]?) -> EVAL_ERROR_FEW_ARGS
@@ -2280,6 +2281,13 @@ void test_eval_atom_pred(test_env* te) {
         cmd = unit_list(create_atom_tp(TYPE_BUILTIN, bi_codes[i]));
         s_expr_append(cmd, copy_typed_ptr(x_sym));
         expected = create_atom_tp(TYPE_BOOL, bi_codes[i] == BUILTIN_PROCPRED);
+        pass = run_test_expect(eval_atom_pred, cmd, env, expected) && pass;
+    }
+    // ([any_atomic]? "hello") -> #t if [string] else #f
+    for (unsigned int i = 0; i < NUM_TYPES; i++) {
+        cmd = unit_list(create_atom_tp(TYPE_BUILTIN, bi_codes[i]));
+        s_expr_append(cmd, create_string_tp(create_string("hello")));
+        expected = create_atom_tp(TYPE_BOOL, bi_codes[i] == BUILTIN_STRINGPRED);
         pass = run_test_expect(eval_atom_pred, cmd, env, expected) && pass;
     }
     // ([any_atomic]? null) -> #f
@@ -3542,6 +3550,18 @@ void test_eval_builtin(test_env* te) {
     // (procedure? +) -> #t
     cmd = unit_list(create_atom_tp(TYPE_BUILTIN, BUILTIN_PROCPRED));
     s_expr_append(cmd, ADD);
+    expected = create_atom_tp(TYPE_BOOL, true);
+    pass = run_test_expect(eval_builtin, cmd, env, expected) && pass;
+    // (symbol? 'x) -> #t
+    cmd = unit_list(create_atom_tp(TYPE_BUILTIN, BUILTIN_SYMBOLPRED));
+    s_expr* quote_x = unit_list(create_atom_tp(TYPE_BUILTIN, BUILTIN_QUOTE));
+    s_expr_append(quote_x, symbol_tp_from_name(env, "x"));
+    s_expr_append(cmd, create_s_expr_tp(quote_x));
+    expected = create_atom_tp(TYPE_BOOL, true);
+    pass = run_test_expect(eval_builtin, cmd, env, expected) && pass;
+    // (string? "hello") -> #t
+    cmd = unit_list(create_atom_tp(TYPE_BUILTIN, BUILTIN_STRINGPRED));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
     expected = create_atom_tp(TYPE_BOOL, true);
     pass = run_test_expect(eval_builtin, cmd, env, expected) && pass;
     // (lambda () 1) -> <procedure> + side effect
