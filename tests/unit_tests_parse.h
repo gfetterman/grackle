@@ -18,6 +18,7 @@ void test_terminate_s_expr(test_env* te);
 void test_register_symbol(test_env* te);
 void test_substring(test_env* te);
 void test_string_is_number(test_env* te);
+void test_string_is_boolean_literal(test_env* te);
 void test_parse(test_env* te);
 
 #endif

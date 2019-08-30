@@ -40,5 +40,6 @@ interpreter_error register_symbol(s_expr_stack** stack, \
                                   char* name);
 char* substring(const char* str, unsigned int start, unsigned int end);
 bool string_is_number(const char str[]);
+bool string_is_boolean_literal(const char str[]);
 
 #endif
