@@ -15,6 +15,8 @@ void e2e_atom_test(char cmd[], type t, long val, test_env* te) {
     bool pass = match_typed_ptrs(output, expected);
     if (output->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(output->ptr.se_ptr, true);
+    } else if (output->type == TYPE_STRING) {
+        delete_string(output->ptr.string);
     }
     free(output);
     free(expected);
@@ -32,6 +34,8 @@ void e2e_pair_test(char cmd[], typed_ptr* car, typed_ptr* cdr, test_env* te) {
     pass = deep_match_typed_ptrs(output, expected);
     if (output->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(output->ptr.se_ptr, true);
+    } else if (output->type == TYPE_STRING) {
+        delete_string(output->ptr.string);
     }
     free(output);
     free(expected->ptr.se_ptr);
@@ -55,6 +59,8 @@ void e2e_s_expr_test(char cmd[], \
     bool pass = deep_match_typed_ptrs(output, expected);
     if (output->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(output->ptr.se_ptr, true);
+    } else if (output->type == TYPE_STRING) {
+        delete_string(output->ptr.string);
     }
     free(output);
     delete_s_expr_recursive(expected->ptr.se_ptr, false);
@@ -82,8 +88,29 @@ void e2e_multiline_atom_test(char* cmds[], \
     bool pass = match_typed_ptrs(output, expected);
     if (output->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(output->ptr.se_ptr, true);
+    } else if (output->type == TYPE_STRING) {
+        delete_string(output->ptr.string);
     }
     free(output);
+    free(expected);
+    printf("%s\n", (pass) ? "PASSED" : "FAILED <=");
+    te->passed += (pass) ? 1 : 0;
+    te->run++;
+    return;
+}
+
+void e2e_string_test(char cmd[], char expected_str[], test_env* te) {
+    printf("test command: %-40s", cmd);
+    typed_ptr* output = parse_and_evaluate(cmd, te->env);
+    typed_ptr* expected = create_string_tp(create_string(expected_str));
+    bool pass = match_typed_ptrs(output, expected);
+    if (output->type == TYPE_S_EXPR) {
+        delete_s_expr_recursive(output->ptr.se_ptr, true);
+    } else if (output->type == TYPE_STRING) {
+        delete_string(output->ptr.string);
+    }
+    free(output);
+    delete_string(expected->ptr.string);
     free(expected);
     printf("%s\n", (pass) ? "PASSED" : "FAILED <=");
     te->passed += (pass) ? 1 : 0;
@@ -99,6 +126,7 @@ void end_to_end_parse_tests(test_env* t_env) {
     e2e_atom_test("a", TYPE_ERROR, PARSE_ERROR_BARE_SYM, t_env);
     e2e_atom_test("()", TYPE_ERROR, EVAL_ERROR_MISSING_PROCEDURE, t_env);
     e2e_atom_test("(+ 1 1) (+ 1 1)", TYPE_ERROR, PARSE_ERROR_TOO_MANY, t_env);
+    e2e_atom_test("(\"test", TYPE_ERROR, PARSE_ERROR_UNBAL_DOUBLE_QUOTE, t_env);
     return;
 }
 
@@ -207,6 +235,7 @@ void end_to_end_predicate_tests(test_env* t_env) {
     e2e_atom_test("(pair? (cond))", TYPE_BOOL, false, t_env);
     e2e_atom_test("(pair? +)", TYPE_BOOL, false, t_env);
     e2e_atom_test("(pair? (lambda () 1))", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(pair? \"hello\")", TYPE_BOOL, false, t_env);
     e2e_atom_test("(pair?)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(pair? 1 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("(pair? (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
@@ -219,6 +248,7 @@ void end_to_end_predicate_tests(test_env* t_env) {
     e2e_atom_test("(list? (cond))", TYPE_BOOL, false, t_env);
     e2e_atom_test("(list? +)", TYPE_BOOL, false, t_env);
     e2e_atom_test("(list? (lambda () 1))", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(list? \"hello\")", TYPE_BOOL, false, t_env);
     e2e_atom_test("(list?)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(list? 1 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("(list? (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
@@ -231,6 +261,7 @@ void end_to_end_predicate_tests(test_env* t_env) {
     e2e_atom_test("(number? (cond))", TYPE_BOOL, false, t_env);
     e2e_atom_test("(number? +)", TYPE_BOOL, false, t_env);
     e2e_atom_test("(number? (lambda () 1))", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(number? \"hello\")", TYPE_BOOL, false, t_env);
     e2e_atom_test("(number?)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(number? 1 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("(number? (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
@@ -243,6 +274,7 @@ void end_to_end_predicate_tests(test_env* t_env) {
     e2e_atom_test("(boolean? (cond))", TYPE_BOOL, false, t_env);
     e2e_atom_test("(boolean? +)", TYPE_BOOL, false, t_env);
     e2e_atom_test("(boolean? (lambda () 1))", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(boolean? \"hello\")", TYPE_BOOL, false, t_env);
     e2e_atom_test("(boolean?)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(boolean? 1 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("(boolean? (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
@@ -255,6 +287,7 @@ void end_to_end_predicate_tests(test_env* t_env) {
     e2e_atom_test("(void? (cond))", TYPE_BOOL, true, t_env);
     e2e_atom_test("(void? +)", TYPE_BOOL, false, t_env);
     e2e_atom_test("(void? (lambda () 1))", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(void? \"hello\")", TYPE_BOOL, false, t_env);
     e2e_atom_test("(void?)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(void? 1 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("(void? (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
@@ -267,6 +300,7 @@ void end_to_end_predicate_tests(test_env* t_env) {
     e2e_atom_test("(procedure? (cond))", TYPE_BOOL, false, t_env);
     e2e_atom_test("(procedure? +)", TYPE_BOOL, true, t_env);
     e2e_atom_test("(procedure? (lambda () 1))", TYPE_BOOL, true, t_env);
+    e2e_atom_test("(procedure? \"hello\")", TYPE_BOOL, false, t_env);
     e2e_atom_test("(procedure?)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(procedure? 1 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("(procedure? (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
@@ -279,9 +313,23 @@ void end_to_end_predicate_tests(test_env* t_env) {
     e2e_atom_test("(null? (cond))", TYPE_BOOL, false, t_env);
     e2e_atom_test("(null? +)", TYPE_BOOL, false, t_env);
     e2e_atom_test("(null? (lambda () 1))", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(null? \"hello\")", TYPE_BOOL, false, t_env);
     e2e_atom_test("(null?)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     e2e_atom_test("(null? 1 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
     e2e_atom_test("(null? (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
+    printf("## string? ##\n");
+    e2e_atom_test("(string? 1)", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(string? #t)", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(string? (list 1 2 3))", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(string? (cons 1 2))", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(string? null)", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(string? (cond))", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(string? +)", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(string? (lambda () 1))", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(string? \"hello\")", TYPE_BOOL, true, t_env);
+    e2e_atom_test("(string?)", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
+    e2e_atom_test("(string? 1 2)", TYPE_ERROR, EVAL_ERROR_MANY_ARGS, t_env);
+    e2e_atom_test("(string? (-))", TYPE_ERROR, EVAL_ERROR_FEW_ARGS, t_env);
     return;
 }
 
@@ -571,5 +619,43 @@ void end_to_end_define_tests(test_env* t_env) {
                             TYPE_ERROR, \
                             EVAL_ERROR_NEED_NUM, \
                             t_env);
+    return;
+}
+
+void end_to_end_string_length_tests(test_env* t_env) {
+    printf("# string-length #\n");
+    type err_t = TYPE_ERROR;
+    e2e_atom_test("(string-length)", err_t, EVAL_ERROR_FEW_ARGS, t_env);
+    e2e_atom_test("(string-length 1 2)", err_t, EVAL_ERROR_MANY_ARGS, t_env);
+    e2e_atom_test("(string-length 1)", err_t, EVAL_ERROR_BAD_ARG_TYPE, t_env);
+    e2e_atom_test("(string-length \"\")", TYPE_FIXNUM, 0, t_env);
+    e2e_atom_test("(string-length \"hello\")", TYPE_FIXNUM, 5, t_env);
+    e2e_atom_test("(string-length (/ 0))", err_t, EVAL_ERROR_DIV_ZERO, t_env);
+    return;
+}
+
+void end_to_end_string_equals_tests(test_env* t_env) {
+    printf("# string=? #\n");
+    type err_t = TYPE_ERROR;
+    e2e_atom_test("(string=?)", err_t, EVAL_ERROR_FEW_ARGS, t_env);
+    e2e_atom_test("(string=? 1)", err_t, EVAL_ERROR_FEW_ARGS, t_env);
+    e2e_atom_test("(string=? \"\" 1)", err_t, EVAL_ERROR_BAD_ARG_TYPE, t_env);
+    e2e_atom_test("(string=? \"\" \"\")", TYPE_BOOL, true, t_env);
+    e2e_atom_test("(string=? \"hello\" \"hello\")", TYPE_BOOL, true, t_env);
+    e2e_atom_test("(string=? \"hello\" \"jello\")", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(string=? \"he\" \"he\" \"he\")", TYPE_BOOL, true, t_env);
+    e2e_atom_test("(string=? \"he\" \"he\" \"we\")", TYPE_BOOL, false, t_env);
+    e2e_atom_test("(string=? (/ 0))", err_t, EVAL_ERROR_DIV_ZERO, t_env);
+    return;
+}
+
+void end_to_end_string_append_tests(test_env* t_env) {
+    printf("# string-append #\n");
+    type err_t = TYPE_ERROR;
+    e2e_string_test("(string-append)", "", t_env);
+    e2e_string_test("(string-append \"hello\")", "hello", t_env);
+    e2e_string_test("(string-append \"he\" \"\" \"llo\")", "hello", t_env);
+    e2e_atom_test("(string-append 1)", err_t, EVAL_ERROR_BAD_ARG_TYPE, t_env);
+    e2e_atom_test("(string-append (/ 0))", err_t, EVAL_ERROR_DIV_ZERO, t_env);
     return;
 }

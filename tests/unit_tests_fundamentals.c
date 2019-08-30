@@ -22,11 +22,14 @@ void unit_tests_fundamentals(test_env* t_env) {
     test_create_error_tp(t_env);
     test_create_void_tp(t_env);
     test_create_s_expr_tp(t_env);
+    test_create_string_tp(t_env);
     test_copy_typed_ptr(t_env);
     test_create_s_expr(t_env);
     test_create_empty_s_expr(t_env);
     test_copy_s_expr(t_env);
     test_delete_s_expr_recursive(t_env);
+    test_create_string(t_env);
+    test_delete_string(t_env);
     test_s_expr_next(t_env);
     test_is_empty_list(t_env);
     test_is_false_literal(t_env);
@@ -124,6 +127,26 @@ void test_create_s_expr_tp(test_env* te) {
         out->ptr.se_ptr != TEST_S_EXPR_TP_VAL.se_ptr) {
         pass = false;
     }
+    free(out);
+    print_test_result(pass);
+    te->passed += pass;
+    te->run++;
+    return;
+}
+
+void test_create_string_tp(test_env* te) {
+    print_test_announce("create_string_tp()");
+    bool pass = true;
+    char test_str[] = "test string";
+    String* str_obj = create_string(test_str);
+    typed_ptr* out = create_string_tp(str_obj);
+    if (out == NULL || \
+        out->type != TYPE_STRING || \
+        out->ptr.string != str_obj) {
+        pass = false;
+    }
+    free(str_obj->contents);
+    free(str_obj);
     free(out);
     print_test_result(pass);
     te->passed += pass;
@@ -271,6 +294,15 @@ void test_copy_s_expr(test_env* te) {
     }
     delete_s_expr_recursive(original, true);
     delete_s_expr_recursive(copied, true);
+    // copy(list containing strings) -> new list containing strings
+    s_expr* str_se = unit_list(create_string_tp(create_string("test")));
+    s_expr_append(str_se, create_string_tp(create_string("test 2")));
+    copied = copy_s_expr(str_se);
+    if (!match_s_exprs(str_se, copied)) {
+        pass = false;
+    }
+    delete_s_expr_recursive(str_se, true);
+    delete_s_expr_recursive(copied, true);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -297,6 +329,17 @@ void test_delete_s_expr_recursive(test_env* te) {
     se = create_s_expr(create_atom_tp(TYPE_FIXNUM, 256), create_s_expr_tp(se));
     se = create_s_expr(create_atom_tp(TYPE_FIXNUM, 128), create_s_expr_tp(se));
     se = create_s_expr(create_atom_tp(TYPE_FIXNUM, 64), create_s_expr_tp(se));
+    delete_s_expr_recursive(se, true);
+    // deleting a one-string-element list
+    se = unit_list(create_string_tp(create_string("test string 1")));
+    delete_s_expr_recursive(se, true);
+    // deleting a multi-string-element list
+    se = unit_list(create_string_tp(create_string("test string 1")));
+    s_expr_append(se, create_string_tp(create_string("test string 2")));
+    delete_s_expr_recursive(se, true);
+    // deleting a string-containing pair
+    se = create_s_expr(create_string_tp(create_string("test string 1")), \
+                       create_string_tp(create_string("test string 2")));
     delete_s_expr_recursive(se, true);
     // deleting a one-list-element list
     s_expr* branch = create_empty_s_expr();
@@ -334,6 +377,36 @@ void test_delete_s_expr_recursive(test_env* te) {
     delete_s_expr_recursive(se, true);
     print_test_result(true);
     te->passed++; // if it runs (and produces no valgrind errors) it passes
+    te->run++;
+    return;
+}
+
+void test_create_string(test_env* te) {
+    print_test_announce("create_string()");
+    bool pass = true;
+    char test_str[] = "test string";
+    String* string_obj = create_string(test_str);
+    if (string_obj == NULL || \
+        string_obj->len != strlen(test_str) || \
+        strcmp(string_obj->contents, test_str)) {
+        pass = false;
+    }
+    free(string_obj->contents);
+    free(string_obj);
+    print_test_result(pass);
+    te->passed += pass;
+    te->run++;
+    return;
+}
+
+// smoke & Valgrind test
+void test_delete_string(test_env* te) {
+    print_test_announce("delete_string()");
+    char test_str[] = "test string";
+    String* string_obj = create_string(test_str);
+    delete_string(string_obj);
+    print_test_result(true);
+    te->passed++;
     te->run++;
     return;
 }

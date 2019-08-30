@@ -22,6 +22,9 @@ void unit_tests_evaluate(test_env* te) {
     test_eval_define(te);
     test_eval_setvar(te);
     test_eval_quote(te);
+    test_eval_string_length(te);
+    test_eval_string_equals(te);
+    test_eval_string_append(te);
     test_eval_builtin(te);
     test_eval_s_expr(te);
     test_eval_function(te);
@@ -41,10 +44,14 @@ bool run_test_expect(typed_ptr* (*function)(const s_expr*, Environment*), \
     delete_s_expr_recursive(cmd, true);
     if (out != NULL && out->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(out->ptr.se_ptr, true);
+    } else if (out != NULL && out->type == TYPE_STRING) {
+        delete_string(out->ptr.string);
     }
     free(out);
     if (expected != NULL && expected->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(expected->ptr.se_ptr, true);
+    } else if (expected != NULL && expected->type == TYPE_STRING) {
+        delete_string(expected->ptr.string);
     }
     free(expected);
     return passed;
@@ -347,13 +354,37 @@ void test_bind_args(test_env* te) {
     typed_ptr* three_args = create_s_expr_tp(create_empty_s_expr());
     s_expr_append(three_args->ptr.se_ptr, create_atom_tp(TYPE_FIXNUM, 1000));
     s_expr_append(three_args->ptr.se_ptr, create_atom_tp(TYPE_BOOL, true));
-    s_expr_append(three_args->ptr.se_ptr, create_atom_tp(TYPE_FIXNUM, 2000));
+    s_expr_append(three_args->ptr.se_ptr, create_number_tp(2000));
     bound_args = bind_args(NULL, fn_2_params, three_args);
     if (bound_args == NULL || \
         bound_args->type != TYPE_ERROR || \
         bound_args->value.idx != EVAL_ERROR_MANY_ARGS || \
         bound_args->next != NULL) {
         pass = false;
+    }
+    delete_symbol_node_list(bound_args);
+    // two params, two args (including a string)
+    delete_s_expr_recursive(two_args->ptr.se_ptr, true);
+    two_args->ptr.se_ptr = unit_list(create_number_tp(1000));
+    String* str = create_string("test");
+    s_expr_append(two_args->ptr.se_ptr, create_string_tp(str));
+    bound_args = bind_args(NULL, fn_2_params, two_args);
+    if (bound_args == NULL || \
+        strcmp(bound_args->name, "y") || \
+        bound_args->type != TYPE_STRING || \
+        strcmp(bound_args->value.string->contents, "test") || \
+        bound_args->value.string == str || \
+        bound_args->next == NULL || \
+        strcmp(bound_args->next->name, "x") || \
+        bound_args->next->type != TYPE_FIXNUM || \
+        bound_args->next->value.idx != 1000 || \
+        bound_args->next->next != NULL) {
+        pass = false;
+    }
+    for (Symbol_Node* arg = bound_args; arg != NULL; arg = arg->next) {
+        if (arg->type == TYPE_STRING) {
+            delete_string(arg->value.string);
+        }
     }
     delete_symbol_node_list(bound_args);
     free(fn_no_params->name);
@@ -596,6 +627,20 @@ void test_collect_arguments(test_env* te) {
     }
     delete_s_expr_recursive(out->ptr.se_ptr, true);
     free(out);
+    // one-elt arg s-expr, with min_args == 1 & max_args == 1, with a string
+    s_expr* call_one_arg_string = unit_list(create_atom_tp(TYPE_BUILTIN, 0));
+    String* str = create_string("test");
+    s_expr_append(call_one_arg_string, create_string_tp(str));
+    out = collect_arguments(call_one_arg_string, env, 1, 1, false);
+    if (out == NULL || \
+        out->type != TYPE_S_EXPR || \
+        !match_s_exprs(out->ptr.se_ptr, s_expr_next(call_one_arg_string)) || \
+        out->ptr.se_ptr->car->ptr.string == str) {
+        pass = false;
+    }
+    delete_s_expr_recursive(out->ptr.se_ptr, true);
+    free(out);
+    delete_s_expr_recursive(call_one_arg_string, true);
     // one-elt arg s-expr, with min_args == 1 & max_args == 2
     out = collect_arguments(call_one_arg, env, 1, 2, true);
     if (out == NULL || \
@@ -2149,10 +2194,11 @@ void test_eval_atom_pred(test_env* te) {
     typed_ptr* x_sym;
     x_sym = install_symbol(env, "x", &fn_tp);
     bool pass = true;
-    #define NUM_TYPES 6
+    #define NUM_TYPES 7
     builtin_code bi_codes[NUM_TYPES] = {BUILTIN_PAIRPRED, BUILTIN_NUMBERPRED, \
                                         BUILTIN_BOOLPRED, BUILTIN_VOIDPRED, \
-                                        BUILTIN_PROCPRED, BUILTIN_SYMBOLPRED};
+                                        BUILTIN_PROCPRED, BUILTIN_SYMBOLPRED, \
+                                        BUILTIN_STRINGPRED};
     s_expr* cmd = NULL;
     typed_ptr* expected = NULL;
     // ([any_atomic]?) -> EVAL_ERROR_FEW_ARGS
@@ -2238,6 +2284,13 @@ void test_eval_atom_pred(test_env* te) {
         cmd = unit_list(create_atom_tp(TYPE_BUILTIN, bi_codes[i]));
         s_expr_append(cmd, copy_typed_ptr(x_sym));
         expected = create_atom_tp(TYPE_BOOL, bi_codes[i] == BUILTIN_PROCPRED);
+        pass = run_test_expect(eval_atom_pred, cmd, env, expected) && pass;
+    }
+    // ([any_atomic]? "hello") -> #t if [string] else #f
+    for (unsigned int i = 0; i < NUM_TYPES; i++) {
+        cmd = unit_list(create_atom_tp(TYPE_BUILTIN, bi_codes[i]));
+        s_expr_append(cmd, create_string_tp(create_string("hello")));
+        expected = create_atom_tp(TYPE_BOOL, bi_codes[i] == BUILTIN_STRINGPRED);
         pass = run_test_expect(eval_atom_pred, cmd, env, expected) && pass;
     }
     // ([any_atomic]? null) -> #f
@@ -2509,6 +2562,28 @@ void test_eval_lambda(test_env* te) {
     }
     resulting_fn = function_lookup_index(env, expected);
     if (env->function_table->length != 5 || \
+        resulting_fn == NULL || \
+        strcmp(resulting_fn->name, "") || \
+        resulting_fn->param_list != NULL || \
+        resulting_fn->closure_env == NULL || \
+        !deep_match_typed_ptrs(resulting_fn->body, body)) {
+        pass = false;
+    }
+    delete_s_expr_recursive(cmd, true);
+    free(expected);
+    free(out);
+    // (lambda () "hello") -> <#procedure> + side effects
+    cmd = unit_list(copy_typed_ptr(lambda_builtin));
+    s_expr_append(cmd, create_s_expr_tp(create_empty_s_expr()));
+    body = create_string_tp(create_string("hello"));
+    s_expr_append(cmd, body);
+    expected = create_atom_tp(TYPE_FUNCTION, 5);
+    out = eval_lambda(cmd, env);
+    if (!match_typed_ptrs(out, expected)) {
+        pass = false;
+    }
+    resulting_fn = function_lookup_index(env, expected);
+    if (env->function_table->length != 6 || \
         resulting_fn == NULL || \
         strcmp(resulting_fn->name, "") || \
         resulting_fn->param_list != NULL || \
@@ -2796,6 +2871,50 @@ void test_eval_cond(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(first_case));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
+    // (cond (#t "hello")) -> "hello"
+    cmd = unit_list(copy_typed_ptr(cond_builtin));
+    first_case = unit_list(create_atom_tp(TYPE_BOOL, true));
+    s_expr_append(first_case, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_s_expr_tp(first_case));
+    expected = create_string_tp(create_string("hello"));
+    pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
+    // (cond (#t 1 "hello")) -> "hello"
+    cmd = unit_list(copy_typed_ptr(cond_builtin));
+    first_case = unit_list(create_atom_tp(TYPE_BOOL, true));
+    s_expr_append(first_case, create_number_tp(1));
+    s_expr_append(first_case, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_s_expr_tp(first_case));
+    expected = create_string_tp(create_string("hello"));
+    pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
+    // (cond (#t "hello" 1)) -> 1
+    cmd = unit_list(copy_typed_ptr(cond_builtin));
+    first_case = unit_list(create_atom_tp(TYPE_BOOL, true));
+    s_expr_append(first_case, create_string_tp(create_string("hello")));
+    s_expr_append(first_case, create_number_tp(1));
+    s_expr_append(cmd, create_s_expr_tp(first_case));
+    expected = create_number_tp(1);
+    pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
+    // (cond ("hello" 1)) -> 1
+    cmd = unit_list(copy_typed_ptr(cond_builtin));
+    first_case = unit_list(create_string_tp(create_string("hello")));
+    s_expr_append(first_case, create_number_tp(1));
+    s_expr_append(cmd, create_s_expr_tp(first_case));
+    expected = create_number_tp(1);
+    pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
+    // (cond ("" 1)) -> 1
+    cmd = unit_list(copy_typed_ptr(cond_builtin));
+    first_case = unit_list(create_string_tp(create_string("")));
+    s_expr_append(first_case, create_number_tp(1));
+    s_expr_append(cmd, create_s_expr_tp(first_case));
+    expected = create_number_tp(1);
+    pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
+    // (cond ("hello"))
+    cmd = unit_list(copy_typed_ptr(cond_builtin));
+    first_case = unit_list(create_atom_tp(TYPE_BOOL, true));
+    s_expr_append(first_case, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_s_expr_tp(first_case));
+    expected = create_string_tp(create_string("hello"));
+    pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
     delete_environment_full(env);
     free(cond_builtin);
     free(equals_sym);
@@ -2876,6 +2995,21 @@ void test_eval_define(test_env* te) {
     s_expr_append(cmd, create_number_tp(1));
     expected = create_error_tp(EVAL_ERROR_BAD_SYMBOL);
     pass = run_test_expect(eval_define, cmd, env, expected) && pass;
+    // (define x "hello") -> <void> + side effect
+    cmd = unit_list(copy_typed_ptr(define_builtin));
+    s_expr_append(cmd, copy_typed_ptr(x_sym));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    expected = create_void_tp();
+    pass = run_test_expect(eval_define, cmd, env, expected) && pass;
+    x_value = value_lookup_index(env, x_sym);
+    expected = create_string_tp(create_string("hello"));
+    if (!deep_match_typed_ptrs(x_value, expected)) {
+        pass = false;
+    }
+    delete_string(expected->ptr.string);
+    free(expected);
+    delete_string(x_value->ptr.string);
+    free(x_value);
     // (define (x)) -> EVAL_ERROR_FEW_ARGS
     cmd = unit_list(copy_typed_ptr(define_builtin));
     s_expr_append(cmd, create_s_expr_tp(unit_list(copy_typed_ptr(x_sym))));
@@ -3014,6 +3148,26 @@ void test_eval_define(test_env* te) {
     free(x_value);
     delete_s_expr_recursive(body->ptr.se_ptr, true);
     free(body);
+    // (define (x) "hello") -> <void> + side effect
+    cmd = unit_list(copy_typed_ptr(define_builtin));
+    fn_name_args = unit_list(copy_typed_ptr(x_sym));
+    s_expr_append(cmd, create_s_expr_tp(fn_name_args));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    expected = create_void_tp();
+    pass = run_test_expect(eval_define, cmd, env, expected) && pass;
+    x_value = value_lookup_index(env, x_sym);
+    x_fn = function_lookup_index(env, x_value);
+    body = create_string_tp(create_string("hello"));
+    if (x_fn == NULL || \
+        strcmp(x_fn->name, "x") || \
+        x_fn->param_list != NULL || \
+        x_fn->closure_env == NULL || \
+        !deep_match_typed_ptrs(x_fn->body, body)) {
+        pass = false;
+    }
+    free(x_value);
+    delete_string(body->ptr.string);
+    free(body);
     delete_environment_full(env);
     free(define_builtin);
     free(x_sym);
@@ -3132,6 +3286,27 @@ void test_eval_setvar(test_env* te) {
     s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
     expected = create_error_tp(TEST_ERROR_DUMMY);
     pass = run_test_expect(eval_set_variable, cmd, env, expected) && pass;
+    // (set! x "goodbye") [with x a string, "hello"] -> <void> + side effect
+    cmd = unit_list(copy_typed_ptr(setvar_builtin));
+    s_expr_append(cmd, copy_typed_ptr(x_sym));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    expected = create_void_tp();
+    run_test_expect(eval_set_variable, cmd, env, expected);
+    cmd = unit_list(copy_typed_ptr(setvar_builtin));
+    s_expr_append(cmd, copy_typed_ptr(x_sym));
+    s_expr_append(cmd, create_string_tp(create_string("goodbye")));
+    expected = create_void_tp();
+    pass = run_test_expect(eval_set_variable, cmd, env, expected) && pass;
+    x_value = value_lookup_index(env, x_sym);
+    if (x_value == NULL || \
+        x_value->type != TYPE_STRING || \
+        strcmp(x_value->ptr.string->contents, "goodbye")) {
+        pass = false;
+    }
+    if (x_value != NULL && x_value->type == TYPE_STRING) {
+        delete_string(x_value->ptr.string);
+    }
+    free(x_value);
     delete_environment_full(env);
     free(setvar_builtin);
     free(x_sym);
@@ -3182,6 +3357,11 @@ void test_eval_quote(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(subexpr));
     expected = create_s_expr_tp(copy_s_expr(subexpr));
     pass = run_test_expect(eval_quote, cmd, env, expected) && pass;
+    // (quote "test-str") -> "test-str"
+    cmd = unit_list(copy_typed_ptr(quote_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("test-string")));
+    expected = create_string_tp(create_string("test-string"));
+    pass = run_test_expect(eval_quote, cmd, env, expected) && pass;
     // (quote TEST_ERROR_DUMMY) -> TEST_ERROR_DUMMY
     cmd = unit_list(copy_typed_ptr(quote_builtin));
     s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
@@ -3197,6 +3377,204 @@ void test_eval_quote(test_env* te) {
     delete_environment_full(env);
     free(quote_builtin);
     free(x_sym);
+    print_test_result(pass);
+    te->passed += pass;
+    te->run++;
+    return;
+}
+
+void test_eval_string_length(test_env* te) {
+    print_test_announce("eval_string_length()");
+    Environment* env = create_environment(0, 0);
+    setup_environment(env);
+    typed_ptr* strlen_builtin = builtin_tp_from_name(env, "string-length");
+    bool pass = true;
+    // (string-length) -> EVAL_ERROR_FEW_ARGS
+    s_expr* cmd = unit_list(copy_typed_ptr(strlen_builtin));
+    typed_ptr* expected = create_error_tp(EVAL_ERROR_FEW_ARGS);
+    pass = run_test_expect(eval_string_length, cmd, env, expected) && pass;
+    // (string-length 1 2) -> EVAL_ERROR_MANY_ARGS    cmd = unit_list(copy_typed_ptr(strlen_builtin));
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, create_number_tp(2));
+    expected = create_error_tp(EVAL_ERROR_MANY_ARGS);
+    pass = run_test_expect(eval_string_length, cmd, env, expected) && pass;
+    // (string-length 1) -> EVAL_ERROR_BAD_ARG_TYPE
+    cmd = unit_list(copy_typed_ptr(strlen_builtin));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
+    pass = run_test_expect(eval_string_length, cmd, env, expected) && pass;
+    // (string-length "") -> 0
+    cmd = unit_list(copy_typed_ptr(strlen_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("")));
+    expected = create_number_tp(0);
+    pass = run_test_expect(eval_string_length, cmd, env, expected) && pass;
+    // (string-length "hello") -> 5
+    cmd = unit_list(copy_typed_ptr(strlen_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    expected = create_number_tp(5);
+    pass = run_test_expect(eval_string_length, cmd, env, expected) && pass;
+    // (string-length TEST_ERROR_DUMMY) -> TEST_ERROR_DUMMY
+    cmd = unit_list(copy_typed_ptr(strlen_builtin));
+    s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
+    expected = create_error_tp(TEST_ERROR_DUMMY);
+    pass = run_test_expect(eval_string_length, cmd, env, expected) && pass;
+    // (string-length (/ 0)) -> EVAL_ERROR_DIV_ZERO
+    cmd = unit_list(copy_typed_ptr(strlen_builtin));
+    s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
+    expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+    pass = run_test_expect(eval_string_length, cmd, env, expected) && pass;
+    delete_environment_full(env);
+    free(strlen_builtin);
+    print_test_result(pass);
+    te->passed += pass;
+    te->run++;
+    return;
+}
+
+void test_eval_string_equals(test_env* te) {
+    print_test_announce("eval_string_equals()");
+    Environment* env = create_environment(0, 0);
+    setup_environment(env);
+    typed_ptr* streq_builtin = builtin_tp_from_name(env, "string=?");
+    bool pass = true;
+    // (string=?) -> EVAL_ERROR_FEW_ARGS
+    s_expr* cmd = unit_list(copy_typed_ptr(streq_builtin));
+    typed_ptr* expected = create_error_tp(EVAL_ERROR_FEW_ARGS);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    // (string=? 1) -> EVAL_ERROR_FEW_ARGS
+    cmd = unit_list(copy_typed_ptr(streq_builtin));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_error_tp(EVAL_ERROR_FEW_ARGS);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    // (string=? "hello" 1) -> EVAL_ERROR_BAD_ARG_TYPE
+    cmd = unit_list(copy_typed_ptr(streq_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    // (string=? 1 "hello") -> EVAL_ERROR_BAD_ARG_TYPE
+    cmd = unit_list(copy_typed_ptr(streq_builtin));
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    expected = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    // (string=? "" "") -> #t
+    cmd = unit_list(copy_typed_ptr(streq_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("")));
+    s_expr_append(cmd, create_string_tp(create_string("")));
+    expected = create_atom_tp(TYPE_BOOL, true);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    // (string=? "hello" "hello") -> #t
+    cmd = unit_list(copy_typed_ptr(streq_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    expected = create_atom_tp(TYPE_BOOL, true);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    // (string=? "hello" "hell") -> #f
+    cmd = unit_list(copy_typed_ptr(streq_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_string_tp(create_string("hell")));
+    expected = create_atom_tp(TYPE_BOOL, false);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    // (string=? "hello" "jello") -> #f
+    cmd = unit_list(copy_typed_ptr(streq_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_string_tp(create_string("jello")));
+    expected = create_atom_tp(TYPE_BOOL, false);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    // (string=? "hello" "hello" "hello") -> #t
+    cmd = unit_list(copy_typed_ptr(streq_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    expected = create_atom_tp(TYPE_BOOL, true);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    // (string=? "hello" "hello" "world") -> #f
+    cmd = unit_list(copy_typed_ptr(streq_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_string_tp(create_string("world")));
+    expected = create_atom_tp(TYPE_BOOL, false);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    // (string=? "hello" "world" "hello") -> #f
+    cmd = unit_list(copy_typed_ptr(streq_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_string_tp(create_string("world")));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    expected = create_atom_tp(TYPE_BOOL, false);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    // (string=? "hello" TEST_ERROR_DUMMY) -> TEST_ERROR_DUMMY
+    cmd = unit_list(copy_typed_ptr(streq_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
+    expected = create_error_tp(TEST_ERROR_DUMMY);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    // (string=? "hello" (/ 0)) -> EVAL_ERROR_DIV_ZERO
+    cmd = unit_list(copy_typed_ptr(streq_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
+    expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+    pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
+    delete_environment_full(env);
+    free(streq_builtin);
+    print_test_result(pass);
+    te->passed += pass;
+    te->run++;
+    return;
+}
+
+void test_eval_string_append(test_env* te) {
+    print_test_announce("eval_string_append()");
+    Environment* env = create_environment(0, 0);
+    setup_environment(env);
+    typed_ptr* strappend_builtin = builtin_tp_from_name(env, "string-append");
+    bool pass = true;
+    // (string-append) -> ""
+    s_expr* cmd = unit_list(copy_typed_ptr(strappend_builtin));
+    typed_ptr* expected = create_string_tp(create_string(""));
+    pass = run_test_expect(eval_string_append, cmd, env, expected) && pass;
+    // (string-append 1) -> EVAL_ERROR_BAD_ARG_TYPE
+    cmd = unit_list(copy_typed_ptr(strappend_builtin));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
+    pass = run_test_expect(eval_string_append, cmd, env, expected) && pass;
+    // (string-append "hello") -> "hello"
+    cmd = unit_list(copy_typed_ptr(strappend_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    expected = create_string_tp(create_string("hello"));
+    pass = run_test_expect(eval_string_append, cmd, env, expected) && pass;
+    // (string-append "hello" 1) -> EVAL_ERROR_BAD_ARG_TYPE
+    cmd = unit_list(copy_typed_ptr(strappend_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
+    pass = run_test_expect(eval_string_append, cmd, env, expected) && pass;
+    // (string-append "hello" "world") -> "helloworld"
+    cmd = unit_list(copy_typed_ptr(strappend_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_string_tp(create_string("world")));
+    expected = create_string_tp(create_string("helloworld"));
+    pass = run_test_expect(eval_string_append, cmd, env, expected) && pass;
+    // (string-append "hello" "" "there" "world") -> "hellothereworld"
+    cmd = unit_list(copy_typed_ptr(strappend_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_string_tp(create_string("")));
+    s_expr_append(cmd, create_string_tp(create_string("there")));
+    s_expr_append(cmd, create_string_tp(create_string("world")));
+    expected = create_string_tp(create_string("hellothereworld"));
+    pass = run_test_expect(eval_string_append, cmd, env, expected) && pass;
+    // (string-append TEST_ERROR_DUMMY) -> TEST_ERROR_DUMMY
+    cmd = unit_list(copy_typed_ptr(strappend_builtin));
+    s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
+    expected = create_error_tp(TEST_ERROR_DUMMY);
+    pass = run_test_expect(eval_string_append, cmd, env, expected) && pass;
+    // (string-append (/ 0)) -> EVAL_ERROR_DIV_ZERO
+    cmd = unit_list(copy_typed_ptr(strappend_builtin));
+    s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
+    expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+    pass = run_test_expect(eval_string_append, cmd, env, expected) && pass;
+    delete_environment_full(env);
+    free(strappend_builtin);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -3375,6 +3753,18 @@ void test_eval_builtin(test_env* te) {
     s_expr_append(cmd, ADD);
     expected = create_atom_tp(TYPE_BOOL, true);
     pass = run_test_expect(eval_builtin, cmd, env, expected) && pass;
+    // (symbol? 'x) -> #t
+    cmd = unit_list(create_atom_tp(TYPE_BUILTIN, BUILTIN_SYMBOLPRED));
+    s_expr* quote_x = unit_list(create_atom_tp(TYPE_BUILTIN, BUILTIN_QUOTE));
+    s_expr_append(quote_x, symbol_tp_from_name(env, "x"));
+    s_expr_append(cmd, create_s_expr_tp(quote_x));
+    expected = create_atom_tp(TYPE_BOOL, true);
+    pass = run_test_expect(eval_builtin, cmd, env, expected) && pass;
+    // (string? "hello") -> #t
+    cmd = unit_list(create_atom_tp(TYPE_BUILTIN, BUILTIN_STRINGPRED));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    expected = create_atom_tp(TYPE_BOOL, true);
+    pass = run_test_expect(eval_builtin, cmd, env, expected) && pass;
     // (lambda () 1) -> <procedure> + side effect
     cmd = unit_list(create_atom_tp(TYPE_BUILTIN, BUILTIN_LAMBDA));
     s_expr_append(cmd, create_s_expr_tp(create_empty_s_expr()));
@@ -3448,6 +3838,12 @@ void test_eval_s_expr(test_env* te) {
     s_expr_append(nested_cmd, create_s_expr_tp(add_one_one_s_expr(env)));
     s_expr_append(nested_cmd, create_number_tp(1));
     s_expr_append(cmd, create_s_expr_tp(nested_cmd));
+    expected = create_error_tp(EVAL_ERROR_CAR_NOT_CALLABLE);
+    pass = run_test_expect(eval_s_expr, cmd, env, expected) && pass;
+    // ("test-str" 1 1) -> EVAL_ERROR_CAR_NOT_CALLABLE
+    cmd = unit_list(create_string_tp(create_string("test-str")));
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, create_number_tp(1));
     expected = create_error_tp(EVAL_ERROR_CAR_NOT_CALLABLE);
     pass = run_test_expect(eval_s_expr, cmd, env, expected) && pass;
     // ('+ 1 1) -> 2
@@ -3666,6 +4062,10 @@ void test_evaluate(test_env* te) {
     // eval[ <undefined type> ] -> EVAL_ERROR_UNDEF_TYPE
     cmd = unit_list(create_atom_tp(1000, 1));
     expected = create_error_tp(EVAL_ERROR_UNDEF_TYPE);
+    pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
+    // eval[ "hello" ] -> "hello"
+    cmd = unit_list(create_string_tp(create_string("hello")));
+    expected = create_string_tp(create_string("hello"));
     pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
     delete_environment_full(env);
     free(x_sym);

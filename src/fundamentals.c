@@ -35,6 +35,10 @@ typed_ptr* create_s_expr_tp(s_expr* se) {
     return create_typed_ptr(TYPE_S_EXPR, (tp_value){.se_ptr=se});
 }
 
+typed_ptr* create_string_tp(String* string) {
+    return create_typed_ptr(TYPE_STRING, (tp_value){.string=string});
+}
+
 // The returned typed_ptr is the caller's responsibility to free; it can be
 //   safely (shallow) freed without harm to any other object.
 typed_ptr* copy_typed_ptr(const typed_ptr* tp) {
@@ -68,6 +72,9 @@ s_expr* copy_s_expr(const s_expr* se) {
         curr_se->car = copy_typed_ptr(se->car);
         if (curr_se->car->type == TYPE_S_EXPR) {
             curr_se->car->ptr.se_ptr = copy_s_expr(curr_se->car->ptr.se_ptr);
+        } else if (curr_se->car->type == TYPE_STRING) {
+            char* contents = curr_se->car->ptr.string->contents;
+            curr_se->car->ptr.string = create_string(contents);
         } // otherwise it's atomic and a copy of the typed_ptr is enough
         curr_se->cdr = copy_typed_ptr(se->cdr);
         if (curr_se->cdr->type == TYPE_S_EXPR) {
@@ -88,18 +95,44 @@ void delete_s_expr_recursive(s_expr* se, bool delete_s_expr_cars) {
             curr->car != NULL && \
             curr->car->type == TYPE_S_EXPR) {
             delete_s_expr_recursive(curr->car->ptr.se_ptr, true);
+        } else if (curr->car != NULL && curr->car->type == TYPE_STRING) {
+            delete_string(curr->car->ptr.string);
         }
         free(curr->car);
         if (curr->cdr != NULL && curr->cdr->type == TYPE_S_EXPR) {
             se = s_expr_next(curr);
-            free(curr->cdr);
         } else {
+            if (curr->cdr != NULL && curr->cdr->type == TYPE_STRING) {
+                delete_string(curr->cdr->ptr.string);
+            }
             se = NULL;
-            free(curr->cdr);
         }
+        free(curr->cdr);
         free(curr);
         curr = se;
     }
+    return;
+}
+
+String* create_string(char* contents) {
+    String* new_str = malloc(sizeof(String));
+    if (new_str == NULL) {
+        fprintf(stderr, "malloc failed in create_string()\n");
+        exit(-1);
+    }
+    new_str->len = strlen(contents);
+    new_str->contents = malloc(sizeof(char) * (new_str->len + 1));
+    if (new_str->contents == NULL) {
+        fprintf(stderr, "malloc failed in create_string()\n");
+        exit(-1);
+    }
+    memcpy(new_str->contents, contents, sizeof(char) * (new_str->len + 1));
+    return new_str;
+}
+
+void delete_string(String* str) {
+    free(str->contents);
+    free(str);
     return;
 }
 

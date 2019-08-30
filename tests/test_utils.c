@@ -25,6 +25,13 @@ bool match_typed_ptrs(typed_ptr* first, typed_ptr* second) {
         return false;
     } else if (first->type == TYPE_S_EXPR) {
         return first->ptr.se_ptr == second->ptr.se_ptr;
+    } else if (first->type == TYPE_STRING) {
+        if (first->ptr.string->len != second->ptr.string->len) {
+            return false;
+        } else {
+            return !strcmp(first->ptr.string->contents, \
+                           second->ptr.string->contents);
+        }
     } else {
         return first->ptr.idx == second->ptr.idx;
     }
@@ -77,6 +84,8 @@ bool deep_match_typed_ptrs(typed_ptr* first, typed_ptr* second) {
         switch (first->type) {
             case TYPE_S_EXPR:
                 return match_s_exprs(first->ptr.se_ptr, second->ptr.se_ptr);
+            case TYPE_STRING:
+                return match_typed_ptrs(first, second);
             default:
                 return first->ptr.idx == second->ptr.idx;
         }

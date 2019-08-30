@@ -69,6 +69,9 @@ void print_typed_ptr(const typed_ptr* tp, const Environment* env) {
             }
             break;
         }
+        case TYPE_STRING:
+            printf("\"%s\"", tp->ptr.string->contents);
+            break;
         default:
             printf("unrecognized type: %d", tp->type);
             break;

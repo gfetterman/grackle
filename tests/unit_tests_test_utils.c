@@ -90,6 +90,46 @@ void test_match_typed_ptrs(test_env* te) {
     pass = match_typed_ptrs(first, second) && pass;
     free(first);
     free(second);
+    // match("", "") -> true
+    first = create_string_tp(create_string(""));
+    second = create_string_tp(create_string(""));
+    pass = match_typed_ptrs(first, second) && pass;
+    delete_string(first->ptr.string);
+    free(first);
+    delete_string(second->ptr.string);
+    free(second);
+    // match("", "hello") -> false
+    first = create_string_tp(create_string(""));
+    second = create_string_tp(create_string("hello"));
+    pass = !match_typed_ptrs(first, second) && pass;
+    delete_string(first->ptr.string);
+    free(first);
+    delete_string(second->ptr.string);
+    free(second);
+    // match("hello", "hello world") -> false
+    first = create_string_tp(create_string("hello"));
+    second = create_string_tp(create_string("hello world"));
+    pass = !match_typed_ptrs(first, second) && pass;
+    delete_string(first->ptr.string);
+    free(first);
+    delete_string(second->ptr.string);
+    free(second);
+    // match("hello", "world") -> false
+    first = create_string_tp(create_string("hello"));
+    second = create_string_tp(create_string("world"));
+    pass = !match_typed_ptrs(first, second) && pass;
+    delete_string(first->ptr.string);
+    free(first);
+    delete_string(second->ptr.string);
+    free(second);
+    // match("hello", "hello") -> true
+    first = create_string_tp(create_string("hello"));
+    second = create_string_tp(create_string("hello"));
+    pass = match_typed_ptrs(first, second) && pass;
+    delete_string(first->ptr.string);
+    free(first);
+    delete_string(second->ptr.string);
+    free(second);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -235,11 +275,13 @@ void test_match_s_exprs(test_env* te) {
     pass = match_s_exprs(first, second) && pass;
     delete_s_expr_recursive(first, true);
     delete_s_expr_recursive(second, true);
-    // match('((1) 2), '((1) 2)) -> true
+    // match('((1) 2 "hello"), '((1) 2 "hello")) -> true
     first = unit_list(create_s_expr_tp(unit_list(create_number_tp(1))));
     s_expr_append(first, create_number_tp(2));
+    s_expr_append(first, create_string_tp(create_string("hello")));
     second = unit_list(create_s_expr_tp(unit_list(create_number_tp(1))));
     s_expr_append(second, create_number_tp(2));
+    s_expr_append(second, create_string_tp(create_string("hello")));
     pass = match_s_exprs(first, second) && pass;
     delete_s_expr_recursive(first, true);
     delete_s_expr_recursive(second, true);
@@ -316,6 +358,46 @@ void test_deep_match_typed_ptrs(test_env* te) {
     pass = deep_match_typed_ptrs(first_tp, second_tp) && pass;
     free(first_tp);
     free(second_tp);
+    // match("", "") -> true
+    first_tp = create_string_tp(create_string(""));
+    second_tp = create_string_tp(create_string(""));
+    pass = deep_match_typed_ptrs(first_tp, second_tp) && pass;
+    delete_string(first_tp->ptr.string);
+    free(first_tp);
+    delete_string(second_tp->ptr.string);
+    free(second_tp);
+    // match("", "hello") -> false
+    first_tp = create_string_tp(create_string(""));
+    second_tp = create_string_tp(create_string("hello"));
+    pass = !deep_match_typed_ptrs(first_tp, second_tp) && pass;
+    delete_string(first_tp->ptr.string);
+    free(first_tp);
+    delete_string(second_tp->ptr.string);
+    free(second_tp);
+    // match("hello", "hello world") -> false
+    first_tp = create_string_tp(create_string("hello"));
+    second_tp = create_string_tp(create_string("hello world"));
+    pass = !deep_match_typed_ptrs(first_tp, second_tp) && pass;
+    delete_string(first_tp->ptr.string);
+    free(first_tp);
+    delete_string(second_tp->ptr.string);
+    free(second_tp);
+    // match("hello", "world") -> false
+    first_tp = create_string_tp(create_string("hello"));
+    second_tp = create_string_tp(create_string("world"));
+    pass = !deep_match_typed_ptrs(first_tp, second_tp) && pass;
+    delete_string(first_tp->ptr.string);
+    free(first_tp);
+    delete_string(second_tp->ptr.string);
+    free(second_tp);
+    // match("hello", "hello") -> true
+    first_tp = create_string_tp(create_string("hello"));
+    second_tp = create_string_tp(create_string("hello"));
+    pass = deep_match_typed_ptrs(first_tp, second_tp) && pass;
+    delete_string(first_tp->ptr.string);
+    free(first_tp);
+    delete_string(second_tp->ptr.string);
+    free(second_tp);
     // match('(), '()) -> true
     s_expr* first = create_empty_s_expr();
     s_expr* second = create_empty_s_expr();
@@ -326,13 +408,15 @@ void test_deep_match_typed_ptrs(test_env* te) {
     free(first_tp);
     delete_s_expr_recursive(second, true);
     free(second_tp);
-    // match('(1 2 3), '(1 2 3)) -> true
+    // match('(1 2 3 "hello"), '(1 2 3 "hello")) -> true
     first = unit_list(create_number_tp(1));
     s_expr_append(first, create_number_tp(2));
     s_expr_append(first, create_number_tp(3));
+    s_expr_append(first, create_string_tp(create_string("hello")));
     second = unit_list(create_number_tp(1));
     s_expr_append(second, create_number_tp(2));
     s_expr_append(second, create_number_tp(3));
+    s_expr_append(second, create_string_tp(create_string("hello")));
     first_tp = create_s_expr_tp(first);
     second_tp = create_s_expr_tp(second);
     pass = deep_match_typed_ptrs(first_tp, second_tp) && pass;
