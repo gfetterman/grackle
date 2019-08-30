@@ -51,7 +51,8 @@ typedef enum {BUILTIN_ADD, \
               BUILTIN_SYMBOLPRED, \
               BUILTIN_STRINGPRED, \
               BUILTIN_LAMBDA, \
-              BUILTIN_QUOTE} builtin_code;
+              BUILTIN_QUOTE, \
+              BUILTIN_STRINGLEN} builtin_code;
 
 // error codes
 
@@ -114,7 +115,7 @@ typedef struct S_EXPR {
 } s_expr;
 
 typedef struct STRING {
-    unsigned int len;
+    long len;
     char* contents;
 } String;
 

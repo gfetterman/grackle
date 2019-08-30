@@ -593,3 +593,15 @@ void end_to_end_define_tests(test_env* t_env) {
                             t_env);
     return;
 }
+
+void end_to_end_string_length_tests(test_env* t_env) {
+    printf("# string-length #\n");
+    type err_t = TYPE_ERROR;
+    e2e_atom_test("(string-length)", err_t, EVAL_ERROR_FEW_ARGS, t_env);
+    e2e_atom_test("(string-length 1 2)", err_t, EVAL_ERROR_MANY_ARGS, t_env);
+    e2e_atom_test("(string-length 1)", err_t, EVAL_ERROR_BAD_ARG_TYPE, t_env);
+    e2e_atom_test("(string-length \"\")", TYPE_FIXNUM, 0, t_env);
+    e2e_atom_test("(string-length \"hello\")", TYPE_FIXNUM, 5, t_env);
+    e2e_atom_test("(string-length (/ 0))", err_t, EVAL_ERROR_DIV_ZERO, t_env);
+    return;
+}

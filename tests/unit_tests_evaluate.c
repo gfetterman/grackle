@@ -22,6 +22,7 @@ void unit_tests_evaluate(test_env* te) {
     test_eval_define(te);
     test_eval_setvar(te);
     test_eval_quote(te);
+    test_eval_string_length(te);
     test_eval_builtin(te);
     test_eval_s_expr(te);
     test_eval_function(te);
@@ -3374,6 +3375,54 @@ void test_eval_quote(test_env* te) {
     delete_environment_full(env);
     free(quote_builtin);
     free(x_sym);
+    print_test_result(pass);
+    te->passed += pass;
+    te->run++;
+    return;
+}
+
+void test_eval_string_length(test_env* te) {
+    print_test_announce("eval_quote()");
+    Environment* env = create_environment(0, 0);
+    setup_environment(env);
+    typed_ptr* strlen_builtin = builtin_tp_from_name(env, "string-length");
+    bool pass = true;
+    // (string-length) -> EVAL_ERROR_FEW_ARGS
+    s_expr* cmd = unit_list(copy_typed_ptr(strlen_builtin));
+    typed_ptr* expected = create_error_tp(EVAL_ERROR_FEW_ARGS);
+    pass = run_test_expect(eval_string_length, cmd, env, expected) && pass;
+    // (string-length 1 2) -> EVAL_ERROR_MANY_ARGS    cmd = unit_list(copy_typed_ptr(strlen_builtin));
+    s_expr_append(cmd, create_number_tp(1));
+    s_expr_append(cmd, create_number_tp(2));
+    expected = create_error_tp(EVAL_ERROR_MANY_ARGS);
+    pass = run_test_expect(eval_string_length, cmd, env, expected) && pass;
+    // (string-length 1) -> EVAL_ERROR_BAD_ARG_TYPE
+    cmd = unit_list(copy_typed_ptr(strlen_builtin));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
+    pass = run_test_expect(eval_string_length, cmd, env, expected) && pass;
+    // (string-length "") -> 0
+    cmd = unit_list(copy_typed_ptr(strlen_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("")));
+    expected = create_number_tp(0);
+    pass = run_test_expect(eval_string_length, cmd, env, expected) && pass;
+    // (string-length "hello") -> 5
+    cmd = unit_list(copy_typed_ptr(strlen_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    expected = create_number_tp(5);
+    pass = run_test_expect(eval_string_length, cmd, env, expected) && pass;
+    // (string-length TEST_ERROR_DUMMY) -> TEST_ERROR_DUMMY
+    cmd = unit_list(copy_typed_ptr(strlen_builtin));
+    s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
+    expected = create_error_tp(TEST_ERROR_DUMMY);
+    pass = run_test_expect(eval_string_length, cmd, env, expected) && pass;
+    // (string-length (/ 0)) -> EVAL_ERROR_DIV_ZERO
+    cmd = unit_list(copy_typed_ptr(strlen_builtin));
+    s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
+    expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+    pass = run_test_expect(eval_string_length, cmd, env, expected) && pass;
+    delete_environment_full(env);
+    free(strlen_builtin);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
