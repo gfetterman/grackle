@@ -1,5 +1,4 @@
 #include "unit_tests_parse.h"
-#include "grackle_io.h"
 
 void unit_tests_parse(test_env* te) {
     printf("# parse.c #\n");
