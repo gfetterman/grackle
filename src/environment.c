@@ -314,6 +314,9 @@ void setup_symbol_table(Environment* env) {
                          "string-length", \
                          &ATOM_TP(tbi, BUILTIN_STRINGLEN));
     blind_install_symbol(env, "string=?", &ATOM_TP(tbi, BUILTIN_STRINGEQ));
+    blind_install_symbol(env, \
+                         "string-append", \
+                         &ATOM_TP(tbi, BUILTIN_STRINGAPPEND));
     // special values and keywords
     blind_install_symbol(env, "else", &ATOM_TP(TYPE_UNDEF, 0));
     blind_install_symbol(env, "#t", &ATOM_TP(TYPE_BOOL, true));

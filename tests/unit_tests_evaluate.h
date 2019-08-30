@@ -34,6 +34,7 @@ void test_eval_lambda(test_env* te);
 void test_eval_quote(test_env* te);
 void test_eval_string_length(test_env* te);
 void test_eval_string_equals(test_env* te);
+void test_eval_string_append(test_env* te);
 
 void test_eval_builtin(test_env* te);
 void test_eval_s_expr(test_env* te);

@@ -15,6 +15,7 @@ void e2e_s_expr_test(char cmd[], \
                      typed_ptr** tp_list, \
                      unsigned int tp_list_len, \
                      test_env* te);
+void e2e_string_test(char cmd[], char expected_str[], test_env* te);
 
 void end_to_end_parse_tests(test_env* t_env);
 void end_to_end_arithmetic_tests(test_env* t_env);
@@ -31,5 +32,6 @@ void end_to_end_setvar_tests(test_env* t_env);
 void end_to_end_define_tests(test_env* t_env);
 void end_to_end_string_length_tests(test_env* t_env);
 void end_to_end_string_equals_tests(test_env* t_env);
+void end_to_end_string_append_tests(test_env* t_env);
 
 #endif

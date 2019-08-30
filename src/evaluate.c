@@ -117,6 +117,9 @@ typed_ptr* eval_builtin(const s_expr* se, Environment* env) {
         case BUILTIN_STRINGEQ:
             result = eval_string_equals(se, env);
             break;
+        case BUILTIN_STRINGAPPEND:
+            result = eval_string_append(se, env);
+            break;
         default:
             result = create_error_tp(EVAL_ERROR_UNDEF_BUILTIN);
             break;
@@ -963,6 +966,48 @@ typed_ptr* eval_string_equals(const s_expr* se, Environment* env) {
                 }
                 arg_se = s_expr_next(arg_se);
             }
+        }
+        delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
+        free(args_tp);
+    }
+    return result;
+}
+
+typed_ptr* eval_string_append(const s_expr* se, Environment* env) {
+    typed_ptr* result = NULL;
+    typed_ptr* args_tp = collect_arguments(se, env, 0, -1, true);
+    if (args_tp->type == TYPE_ERROR) {
+        result = args_tp;
+    } else {
+        bool all_strings = true;
+        long total_length = 0;
+        s_expr* arg_se = args_tp->ptr.se_ptr;
+        for ( ; !is_empty_list(arg_se); arg_se = s_expr_next(arg_se)) {
+            if (arg_se->car->type != TYPE_STRING) {
+                all_strings = false;
+                break;
+            }
+            total_length += arg_se->car->ptr.string->len;
+        }
+        if (all_strings) {
+            result = create_string_tp(create_string(""));
+            if (total_length > 0) {
+                char* new_str = malloc(sizeof(char) * (total_length + 1));
+                char* start = new_str;
+                arg_se = args_tp->ptr.se_ptr;
+                for ( ; !is_empty_list(arg_se); arg_se = s_expr_next(arg_se)) {
+                    memcpy(start, \
+                           arg_se->car->ptr.string->contents, \
+                           arg_se->car->ptr.string->len);
+                    start += arg_se->car->ptr.string->len;
+                }
+                new_str[total_length] = '\0';
+                free(result->ptr.string->contents);
+                result->ptr.string->contents = new_str;
+                result->ptr.string->len = total_length;
+            }
+        } else {
+            result = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
         }
         delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
         free(args_tp);

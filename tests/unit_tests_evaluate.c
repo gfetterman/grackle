@@ -24,6 +24,7 @@ void unit_tests_evaluate(test_env* te) {
     test_eval_quote(te);
     test_eval_string_length(te);
     test_eval_string_equals(te);
+    test_eval_string_append(te);
     test_eval_builtin(te);
     test_eval_s_expr(te);
     test_eval_function(te);
@@ -3516,6 +3517,64 @@ void test_eval_string_equals(test_env* te) {
     pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
     delete_environment_full(env);
     free(streq_builtin);
+    print_test_result(pass);
+    te->passed += pass;
+    te->run++;
+    return;
+}
+
+void test_eval_string_append(test_env* te) {
+    print_test_announce("eval_string_append()");
+    Environment* env = create_environment(0, 0);
+    setup_environment(env);
+    typed_ptr* strappend_builtin = builtin_tp_from_name(env, "string-append");
+    bool pass = true;
+    // (string-append) -> ""
+    s_expr* cmd = unit_list(copy_typed_ptr(strappend_builtin));
+    typed_ptr* expected = create_string_tp(create_string(""));
+    pass = run_test_expect(eval_string_append, cmd, env, expected) && pass;
+    // (string-append 1) -> EVAL_ERROR_BAD_ARG_TYPE
+    cmd = unit_list(copy_typed_ptr(strappend_builtin));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
+    pass = run_test_expect(eval_string_append, cmd, env, expected) && pass;
+    // (string-append "hello") -> "hello"
+    cmd = unit_list(copy_typed_ptr(strappend_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    expected = create_string_tp(create_string("hello"));
+    pass = run_test_expect(eval_string_append, cmd, env, expected) && pass;
+    // (string-append "hello" 1) -> EVAL_ERROR_BAD_ARG_TYPE
+    cmd = unit_list(copy_typed_ptr(strappend_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
+    pass = run_test_expect(eval_string_append, cmd, env, expected) && pass;
+    // (string-append "hello" "world") -> "helloworld"
+    cmd = unit_list(copy_typed_ptr(strappend_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_string_tp(create_string("world")));
+    expected = create_string_tp(create_string("helloworld"));
+    pass = run_test_expect(eval_string_append, cmd, env, expected) && pass;
+    // (string-append "hello" "" "there" "world") -> "hellothereworld"
+    cmd = unit_list(copy_typed_ptr(strappend_builtin));
+    s_expr_append(cmd, create_string_tp(create_string("hello")));
+    s_expr_append(cmd, create_string_tp(create_string("")));
+    s_expr_append(cmd, create_string_tp(create_string("there")));
+    s_expr_append(cmd, create_string_tp(create_string("world")));
+    expected = create_string_tp(create_string("hellothereworld"));
+    pass = run_test_expect(eval_string_append, cmd, env, expected) && pass;
+    // (string-append TEST_ERROR_DUMMY) -> TEST_ERROR_DUMMY
+    cmd = unit_list(copy_typed_ptr(strappend_builtin));
+    s_expr_append(cmd, create_error_tp(TEST_ERROR_DUMMY));
+    expected = create_error_tp(TEST_ERROR_DUMMY);
+    pass = run_test_expect(eval_string_append, cmd, env, expected) && pass;
+    // (string-append (/ 0)) -> EVAL_ERROR_DIV_ZERO
+    cmd = unit_list(copy_typed_ptr(strappend_builtin));
+    s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
+    expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
+    pass = run_test_expect(eval_string_append, cmd, env, expected) && pass;
+    delete_environment_full(env);
+    free(strappend_builtin);
     print_test_result(pass);
     te->passed += pass;
     te->run++;

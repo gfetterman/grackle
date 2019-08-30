@@ -53,7 +53,8 @@ typedef enum {BUILTIN_ADD, \
               BUILTIN_LAMBDA, \
               BUILTIN_QUOTE, \
               BUILTIN_STRINGLEN, \
-              BUILTIN_STRINGEQ} builtin_code;
+              BUILTIN_STRINGEQ, \
+              BUILTIN_STRINGAPPEND} builtin_code;
 
 // error codes
 
