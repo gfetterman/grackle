@@ -993,6 +993,10 @@ typed_ptr* eval_string_append(const s_expr* se, Environment* env) {
             result = create_string_tp(create_string(""));
             if (total_length > 0) {
                 char* new_str = malloc(sizeof(char) * (total_length + 1));
+                if (new_str == NULL) {
+                    fprintf(stderr, "malloc failed in eval_string_append()\n");
+                    exit(-1);
+                }
                 char* start = new_str;
                 arg_se = args_tp->ptr.se_ptr;
                 for ( ; !is_empty_list(arg_se); arg_se = s_expr_next(arg_se)) {
