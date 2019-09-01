@@ -8,15 +8,18 @@ have time.
 
 ## Supported language features
 
-* arbitrarily-nested s-expression arithmetic (on bounded integers)
+* arbitrarily-nested s-expression arithmetic (on fixed-precision integers)
 * variable definition
 * list manipulation
 * predicate and conditional expressions
 * user-defined lambdas and named functions, with lexical scoping
+* boolean, integer, string, list, and function types
+
+A fuller list may be found [here](language_features.md).
 
 ## Next language feature to be added
 
-* `quote` and user-defined macros
+* floating-point arithmetic
 
 ## Installation
 
