@@ -1,4 +1,5 @@
 #include "evaluate.h"
+#include "grackle_io.h"
 
 // Evaluates an s-expression of any kind within the context of the provided
 //   environment.
@@ -28,7 +29,10 @@ typed_ptr* evaluate(const typed_ptr* tp, Environment* env) {
                 result = copy_typed_ptr(tp);
                 result->ptr.string = create_string(tp->ptr.string->contents);
                 break;
-            case TYPE_S_EXPR: 
+            case TYPE_S_EXPR:
+                printf("evaluated s-expr:\n");
+                print_s_expr(tp->ptr.se_ptr, env);
+                printf("\n");
                 result = eval_s_expr(tp->ptr.se_ptr, env);
                 break;
             case TYPE_SYMBOL:
@@ -137,6 +141,8 @@ typed_ptr* eval_s_expr(const s_expr* se, Environment* env) {
         return create_error_tp(EVAL_ERROR_MALFORMED_S_EXPR);
     } else {
         typed_ptr* evaluated_car = evaluate(se->car, env);
+        print_typed_ptr(evaluated_car, env);
+        printf("\n");
         switch (evaluated_car->type) {
             case TYPE_ERROR:
                 result = copy_typed_ptr(evaluated_car);
@@ -190,13 +196,13 @@ typed_ptr* eval_function(const s_expr* se, Environment* env) {
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
-        Symbol_Node* arg_vals = bind_args(env, fn, args_tp);
+        Symbol_Node* arg_vals = bind_args(fn, args_tp);
         if (arg_vals != NULL && arg_vals->type == TYPE_ERROR) {
             result = create_error_tp(arg_vals->value.idx);
         } else {
-            Environment* bound_env = make_eval_env(fn->closure_env, arg_vals);
+            Environment* bound_env = make_eval_env(fn->enclosing_env, arg_vals);
             result = evaluate(fn->body, bound_env);
-            delete_environment_shared(bound_env);
+            //delete_environment_shared(bound_env);
         }
         delete_symbol_node_list(arg_vals);
         delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
@@ -397,10 +403,14 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
+        Environment* global_env = env;
+        while (global_env->enclosing_env != NULL) {
+            global_env = global_env->enclosing_env;
+        }
         typed_ptr* first_arg = args_tp->ptr.se_ptr->car;
         typed_ptr* second_arg = s_expr_next(args_tp->ptr.se_ptr)->car;
         if (first_arg->type == TYPE_SYMBOL) { // define variable
-            Symbol_Node* sym_entry = symbol_lookup_index(env, first_arg);
+            Symbol_Node* sym_entry = symbol_lookup_index(global_env, first_arg);
             if (sym_entry == NULL) {
                 result = create_error_tp(EVAL_ERROR_BAD_SYMBOL);
             } else {
@@ -420,7 +430,8 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
                 result = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
             } else {
                 typed_ptr* fn_sym = first_arg->ptr.se_ptr->car;
-                Symbol_Node* sym_entry = symbol_lookup_index(env, fn_sym);
+                Symbol_Node* sym_entry = symbol_lookup_index(global_env, \
+                                                             fn_sym);
                 if (sym_entry == NULL) {
                     result = create_error_tp(EVAL_ERROR_BAD_SYMBOL);
                 } else {
@@ -430,7 +441,8 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
                     first_arg->ptr.se_ptr->cdr = create_s_expr_tp(empty);
                     typed_ptr* fn_body = second_arg;
                     s_expr_next(args_tp->ptr.se_ptr)->car = NULL;
-                    Symbol_Node* lam_stn = symbol_lookup_name(env, "lambda");
+                    Symbol_Node* lam_stn = symbol_lookup_name(global_env, \
+                                                              "lambda");
                     typed_ptr* lam = create_atom_tp(TYPE_SYMBOL, \
                                                     lam_stn->symbol_idx);
                     empty = create_empty_s_expr();
@@ -452,9 +464,9 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
                         Function_Node* fn_fn = function_lookup_index(env, fn);
                         free(fn_fn->name);
                         fn_fn->name = strdup(sym_entry->name);
-                        blind_install_symbol(fn_fn->closure_env, \
+                        /*blind_install_symbol(fn_fn->enclosing_env, \
                                              sym_entry->name, \
-                                             fn);
+                                             fn);*/
                         free(fn);
                         result = create_void_tp();
                     }
@@ -488,12 +500,16 @@ typed_ptr* eval_set_variable(const s_expr* se, Environment* env) {
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
+        Environment* global_env = env;
+        while (global_env->enclosing_env != NULL) {
+            global_env = global_env->enclosing_env;
+        }
         typed_ptr* first_arg = args_tp->ptr.se_ptr->car;
         typed_ptr* second_arg = s_expr_next(args_tp->ptr.se_ptr)->car;
         if (first_arg->type != TYPE_SYMBOL) {
             result = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
         } else {
-            Symbol_Node* sym_entry = symbol_lookup_index(env, first_arg);
+            Symbol_Node* sym_entry = symbol_lookup_index(global_env, first_arg);
             if (sym_entry == NULL) {
                 result = create_error_tp(EVAL_ERROR_BAD_SYMBOL);
             } else if (sym_entry->type == TYPE_UNDEF) {
@@ -885,7 +901,6 @@ typed_ptr* eval_lambda(const s_expr* se, Environment* env) {
                 result = create_error_tp(params->value.idx);
                 delete_symbol_node_list(params);
             } else {
-                Environment* closure_env = copy_environment(env);
                 typed_ptr* body = copy_typed_ptr(second_arg);
                 if (body->type == TYPE_S_EXPR) {
                     body->ptr.se_ptr = copy_s_expr(body->ptr.se_ptr);
@@ -893,7 +908,11 @@ typed_ptr* eval_lambda(const s_expr* se, Environment* env) {
                     char* contents = body->ptr.string->contents;
                     body->ptr.string = create_string(contents);
                 }
-                result = install_function(env, "", params, closure_env, body);
+                result = install_function(env, "", params, env, body);
+                printf("created lambda:\n");
+                printf("body: ");
+                print_typed_ptr(body, env);
+                printf("\n");
             }
         }
         delete_s_expr_recursive(args_tp->ptr.se_ptr, false);
@@ -1035,12 +1054,16 @@ Symbol_Node* collect_parameters(typed_ptr* tp, Environment* env) {
     if (is_empty_list(se)) {
         return params;
     }
+    Environment* global_env = env;
+    while (global_env->enclosing_env != NULL) {
+        global_env = global_env->enclosing_env;
+    }
     if (se->car == NULL || se->car->type != TYPE_SYMBOL) {
         params = create_error_symbol_node(EVAL_ERROR_NOT_SYMBOL);
     } else if (se->cdr == NULL || se->cdr->type != TYPE_S_EXPR) {
         params = create_error_symbol_node(EVAL_ERROR_BAD_ARG_TYPE);
     } else {
-        Symbol_Node* found = symbol_lookup_index(env, se->car);
+        Symbol_Node* found = symbol_lookup_index(global_env, se->car);
         if (found == NULL) {
             params = create_error_symbol_node(EVAL_ERROR_BAD_SYMBOL);
         } else {
@@ -1061,7 +1084,7 @@ Symbol_Node* collect_parameters(typed_ptr* tp, Environment* env) {
                     params = create_error_symbol_node(EVAL_ERROR_NOT_SYMBOL);
                     break;
                 }
-                found = symbol_lookup_index(env, se->car);
+                found = symbol_lookup_index(global_env, se->car);
                 if (found == NULL) {
                     delete_symbol_node_list(params);
                     params = create_error_symbol_node(EVAL_ERROR_BAD_SYMBOL);
@@ -1090,7 +1113,7 @@ Symbol_Node* collect_parameters(typed_ptr* tp, Environment* env) {
 //   arguments.
 // In all cases, the Symbol_Node list returned is the caller's responsibility
 //   to free, and may be safely (shallow) freed.
-Symbol_Node* bind_args(Environment* env, Function_Node* fn, typed_ptr* args) {
+Symbol_Node* bind_args(Function_Node* fn, typed_ptr* args) {
     if (fn->param_list == NULL && is_empty_list(args->ptr.se_ptr)) {
         return NULL;
     } else if (is_empty_list(args->ptr.se_ptr)) {
@@ -1146,20 +1169,17 @@ Symbol_Node* bind_args(Environment* env, Function_Node* fn, typed_ptr* args) {
 // The input environment is not modified.
 // Any s-expressions pointed to in the bound arguments now belong to the
 //   returned closure environment.
-// The returned environment is the caller's responsibility to delete, using
-//   delete_environment_shared().
+// The returned environment is the caller's responsibility to delete.
 Environment* make_eval_env(Environment* env, Symbol_Node* bound_args) {
-    Environment* eval_env = copy_environment(env);
+    Environment* global_env = env;
+    while (global_env->enclosing_env != NULL) {
+        global_env = global_env->enclosing_env;
+    }
+    Environment* eval_env = create_environment(0, 0, env);
     Symbol_Node* curr_arg = bound_args;
     while (curr_arg != NULL) {
-        Symbol_Node* found = symbol_lookup_name(eval_env, curr_arg->name);
-        if (found == NULL) {
-            fprintf(stderr, "parameter name not found - something is wrong\n");
-            exit(-1);
-        } else {
-            found->type = curr_arg->type;
-            found->value = curr_arg->value;
-        }
+        typed_ptr curr_value = {.type=curr_arg->type, .ptr=curr_arg->value};
+        blind_install_symbol(eval_env, curr_arg->name, &curr_value);
         curr_arg = curr_arg->next;
     }
     return eval_env;

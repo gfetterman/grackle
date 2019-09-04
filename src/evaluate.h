@@ -42,7 +42,7 @@ typed_ptr* eval_string_append(const s_expr* se, Environment* env);
 // helper functions
 
 Symbol_Node* collect_parameters(typed_ptr* tp, Environment* env);
-Symbol_Node* bind_args(Environment* env, Function_Node* fn, typed_ptr* args);
+Symbol_Node* bind_args(Function_Node* fn, typed_ptr* args);
 Environment* make_eval_env(Environment* env, Symbol_Node* bound_args);
 typed_ptr* collect_arguments(const s_expr* se, \
                              Environment* env, \

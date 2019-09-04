@@ -9,7 +9,7 @@
 int main() {
     bool exit = false;
     char* input = NULL;
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     while (!exit) {
         input = get_input(PROMPT);
