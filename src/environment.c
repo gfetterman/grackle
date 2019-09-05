@@ -200,8 +200,6 @@ void delete_environment_full(Environment* env) {
             free(curr_param_sn);
             curr_param_sn = next_param_sn;
         }
-        // free closure environment
-        delete_environment_shared(curr_fn->enclosing_env);
         // free body s-expression
         if (curr_fn->body->type == TYPE_S_EXPR) {
             delete_s_expr_recursive(curr_fn->body->ptr.se_ptr, true);
@@ -225,24 +223,43 @@ void delete_environment_full(Environment* env) {
 //   safely (shallow) freed without harm to the symbol table or any other
 //   object.
 typed_ptr* install_symbol(Environment* env, char* name, typed_ptr* tp) {
-    unsigned int idx = env->symbol_table->length + env->symbol_table->offset;
-    Symbol_Node* found = symbol_lookup_name(env, name);
-    if (found == NULL) {
-        Symbol_Node* sn = create_symbol_node(idx, name, tp->type, tp->ptr);
+    Environment* global_env = env;
+    while (global_env->enclosing_env != NULL) {
+        global_env = global_env->enclosing_env;
+    }
+    Symbol_Node* global_found = symbol_lookup_name(global_env, name);
+    if (global_found == NULL) {
+        if (env == global_env) {
+            unsigned int idx = env->symbol_table->offset + \
+                               env->symbol_table->length;
+            Symbol_Node* sn = create_symbol_node(idx, name, tp->type, tp->ptr);
+            sn->next = env->symbol_table->head;
+            env->symbol_table->head = sn;
+            env->symbol_table->length++;
+            return create_atom_tp(TYPE_SYMBOL, idx);
+        } else {
+            return create_error_tp(EVAL_ERROR_BAD_SYMBOL);
+        }
+    }
+    Symbol_Node* local_found = symbol_lookup_name(env, name);
+    if (local_found == NULL) {
+        Symbol_Node* sn = create_symbol_node(global_found->symbol_idx, \
+                                             name, \
+                                             tp->type, \
+                                             tp->ptr);
         sn->next = env->symbol_table->head;
         env->symbol_table->head = sn;
         env->symbol_table->length++;
     } else {
-        if (found->type == TYPE_S_EXPR) {
-            delete_s_expr_recursive(found->value.se_ptr, true);
-        } else if (found->type == TYPE_STRING) {
-            delete_string(found->value.string);
+        if (local_found->type == TYPE_S_EXPR) {
+            delete_s_expr_recursive(local_found->value.se_ptr, true);
+        } else if (local_found->type == TYPE_STRING) {
+            delete_string(local_found->value.string);
         }
-        found->type = tp->type;
-        found->value = tp->ptr;
-        idx = found->symbol_idx;
+        local_found->type = tp->type;
+        local_found->value = tp->ptr;
     }
-    return create_atom_tp(TYPE_SYMBOL, idx);
+    return create_atom_tp(TYPE_SYMBOL, global_found->symbol_idx);
 }
 
 // All considerations attendant upon the function "install_symbol()" above apply

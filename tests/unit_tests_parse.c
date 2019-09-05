@@ -204,8 +204,8 @@ void test_terminate_s_expr(test_env* te) {
 
 void test_register_symbol(test_env* te) {
     print_test_announce("register_symbol()");
-    Environment* env = create_environment(0, 0);
-    Environment* temp_env = create_environment(10, 0);
+    Environment* env = create_environment(0, 0, NULL);
+    Environment* temp_env = create_environment(10, 0, NULL);
     s_expr_stack* stack = NULL;
     s_expr_stack_push(&stack, create_empty_s_expr());
     bool pass = true;
@@ -477,7 +477,7 @@ void test_string_is_boolean_literal(test_env* te) {
 }
 
 bool test_parse_output(const char cmd[], typed_ptr* expected) {
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     typed_ptr* out = parse(cmd, env);
     bool pass = true;
     if (!deep_match_typed_ptrs(out, expected)) {
@@ -635,7 +635,7 @@ void test_parse(test_env* te) {
         pass = test_parse_output(ws_inputs[idx], expected) && pass;
     }
     // testing symbol registration
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     // "("
     typed_ptr* out = parse("(", env);
     if (env->symbol_table->length != 0 || \

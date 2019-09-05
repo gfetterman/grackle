@@ -580,7 +580,7 @@ void test_create_number_tp(test_env* te) {
 
 void test_builtin_tp_from_name(test_env* te) {
     print_test_announce("builtin_tp_from_name()");
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     blind_install_symbol(env, \
                          "test_builtin", \
                          &(typed_ptr){.type=TYPE_BUILTIN, \
@@ -615,7 +615,7 @@ void test_builtin_tp_from_name(test_env* te) {
 
 void test_symbol_tp_from_name(test_env* te) {
     print_test_announce("symbol_tp_from_name()");
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     blind_install_symbol(env, \
                          "test_builtin", \
                          &(typed_ptr){.type=TYPE_BUILTIN, \

@@ -36,6 +36,10 @@ char* get_input(const char* prompt) {
 }
 
 void print_typed_ptr(const typed_ptr* tp, const Environment* env) {
+    const Environment* global_env = env;
+    while (global_env->enclosing_env != NULL) {
+        global_env = global_env->enclosing_env;
+    }
     switch (tp->type) {
         case TYPE_UNDEF:
             printf("undefined symbol");
@@ -50,7 +54,7 @@ void print_typed_ptr(const typed_ptr* tp, const Environment* env) {
             print_s_expr(tp->ptr.se_ptr, env);
             break;
         case TYPE_SYMBOL:
-            printf("'%s", symbol_lookup_index(env, tp)->name);
+            printf("'%s", symbol_lookup_index(global_env, tp)->name);
             break;
         case TYPE_BUILTIN:
             printf("#<procedure:%s>", builtin_lookup_index(env, tp)->name);

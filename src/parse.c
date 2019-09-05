@@ -22,7 +22,7 @@ typed_ptr* parse(const char str[], Environment* env) {
     char* new_string = NULL;
     Environment* temp_env = create_environment(env->symbol_table->length, \
                                                env->function_table->length, \
-                                               env);
+                                               NULL);
     s_expr* head = create_empty_s_expr();
     while (str[curr] && state != PARSE_ERROR) {
         switch (state) {

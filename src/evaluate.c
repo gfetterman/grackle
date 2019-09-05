@@ -1,5 +1,4 @@
 #include "evaluate.h"
-#include "grackle_io.h"
 
 // Evaluates an s-expression of any kind within the context of the provided
 //   environment.
@@ -30,9 +29,6 @@ typed_ptr* evaluate(const typed_ptr* tp, Environment* env) {
                 result->ptr.string = create_string(tp->ptr.string->contents);
                 break;
             case TYPE_S_EXPR:
-                printf("evaluated s-expr:\n");
-                print_s_expr(tp->ptr.se_ptr, env);
-                printf("\n");
                 result = eval_s_expr(tp->ptr.se_ptr, env);
                 break;
             case TYPE_SYMBOL:
@@ -141,8 +137,6 @@ typed_ptr* eval_s_expr(const s_expr* se, Environment* env) {
         return create_error_tp(EVAL_ERROR_MALFORMED_S_EXPR);
     } else {
         typed_ptr* evaluated_car = evaluate(se->car, env);
-        print_typed_ptr(evaluated_car, env);
-        printf("\n");
         switch (evaluated_car->type) {
             case TYPE_ERROR:
                 result = copy_typed_ptr(evaluated_car);
@@ -706,7 +700,11 @@ typed_ptr* eval_cond(const s_expr* se, Environment* env) {
             eval_interm = create_error_tp(EVAL_ERROR_BAD_SYNTAX);
             break;
         }
-        Symbol_Node* else_stn = symbol_lookup_name(env, "else");
+        Environment* global_env = env;
+        while (global_env->enclosing_env != NULL) {
+            global_env = global_env->enclosing_env;
+        }
+        Symbol_Node* else_stn = symbol_lookup_name(global_env, "else");
         if (cond_clause->car->type == TYPE_SYMBOL && \
             cond_clause->car->ptr.idx == else_stn->symbol_idx) {
             s_expr* next_clause = s_expr_next(arg_se);
@@ -909,10 +907,6 @@ typed_ptr* eval_lambda(const s_expr* se, Environment* env) {
                     body->ptr.string = create_string(contents);
                 }
                 result = install_function(env, "", params, env, body);
-                printf("created lambda:\n");
-                printf("body: ");
-                print_typed_ptr(body, env);
-                printf("\n");
             }
         }
         delete_s_expr_recursive(args_tp->ptr.se_ptr, false);
