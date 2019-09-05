@@ -116,65 +116,17 @@ Environment* create_environment(unsigned int symbol_start, \
     new_env->symbol_table = create_symbol_table(symbol_start);
     new_env->function_table = create_function_table(function_start);
     new_env->enclosing_env = enclosing_env;
+    new_env->env_tracker_next = NULL;
+    if (enclosing_env == NULL) {
+        new_env->global_env = new_env;
+    } else {
+        new_env->global_env = enclosing_env->global_env;
+    }
     return new_env;
 }
 
-// The new environment contains a deep copy of the old environment's symbol
-//   table. Symbol table numbers are preserved (so pointers into it are still
-//   valid).
-// However, because the function table is currently only added to (not modified
-//   or deleted from), its pointer is simply copied over).
-// To destroy this new environment, delete_env_shared_ft() below should be used,
-//   to ensure it's done safely.
-Environment* copy_environment(Environment* env) {
-    Environment* new_env = create_environment(0, 0, env->enclosing_env);
-    Symbol_Node* curr_sn = env->symbol_table->head;
-    while (curr_sn != NULL) {
-        Symbol_Node* new_sn = create_symbol_node(curr_sn->symbol_idx, \
-                                                 curr_sn->name, \
-                                                 curr_sn->type, \
-                                                 curr_sn->value);
-        if (new_sn->type == TYPE_S_EXPR) {
-            new_sn->value.se_ptr = copy_s_expr(new_sn->value.se_ptr);
-        } else if (new_sn->type == TYPE_STRING) {
-            char* contents = new_sn->value.string->contents;
-            new_sn->value.string = create_string(contents);
-        }
-        new_sn->next = new_env->symbol_table->head;
-        new_env->symbol_table->head = new_sn;
-        curr_sn = curr_sn->next;
-    }
-    new_env->symbol_table->length = env->symbol_table->length;
-    // risky, but currently ok, because the function table is only added to,
-    // not modified or deleted from
-    free(new_env->function_table);
-    new_env->function_table = env->function_table;
-    new_env->enclosing_env = env->enclosing_env;
-    return new_env;
-}
-
-// Safely deletes an environment that shares a function table with other
-//   environments.
-void delete_environment_shared(Environment* env) {
-    Symbol_Node* curr = env->symbol_table->head;
-    while (curr != NULL) {
-        Symbol_Node* next = curr->next;
-        free(curr->name);
-        if (curr->type == TYPE_S_EXPR) {
-            delete_s_expr_recursive(curr->value.se_ptr, true);
-        } else if (curr->type == TYPE_STRING) {
-            delete_string(curr->value.string);
-        }
-        free(curr);
-        curr = next;
-    }
-    free(env->symbol_table);
-    free(env);
-    return;
-}
-
-// Fully deletes an environment.
-void delete_environment_full(Environment* env) {
+void delete_environment(Environment* env) {
+    // free symbol table
     Symbol_Node* curr_sn = env->symbol_table->head;
     while (curr_sn != NULL) {
         Symbol_Node* next_sn = curr_sn->next;
@@ -188,6 +140,7 @@ void delete_environment_full(Environment* env) {
         curr_sn = next_sn;
     }
     free(env->symbol_table);
+    // free function table
     Function_Node* curr_fn = env->function_table->head;
     while (curr_fn != NULL) {
         Function_Node* next_fn = curr_fn->next;
@@ -211,6 +164,15 @@ void delete_environment_full(Environment* env) {
         curr_fn = next_fn;
     }
     free(env->function_table);
+    // free all closure environments
+    if (env->enclosing_env == NULL) {
+        Environment* curr_env = env->env_tracker_next;
+        while (curr_env != NULL) {
+            Environment* next_env = curr_env->env_tracker_next;
+            delete_environment(curr_env);
+            curr_env = next_env;
+        }
+    }
     free(env);
     return;
 }
@@ -223,13 +185,9 @@ void delete_environment_full(Environment* env) {
 //   safely (shallow) freed without harm to the symbol table or any other
 //   object.
 typed_ptr* install_symbol(Environment* env, char* name, typed_ptr* tp) {
-    Environment* global_env = env;
-    while (global_env->enclosing_env != NULL) {
-        global_env = global_env->enclosing_env;
-    }
-    Symbol_Node* global_found = symbol_lookup_name(global_env, name);
+    Symbol_Node* global_found = symbol_lookup_name(env->global_env, name);
     if (global_found == NULL) {
-        if (env == global_env) {
+        if (env->global_env == env) {
             unsigned int idx = env->symbol_table->offset + \
                                env->symbol_table->length;
             Symbol_Node* sn = create_symbol_node(idx, name, tp->type, tp->ptr);
@@ -386,11 +344,7 @@ Symbol_Node* builtin_lookup_index(const Environment* env, const typed_ptr* tp) {
     if (tp == NULL || tp->type != TYPE_BUILTIN) {
         return NULL;
     }
-    const Environment* global_env = env;
-    while (global_env->enclosing_env != NULL) {
-        global_env = global_env->enclosing_env;
-    }
-    Symbol_Node* curr = global_env->symbol_table->head;
+    Symbol_Node* curr = env->global_env->symbol_table->head;
     while (curr != NULL) {
         if (curr->type == TYPE_BUILTIN && curr->value.idx == tp->ptr.idx) {
             return curr;
@@ -412,26 +366,27 @@ typed_ptr* value_lookup_index(const Environment* env, const typed_ptr* tp) {
     if (tp == NULL || tp->type != TYPE_SYMBOL) {
         return NULL;
     }
-    const Environment* curr_env = env;
-    while (curr_env != NULL) {
-        Symbol_Node* curr = symbol_lookup_index(curr_env, tp);
-        if (curr != NULL) {
-            switch (curr->type) {
-                case TYPE_UNDEF:
-                    return create_error_tp(EVAL_ERROR_UNDEF_SYM);
-                case TYPE_S_EXPR:
-                    return create_s_expr_tp(copy_s_expr(curr->value.se_ptr));
-                case TYPE_STRING: {
-                    char* contents = curr->value.string->contents;
-                    return create_string_tp(create_string(contents));
-                }
-                default:
-                    return create_typed_ptr(curr->type, curr->value);
-            }
-        }
-        curr_env = curr_env->enclosing_env;
+    Symbol_Node* found = symbol_lookup_index(env, tp);
+    while (found == NULL && env->enclosing_env != NULL) {
+        env = env->enclosing_env;
+        found = symbol_lookup_index(env, tp);
     }
-    return NULL;
+    if (found != NULL) {
+        switch (found->type) {
+            case TYPE_UNDEF:
+                return create_error_tp(EVAL_ERROR_UNDEF_SYM);
+            case TYPE_S_EXPR:
+                return create_s_expr_tp(copy_s_expr(found->value.se_ptr));
+            case TYPE_STRING: {
+                char* contents = found->value.string->contents;
+                return create_string_tp(create_string(contents));
+            }
+            default:
+                return create_typed_ptr(found->type, found->value);
+        }
+    } else {
+        return NULL;
+    }
 }
 
 // The Function_Node returned shouldn't (usually) be freed.
@@ -441,11 +396,7 @@ Function_Node* function_lookup_index(const Environment* env, \
     if (tp == NULL || tp->type != TYPE_FUNCTION) {
         return NULL;
     }
-    const Environment* global_env = env;
-    while (global_env->enclosing_env != NULL) {
-        global_env = global_env->enclosing_env;
-    }
-    Function_Node* curr = global_env->function_table->head;
+    Function_Node* curr = env->global_env->function_table->head;
     while (curr != NULL) {
         if (curr->function_idx == tp->ptr.idx) {
             return curr;

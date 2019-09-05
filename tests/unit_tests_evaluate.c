@@ -230,7 +230,7 @@ void test_collect_parameters(test_env* te) {
     params = NULL;
     delete_s_expr_recursive(se_tp->ptr.se_ptr, true);
     free(se_tp);
-    delete_environment_full(env);
+    delete_environment(env);
     free(sym_1);
     free(sym_2);
     free(sym_3);
@@ -431,7 +431,7 @@ void test_make_eval_env(test_env* te) {
         symbol_lookup_name(out, "z") != NULL) {
         pass = false;
     }
-    delete_environment_shared(out);
+    delete_environment(out);
     // one bound arg
     args = create_symbol_node(0, "x", TYPE_FIXNUM, (tp_value){.idx=1000});
     out = make_eval_env(env, args);
@@ -450,7 +450,7 @@ void test_make_eval_env(test_env* te) {
         symbol_lookup_name(out, "z") != NULL) {
         pass = false;
     }
-    delete_environment_shared(out);
+    delete_environment(out);
     // two bound args
     args->value.idx = 2000;
     s_expr* se = create_empty_s_expr();
@@ -478,9 +478,9 @@ void test_make_eval_env(test_env* te) {
         symbol_lookup_name(out, "z") != NULL) {
         pass = false;
     }
-    delete_environment_shared(out);
+    delete_environment(out);
     delete_symbol_node_list(args);
-    delete_environment_full(env);
+    delete_environment(env);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -839,7 +839,7 @@ void test_collect_arguments(test_env* te) {
     }
     free(out);
     delete_s_expr_recursive(call_with_eval, true);
-    delete_environment_full(env);
+    delete_environment(env);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -1185,7 +1185,7 @@ void test_eval_arithmetic(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(list_one_two_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_NEED_NUM);
     pass = run_test_expect(eval_arithmetic, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     delete_s_expr_recursive(add_two_two, true);
     for (unsigned int i = 0; i < NUM_OPS; i++) {
         free(arith_ops[i]);
@@ -1411,7 +1411,7 @@ void test_eval_comparison(test_env* te) {
     free(gt_tp);
     free(le_tp);
     free(ge_tp);
-    delete_environment_full(env);
+    delete_environment(env);
     delete_s_expr_recursive(subtract_three_two, true);
     #undef NUM_OPS
     print_test_result(pass);
@@ -1444,7 +1444,7 @@ void test_eval_exit(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_MANY_ARGS);
     pass = run_test_expect(eval_exit, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -1536,7 +1536,7 @@ void test_eval_cons(test_env* te) {
     s_expr_append(expected->ptr.se_ptr, create_number_tp(3));
     pass = run_test_expect(eval_cons, cmd, env, expected) && pass;
     free(cons);
-    delete_environment_full(env);
+    delete_environment(env);
     delete_s_expr_recursive(subtract_three_one, true);
     print_test_result(pass);
     te->passed += pass;
@@ -1619,7 +1619,7 @@ void test_eval_car_cdr(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_car_cdr, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(car);
     free(cdr);
     print_test_result(pass);
@@ -1682,7 +1682,7 @@ void test_eval_list_construction(test_env* te) {
     expected = create_s_expr_tp(unit_list(create_s_expr_tp(lone_one)));
     s_expr_append(expected->ptr.se_ptr, create_number_tp(2));
     pass = run_test_expect(eval_list_construction, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(list);
     print_test_result(pass);
     te->passed += pass;
@@ -2024,7 +2024,7 @@ void test_eval_and_or(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_and_or, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(and_builtin);
     free(or_builtin);
     free(cond_sym);
@@ -2100,7 +2100,7 @@ void test_eval_not(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = pass && run_test_expect(eval_not, cmd, env, expected);
-    delete_environment_full(env);
+    delete_environment(env);
     free(not_builtin);
     free(cond_sym);
     print_test_result(pass);
@@ -2164,7 +2164,7 @@ void test_eval_list_pred(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_list_pred, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(listpred_builtin);
     free(cons_sym);
     print_test_result(pass);
@@ -2297,7 +2297,7 @@ void test_eval_atom_pred(test_env* te) {
         expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
         pass = run_test_expect(eval_atom_pred, cmd, env, expected) && pass;
     }
-    delete_environment_full(env);
+    delete_environment(env);
     free(cons_sym);
     free(x_sym);
     print_test_result(pass);
@@ -2365,7 +2365,7 @@ void test_eval_null_pred(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_null_pred, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(nullpred_builtin);
     free(x_sym);
     print_test_result(pass);
@@ -2582,7 +2582,7 @@ void test_eval_lambda(test_env* te) {
     delete_s_expr_recursive(cmd, true);
     free(expected);
     free(out);
-    delete_environment_full(env);
+    delete_environment(env);
     free(lambda_builtin);
     free(x_sym);
     free(y_sym);
@@ -2903,7 +2903,7 @@ void test_eval_cond(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(first_case));
     expected = create_string_tp(create_string("hello"));
     pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(cond_builtin);
     free(equals_sym);
     free(else_sym);
@@ -3156,7 +3156,7 @@ void test_eval_define(test_env* te) {
     free(x_value);
     delete_string(body->ptr.string);
     free(body);
-    delete_environment_full(env);
+    delete_environment(env);
     free(define_builtin);
     free(x_sym);
     free(y_sym);
@@ -3295,7 +3295,7 @@ void test_eval_setvar(test_env* te) {
         delete_string(x_value->ptr.string);
     }
     free(x_value);
-    delete_environment_full(env);
+    delete_environment(env);
     free(setvar_builtin);
     free(x_sym);
     print_test_result(pass);
@@ -3362,7 +3362,7 @@ void test_eval_quote(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(subexpr));
     expected = create_s_expr_tp(copy_s_expr(subexpr));
     pass = run_test_expect(eval_quote, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(quote_builtin);
     free(x_sym);
     print_test_result(pass);
@@ -3412,7 +3412,7 @@ void test_eval_string_length(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_string_length, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(strlen_builtin);
     print_test_result(pass);
     te->passed += pass;
@@ -3504,7 +3504,7 @@ void test_eval_string_equals(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(streq_builtin);
     print_test_result(pass);
     te->passed += pass;
@@ -3562,7 +3562,7 @@ void test_eval_string_append(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_string_append, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(strappend_builtin);
     print_test_result(pass);
     te->passed += pass;
@@ -3781,7 +3781,7 @@ void test_eval_builtin(test_env* te) {
     s_expr_append(cmd, create_number_tp(0));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_builtin, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(x_sym);
     free(else_sym);
     print_test_result(pass);
@@ -3873,7 +3873,7 @@ void test_eval_s_expr(test_env* te) {
     s_expr_append(cmd, create_number_tp(0));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_s_expr, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(x_sym);
     free(x2_sym);
     print_test_result(pass);
@@ -3955,7 +3955,7 @@ void test_eval_function(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(list_eight_sixteen));
     expected = create_error_tp(EVAL_ERROR_NEED_NUM);
     pass = run_test_expect(eval_function, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(x_sym);
     free(y_sym);
     free(my_fun);
@@ -4056,7 +4056,7 @@ void test_evaluate(test_env* te) {
     cmd = unit_list(create_string_tp(create_string("hello")));
     expected = create_string_tp(create_string("hello"));
     pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(x_sym);
     print_test_result(pass);
     te->passed += pass;

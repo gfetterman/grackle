@@ -196,7 +196,8 @@ typed_ptr* eval_function(const s_expr* se, Environment* env) {
         } else {
             Environment* bound_env = make_eval_env(fn->enclosing_env, arg_vals);
             result = evaluate(fn->body, bound_env);
-            //delete_environment_shared(bound_env);
+            bound_env->env_tracker_next = env->global_env->env_tracker_next;
+            env->global_env->env_tracker_next = bound_env;
         }
         delete_symbol_node_list(arg_vals);
         delete_s_expr_recursive(args_tp->ptr.se_ptr, true);

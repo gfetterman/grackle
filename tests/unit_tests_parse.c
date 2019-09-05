@@ -325,8 +325,8 @@ void test_register_symbol(test_env* te) {
     free(stack->se->car);
     free(stack->se);
     free(stack);
-    delete_environment_full(env);
-    delete_environment_full(temp_env);
+    delete_environment(env);
+    delete_environment(temp_env);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -497,7 +497,7 @@ bool test_parse_output(const char cmd[], typed_ptr* expected) {
     }
     free(out);
     free(expected);
-    delete_environment_full(env);
+    delete_environment(env);
     return pass;
 }
 
@@ -708,7 +708,7 @@ void test_parse(test_env* te) {
     char bad_str_test[] = "(\"str1)";
     expected = create_error_tp(PARSE_ERROR_UNBAL_DOUBLE_QUOTE);
     pass = test_parse_output(bad_str_test, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     print_test_result(pass);
     te->passed += pass;
     te->run++;

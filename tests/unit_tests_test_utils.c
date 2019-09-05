@@ -606,7 +606,7 @@ void test_builtin_tp_from_name(test_env* te) {
     expected = NULL;
     pass = match_typed_ptrs(out, expected) && pass;
     free(out);
-    delete_environment_full(env);
+    delete_environment(env);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -642,7 +642,7 @@ void test_symbol_tp_from_name(test_env* te) {
     expected = NULL;
     pass = match_typed_ptrs(out, expected) && pass;
     free(out);
-    delete_environment_full(env);
+    delete_environment(env);
     print_test_result(pass);
     te->passed += pass;
     te->run++;

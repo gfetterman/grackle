@@ -25,7 +25,7 @@ test_env* unit_tests() {
     unit_tests_parse(t_env);
     unit_tests_evaluate(t_env);
     // cleanup
-    delete_environment_full(t_env->env);
+    delete_environment(t_env->env);
     t_env->env = NULL;
     return t_env;
 }
@@ -63,7 +63,7 @@ test_env* end_to_end_tests() {
     end_to_end_string_equals_tests(t_env);
     end_to_end_string_append_tests(t_env);
     // cleanup
-    delete_environment_full(t_env->env);
+    delete_environment(t_env->env);
     t_env->env = NULL;
     return t_env;
 }

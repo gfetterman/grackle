@@ -68,14 +68,14 @@ typedef struct ENVIRONMENT {
     Symbol_Table* symbol_table;
     Function_Table* function_table;
     struct ENVIRONMENT* enclosing_env;
+    struct ENVIRONMENT* global_env;
+    struct ENVIRONMENT* env_tracker_next;
 } Environment;
 
 Environment* create_environment(unsigned int symbol_start, \
                                 unsigned int function_start, \
                                 Environment* enclosing_env);
-Environment* copy_environment(Environment* env);
-void delete_environment_shared(Environment* env);
-void delete_environment_full(Environment* env);
+void delete_environment(Environment* env);
 
 // adding things to an environment
 

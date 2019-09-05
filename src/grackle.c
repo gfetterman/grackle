@@ -36,7 +36,7 @@ int main() {
         free(parse_output);
         free(input);
     }
-    delete_environment_full(env);
+    delete_environment(env);
     printf("exiting...\n");
     return 0;
 }
