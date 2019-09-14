@@ -398,14 +398,11 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
-        Environment* global_env = env;
-        while (global_env->enclosing_env != NULL) {
-            global_env = global_env->enclosing_env;
-        }
         typed_ptr* first_arg = args_tp->ptr.se_ptr->car;
         typed_ptr* second_arg = s_expr_next(args_tp->ptr.se_ptr)->car;
         if (first_arg->type == TYPE_SYMBOL) { // define variable
-            Symbol_Node* sym_entry = symbol_lookup_index(global_env, first_arg);
+            Symbol_Node* sym_entry = symbol_lookup_index(env->global_env, \
+                                                         first_arg);
             if (sym_entry == NULL) {
                 result = create_error_tp(EVAL_ERROR_BAD_SYMBOL);
             } else {
@@ -425,7 +422,7 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
                 result = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
             } else {
                 typed_ptr* fn_sym = first_arg->ptr.se_ptr->car;
-                Symbol_Node* sym_entry = symbol_lookup_index(global_env, \
+                Symbol_Node* sym_entry = symbol_lookup_index(env->global_env, \
                                                              fn_sym);
                 if (sym_entry == NULL) {
                     result = create_error_tp(EVAL_ERROR_BAD_SYMBOL);
@@ -436,7 +433,7 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
                     first_arg->ptr.se_ptr->cdr = create_s_expr_tp(empty);
                     typed_ptr* fn_body = second_arg;
                     s_expr_next(args_tp->ptr.se_ptr)->car = NULL;
-                    Symbol_Node* lam_stn = symbol_lookup_name(global_env, \
+                    Symbol_Node* lam_stn = symbol_lookup_name(env->global_env, \
                                                               "lambda");
                     typed_ptr* lam = create_atom_tp(TYPE_SYMBOL, \
                                                     lam_stn->symbol_idx);
@@ -459,9 +456,6 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
                         Function_Node* fn_fn = function_lookup_index(env, fn);
                         free(fn_fn->name);
                         fn_fn->name = strdup(sym_entry->name);
-                        /*blind_install_symbol(fn_fn->enclosing_env, \
-                                             sym_entry->name, \
-                                             fn);*/
                         free(fn);
                         result = create_void_tp();
                     }
@@ -495,16 +489,13 @@ typed_ptr* eval_set_variable(const s_expr* se, Environment* env) {
     if (args_tp->type == TYPE_ERROR) {
         result = args_tp;
     } else {
-        Environment* global_env = env;
-        while (global_env->enclosing_env != NULL) {
-            global_env = global_env->enclosing_env;
-        }
         typed_ptr* first_arg = args_tp->ptr.se_ptr->car;
         typed_ptr* second_arg = s_expr_next(args_tp->ptr.se_ptr)->car;
         if (first_arg->type != TYPE_SYMBOL) {
             result = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
         } else {
-            Symbol_Node* sym_entry = symbol_lookup_index(global_env, first_arg);
+            Symbol_Node* sym_entry = symbol_lookup_index(env->global_env, \
+                                                         first_arg);
             if (sym_entry == NULL) {
                 result = create_error_tp(EVAL_ERROR_BAD_SYMBOL);
             } else if (sym_entry->type == TYPE_UNDEF) {
@@ -701,11 +692,7 @@ typed_ptr* eval_cond(const s_expr* se, Environment* env) {
             eval_interm = create_error_tp(EVAL_ERROR_BAD_SYNTAX);
             break;
         }
-        Environment* global_env = env;
-        while (global_env->enclosing_env != NULL) {
-            global_env = global_env->enclosing_env;
-        }
-        Symbol_Node* else_stn = symbol_lookup_name(global_env, "else");
+        Symbol_Node* else_stn = symbol_lookup_name(env->global_env, "else");
         if (cond_clause->car->type == TYPE_SYMBOL && \
             cond_clause->car->ptr.idx == else_stn->symbol_idx) {
             s_expr* next_clause = s_expr_next(arg_se);
@@ -1166,10 +1153,6 @@ Symbol_Node* bind_args(Function_Node* fn, typed_ptr* args) {
 //   returned closure environment.
 // The returned environment is the caller's responsibility to delete.
 Environment* make_eval_env(Environment* env, Symbol_Node* bound_args) {
-    Environment* global_env = env;
-    while (global_env->enclosing_env != NULL) {
-        global_env = global_env->enclosing_env;
-    }
     Environment* eval_env = create_environment(0, 0, env);
     Symbol_Node* curr_arg = bound_args;
     while (curr_arg != NULL) {

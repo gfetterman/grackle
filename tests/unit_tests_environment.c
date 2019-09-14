@@ -187,20 +187,22 @@ void test_create_function_node(test_env* te) {
     print_test_announce("create_function_node()");
     Symbol_Node* params = create_symbol_node(0, "x", TYPE_FIXNUM, TEST_NUM_TP_VAL);
     params->next = create_symbol_node(1, "y", TYPE_FIXNUM, TEST_NUM_TP_VAL);
+    Environment* encl = create_environment(0, 0, NULL);
     typed_ptr* body = create_s_expr_tp(create_empty_s_expr());
-    Function_Node* out = create_function_node(0, "f", params, te->env, body);
+    Function_Node* out = create_function_node(0, "f", params, encl, body);
     bool pass = true;
     if (out == NULL || \
         out->function_idx != 0 || \
         strcmp(out->name, "f") || \
         out->param_list != params || \
-        out->enclosing_env != te->env || \
+        out->enclosing_env != encl || \
         out->body != body || \
         out->next != NULL) {
         pass = false;
     }
     free(out->name);
     delete_symbol_node_list(params);
+    delete_environment(encl);
     free(body->ptr.se_ptr);
     free(body);
     free(out);
@@ -229,7 +231,8 @@ void test_create_function_table(test_env* te) {
 
 void test_create_environment(test_env* te) {
     print_test_announce("create_environment()");
-    Environment* out = create_environment(2, 4, te->env);
+    Environment* encl = create_environment(0, 0, NULL);
+    Environment* out = create_environment(2, 4, encl);
     bool pass = true;
     if (out == NULL || \
         out->symbol_table == NULL || \
@@ -240,10 +243,14 @@ void test_create_environment(test_env* te) {
         out->function_table->head != NULL || \
         out->function_table->length != 0 || \
         out->function_table->offset != 4 || \
-        out->enclosing_env != te->env) {
+        out->enclosing_env != encl || \
+        out->env_tracker_next != NULL || \
+        encl->global_env != encl || \
+        out->global_env != encl) {
         pass = false;
     }
     delete_environment(out);
+    delete_environment(encl);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -271,6 +278,13 @@ void test_delete_environment(test_env* te) {
     typed_ptr* body = create_s_expr_tp(create_empty_s_expr());
     typed_ptr* out = install_function(original, "", params, original, body);
     free(out);
+    Environment* closure_env = create_environment(0, 0, original);
+    original->env_tracker_next = closure_env;
+    closure_env = create_environment(0, 0, original);
+    closure_env->env_tracker_next = original->env_tracker_next;
+    original->env_tracker_next = closure_env;
+    Environment* child = create_environment(0, 0, original);
+    delete_environment(child); // does not touch the enclosing environment
     delete_environment(original);
     print_test_result(true);
     te->passed++;
@@ -280,6 +294,7 @@ void test_delete_environment(test_env* te) {
 
 void test_install_symbol_regular_and_blind(test_env* te) {
     print_test_announce("(blind_)install_symbol()");
+    // tests for installation done in the top-level (global) environment
     Environment* env = create_environment(0, 0, NULL);
     char name1[] = "test_sym_1";
     char name2[] = "test_sym_2";
@@ -340,6 +355,71 @@ void test_install_symbol_regular_and_blind(test_env* te) {
     typed_ptr str_tp = {.type=TYPE_STRING, .ptr={.string=create_string("a")}};
     blind_install_symbol(env, name1, &str_tp);
     blind_install_symbol(env, name1, &boolean);
+    // tests for environments nested below the global one
+    Environment* child = create_environment(0, 0, env);
+    char absent_in_global[] = "test_sym_global_absent";
+    out = install_symbol(child, absent_in_global, &number);
+    if (out == NULL || \
+        out->type != TYPE_ERROR || \
+        out->ptr.idx != EVAL_ERROR_BAD_SYMBOL) {
+        pass = false;
+    }
+    free(out);
+    if (symbol_lookup_name(env, absent_in_global) != NULL || \
+        symbol_lookup_name(child, absent_in_global) != NULL) {
+        pass = false;
+    }
+    if (child->symbol_table->length != 0 || \
+        env->symbol_table->length != 4) {
+        pass = false;
+    }
+    out = install_symbol(child, name1, &number);
+    if (out == NULL || \
+        out->type != TYPE_SYMBOL || \
+        symbol_lookup_name(env, name1) == NULL || \
+        out->ptr.idx != symbol_lookup_name(env, name1)->symbol_idx) {
+        pass = false;
+    }
+    free(out);
+    Symbol_Node* global_lookup = symbol_lookup_name(env, name1);
+    Symbol_Node* child_lookup = symbol_lookup_name(child, name1);
+    if (child_lookup == NULL || \
+        global_lookup == NULL || \
+        child_lookup->symbol_idx != global_lookup->symbol_idx || \
+        child_lookup->type != TYPE_FIXNUM || \
+        child_lookup->value.idx != TEST_NUM || \
+        global_lookup->type != TYPE_BOOL || \
+        global_lookup->value.idx != TEST_NUM) {
+        pass = false;
+    }
+    if (child->symbol_table->length != 1 || \
+        env->symbol_table->length != 4) {
+        pass = false;
+    }
+    se_tp.ptr.se_ptr = create_empty_s_expr();
+    out = install_symbol(child, name1, &se_tp);
+    if (out == NULL || \
+        out->type != TYPE_SYMBOL || \
+        out->ptr.idx != symbol_lookup_name(env, name1)->symbol_idx) {
+        pass = false;
+    }
+    free(out);
+    global_lookup = symbol_lookup_name(env, name1);
+    child_lookup = symbol_lookup_name(child, name1);
+    if (child_lookup == NULL || \
+        global_lookup == NULL || \
+        child_lookup->symbol_idx != global_lookup->symbol_idx || \
+        child_lookup->type != TYPE_S_EXPR || \
+        child_lookup->value.se_ptr != se_tp.ptr.se_ptr || \
+        global_lookup->type != TYPE_BOOL || \
+        global_lookup->value.idx != TEST_NUM) {
+        pass = false;
+    }
+    if (child->symbol_table->length != 1 || \
+        env->symbol_table->length != 4) {
+        pass = false;
+    }
+    delete_environment(child);
     delete_environment(env);
     print_test_result(pass);
     te->passed += pass;
@@ -406,6 +486,18 @@ void test_symbol_lookup_name(test_env* te) {
     if (symbol_lookup_name(env, NULL) != NULL) {
         pass = false;
     }
+    // tests for nested environment
+    Environment* child = create_environment(0, 0, env);
+    blind_install_symbol(child, name1, &boolean);
+    if (symbol_lookup_name(child, name1) == NULL || \
+        symbol_lookup_name(child, name1)->type != TYPE_BOOL || \
+        symbol_lookup_name(child, name1)->value.idx != TEST_NUM) {
+        pass = false;
+    }
+    if (symbol_lookup_name(child, name2) != NULL) {
+        pass = false;
+    }
+    delete_environment(child);
     delete_environment(env);
     print_test_result(pass);
     te->passed += pass;
@@ -450,6 +542,18 @@ void test_symbol_lookup_index(test_env* te) {
     if (symbol_lookup_index(env, not_a_symbol) != NULL) {
         pass = false;
     }
+    // tests for nested environment
+    Environment* child = create_environment(0, 0, env);
+    blind_install_symbol(child, name1, &boolean);
+    if (symbol_lookup_index(child, symbol_1) == NULL || \
+        symbol_lookup_index(child, symbol_1)->type != TYPE_BOOL || \
+        symbol_lookup_index(child, symbol_1)->value.idx != TEST_NUM) {
+        pass = false;
+    }
+    if (symbol_lookup_index(child, symbol_2) != NULL) {
+        pass = false;
+    }
+    delete_environment(child);
     free(symbol_1);
     free(symbol_2);
     free(symbol_3);
@@ -499,6 +603,22 @@ void test_builtin_lookup_index(test_env* te) {
     if (builtin_lookup_index(env, not_a_builtin) != NULL) {
         pass = false;
     }
+    // tests for nested environment
+    Environment* child = create_environment(0, 0, env);
+    if (builtin_lookup_index(child, bi_ptr_1) == NULL || \
+        strcmp(builtin_lookup_index(child, bi_ptr_1)->name, "bi_1") || \
+        builtin_lookup_index(child, bi_ptr_1)->type != TYPE_BUILTIN || \
+        builtin_lookup_index(child, bi_ptr_1)->value.idx != builtin_1 || \
+        builtin_lookup_index(child, bi_ptr_absent) != NULL) {
+        pass = false;
+    }
+    if (builtin_lookup_index(child, NULL) != NULL) {
+        pass = false;
+    }
+    if (builtin_lookup_index(child, not_a_builtin) != NULL) {
+        pass = false;
+    }
+    delete_environment(child);
     free(bi_ptr_1);
     free(bi_ptr_2);
     free(bi_ptr_3);
@@ -583,6 +703,59 @@ void test_value_lookup_index(test_env* te) {
         pass = false;
     }
     free(out);
+    // tests for nested environments
+    Environment* middle = create_environment(0, 0, env);
+    Environment* lowest = create_environment(0, 0, middle);
+    blind_install_symbol(middle, name_num, &boolean);
+    blind_install_symbol(lowest, name_bool, &number);
+    out = value_lookup_index(lowest, symbol_num);
+    if (out == NULL || \
+        out->type != TYPE_BOOL || \
+        out->ptr.idx != TEST_NUM) {
+        pass = false;
+    }
+    free(out);
+    out = value_lookup_index(lowest, symbol_bool);
+    if (out == NULL || \
+        out->type != TYPE_FIXNUM || \
+        out->ptr.idx != TEST_NUM) {
+        pass = false;
+    }
+    free(out);
+    out = value_lookup_index(middle, symbol_num);
+    if (out == NULL || \
+        out->type != TYPE_BOOL || \
+        out->ptr.idx != TEST_NUM) {
+        pass = false;
+    }
+    free(out);
+    out = value_lookup_index(middle, symbol_bool);
+    if (out == NULL || \
+        out->type != TYPE_BOOL || \
+        out->ptr.idx != TEST_NUM) {
+        pass = false;
+    }
+    free(out);
+    if (value_lookup_index(lowest, NULL) != NULL) {
+        pass = false;
+    }
+    if (value_lookup_index(lowest, absent_symbol) != NULL) {
+        pass = false;
+    }
+    if (value_lookup_index(lowest, not_a_symbol) != NULL) {
+        pass = false;
+    }
+    if (value_lookup_index(middle, NULL) != NULL) {
+        pass = false;
+    }
+    if (value_lookup_index(middle, absent_symbol) != NULL) {
+        pass = false;
+    }
+    if (value_lookup_index(middle, not_a_symbol) != NULL) {
+        pass = false;
+    }
+    delete_environment(lowest);
+    delete_environment(middle);
     free(symbol_num);
     free(symbol_bool);
     free(symbol_se);
@@ -625,6 +798,24 @@ void test_function_lookup_index(test_env* te) {
     if (function_lookup_index(env, absent_function) != NULL) {
         pass = false;
     }
+    // tests for nested environment
+    Environment* child = create_environment(0, 0, env);
+    if (function_lookup_index(child, out) == NULL || \
+        strcmp(function_lookup_index(child, out)->name, "f") || \
+        function_lookup_index(child, out)->function_idx != out->ptr.idx || \
+        function_lookup_index(child, out)->param_list != params || \
+        function_lookup_index(env, out)->enclosing_env != env || \
+        function_lookup_index(env, out)->body != body || \
+        function_lookup_index(child, absent_function) != NULL) {
+        pass = false;
+    }
+    if (function_lookup_index(child, NULL) != NULL) {
+        pass = false;
+    }
+    if (function_lookup_index(child, not_a_function) != NULL) {
+        pass = false;
+    }
+    delete_environment(child);
     free(out);
     free(not_a_function);
     free(absent_function);
