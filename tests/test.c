@@ -62,6 +62,7 @@ test_env* end_to_end_tests() {
     end_to_end_string_length_tests(t_env);
     end_to_end_string_equals_tests(t_env);
     end_to_end_string_append_tests(t_env);
+    end_to_end_scoping_tests(t_env);
     // cleanup
     delete_environment(t_env->env);
     t_env->env = NULL;

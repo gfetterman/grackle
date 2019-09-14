@@ -494,18 +494,27 @@ typed_ptr* eval_set_variable(const s_expr* se, Environment* env) {
         if (first_arg->type != TYPE_SYMBOL) {
             result = create_error_tp(EVAL_ERROR_NOT_SYMBOL);
         } else {
-            Symbol_Node* sym_entry = symbol_lookup_index(env->global_env, \
-                                                         first_arg);
-            if (sym_entry == NULL) {
+            Symbol_Node* found = symbol_lookup_index(env, first_arg);
+            while (found == NULL && env->enclosing_env != NULL) {
+                env = env->enclosing_env;
+                found = symbol_lookup_index(env, first_arg);
+            }
+            if (found == NULL) {
                 result = create_error_tp(EVAL_ERROR_BAD_SYMBOL);
-            } else if (sym_entry->type == TYPE_UNDEF) {
+            } else if (found->type == TYPE_UNDEF) {
                 result = create_error_tp(EVAL_ERROR_UNDEF_SYM);
             } else {
                 typed_ptr* value = evaluate(second_arg, env);
                 if (value->type == TYPE_ERROR) {
                     result = value;
                 } else {
-                    blind_install_symbol(env, sym_entry->name, value);
+                    if (found->type == TYPE_S_EXPR) {
+                        delete_s_expr_recursive(found->value.se_ptr, true);
+                    } else if (found->type == TYPE_STRING) {
+                        delete_string(found->value.string);
+                    }
+                    found->type = value->type;
+                    found->value = value->ptr;
                     free(value);
                     result = create_void_tp();
                 }

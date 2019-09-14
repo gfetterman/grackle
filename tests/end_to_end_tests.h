@@ -35,4 +35,6 @@ void end_to_end_string_length_tests(test_env* t_env);
 void end_to_end_string_equals_tests(test_env* t_env);
 void end_to_end_string_append_tests(test_env* t_env);
 
+void end_to_end_scoping_tests(test_env* t_env);
+
 #endif

@@ -3186,6 +3186,27 @@ void test_eval_define(test_env* te) {
     free(x_value);
     delete_string(body->ptr.string);
     free(body);
+    // test for a nested environment
+    Environment* child = create_environment(0, 0, env);
+    cmd = unit_list(copy_typed_ptr(define_builtin));
+    s_expr_append(cmd, copy_typed_ptr(x_sym));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_void_tp();
+    pass = run_test_expect(eval_define, cmd, child, expected) && pass;
+    x_value = value_lookup_index(child, x_sym);
+    if (x_value == NULL || \
+        x_value->type != TYPE_FIXNUM || \
+        x_value->ptr.idx != 1) {
+        pass = false;
+    }
+    free(x_value);
+    x_value = value_lookup_index(env, x_sym);
+    if (x_value == NULL || \
+        x_value->type != TYPE_FUNCTION) {
+        pass = false;
+    }
+    free(x_value);
+    delete_environment(child);
     delete_environment(env);
     free(define_builtin);
     free(x_sym);
@@ -3325,6 +3346,51 @@ void test_eval_setvar(test_env* te) {
         delete_string(x_value->ptr.string);
     }
     free(x_value);
+    // test for a nested environment
+    Environment* middle = create_environment(0, 0, env);
+    cmd = unit_list(copy_typed_ptr(setvar_builtin));
+    s_expr_append(cmd, copy_typed_ptr(x_sym));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_void_tp();
+    pass = run_test_expect(eval_set_variable, cmd, middle, expected) && pass;
+    if (symbol_lookup_index(middle, x_sym) != NULL) {
+        pass = false;
+    }
+    x_value = value_lookup_index(env, x_sym);
+    if (x_value == NULL || \
+        x_value->type != TYPE_FIXNUM || \
+        x_value->ptr.idx != 1) {
+        pass = false;
+    }
+    free(x_value);
+    // test for a deeper nested environment
+    Environment* lowest = create_environment(0, 0, middle);
+    typed_ptr number_three = {.type=TYPE_FIXNUM, .ptr={.idx=3}};
+    blind_install_symbol(middle, "x", &number_three);
+    cmd = unit_list(copy_typed_ptr(setvar_builtin));
+    s_expr_append(cmd, copy_typed_ptr(x_sym));
+    s_expr_append(cmd, create_number_tp(2));
+    expected = create_void_tp();
+    pass = run_test_expect(eval_set_variable, cmd, lowest, expected) && pass;
+    if (symbol_lookup_index(lowest, x_sym) != NULL) {
+        pass = false;
+    }
+    x_value = value_lookup_index(middle, x_sym);
+    if (x_value == NULL || \
+        x_value->type != TYPE_FIXNUM || \
+        x_value->ptr.idx != 2) {
+        pass = false;
+    }
+    free(x_value);
+    x_value = value_lookup_index(env, x_sym);
+    if (x_value == NULL || \
+        x_value->type != TYPE_FIXNUM || \
+        x_value->ptr.idx != 1) {
+        pass = false;
+    }
+    free(x_value);
+    delete_environment(lowest);
+    delete_environment(middle);
     delete_environment(env);
     free(setvar_builtin);
     free(x_sym);
