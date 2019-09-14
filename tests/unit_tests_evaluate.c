@@ -110,7 +110,7 @@ void test_collect_parameters(test_env* te) {
     print_test_announce("collect_parameters()");
     bool pass = true;
     // pass an empty list
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     typed_ptr* se_tp = create_s_expr_tp(create_empty_s_expr());
     Symbol_Node* params = collect_parameters(se_tp, env);
     if (params != NULL) {
@@ -230,7 +230,31 @@ void test_collect_parameters(test_env* te) {
     params = NULL;
     delete_s_expr_recursive(se_tp->ptr.se_ptr, true);
     free(se_tp);
-    delete_environment_full(env);
+    // pass a list of valid symbols, within a non-global environment
+    Environment* child = create_environment(0, 0, env);
+    se_tp = create_s_expr_tp(create_empty_s_expr());
+    s_expr_append(se_tp->ptr.se_ptr, copy_typed_ptr(sym_1));
+    s_expr_append(se_tp->ptr.se_ptr, copy_typed_ptr(sym_2));
+    s_expr_append(se_tp->ptr.se_ptr, copy_typed_ptr(sym_3));
+    params = collect_parameters(se_tp, child);
+    if (params == NULL || \
+        strcmp(params->name, "x") || \
+        params->type != TYPE_UNDEF || \
+        params->next == NULL || \
+        strcmp(params->next->name, "y") || \
+        params->next->type != TYPE_UNDEF || \
+        params->next->next == NULL || \
+        strcmp(params->next->next->name, "z") || \
+        params->next->next->type != TYPE_UNDEF || \
+        params->next->next->next != NULL) {
+        pass = false;
+    }
+    delete_symbol_node_list(params);
+    params = NULL;
+    delete_s_expr_recursive(se_tp->ptr.se_ptr, true);
+    free(se_tp);
+    delete_environment(child);
+    delete_environment(env);
     free(sym_1);
     free(sym_2);
     free(sym_3);
@@ -246,7 +270,7 @@ void test_bind_args(test_env* te) {
     // no params, no args
     Function_Node* fn_no_params = create_function_node(0, "", NULL, NULL, NULL);
     typed_ptr* empty_args = create_s_expr_tp(create_empty_s_expr());
-    Symbol_Node* bound_args = bind_args(NULL, fn_no_params, empty_args);
+    Symbol_Node* bound_args = bind_args(fn_no_params, empty_args);
     if (bound_args != NULL) {
         pass = false;
     }
@@ -254,7 +278,7 @@ void test_bind_args(test_env* te) {
     // no params, one arg
     typed_ptr* one_arg = create_s_expr_tp(create_empty_s_expr());
     s_expr_append(one_arg->ptr.se_ptr, create_atom_tp(TYPE_FIXNUM, 1000));
-    bound_args = bind_args(NULL, fn_no_params, one_arg);
+    bound_args = bind_args(fn_no_params, one_arg);
     if (bound_args == NULL || \
         bound_args->type != TYPE_ERROR || \
         bound_args->value.idx != EVAL_ERROR_MANY_ARGS || \
@@ -268,7 +292,7 @@ void test_bind_args(test_env* te) {
                                                 TYPE_UNDEF, \
                                                 (tp_value){.idx=0});
     Function_Node* fn_1_param = create_function_node(0, "", one_param, NULL, NULL);
-    bound_args = bind_args(NULL, fn_1_param, empty_args);
+    bound_args = bind_args(fn_1_param, empty_args);
     if (bound_args == NULL || \
         bound_args->type != TYPE_ERROR || \
         bound_args->value.idx != EVAL_ERROR_FEW_ARGS || \
@@ -277,7 +301,7 @@ void test_bind_args(test_env* te) {
     }
     delete_symbol_node_list(bound_args);
     // one param, one arg
-    bound_args = bind_args(NULL, fn_1_param, one_arg);
+    bound_args = bind_args(fn_1_param, one_arg);
     if (bound_args == NULL || \
         strcmp(bound_args->name, "x") || \
         bound_args->type != TYPE_FIXNUM || \
@@ -291,7 +315,7 @@ void test_bind_args(test_env* te) {
     s_expr_append(two_args->ptr.se_ptr, create_atom_tp(TYPE_FIXNUM, 1000));
     s_expr* se = create_empty_s_expr();
     s_expr_append(two_args->ptr.se_ptr, create_s_expr_tp(se));
-    bound_args = bind_args(NULL, fn_1_param, two_args);
+    bound_args = bind_args(fn_1_param, two_args);
     if (bound_args == NULL || \
         bound_args->type != TYPE_ERROR || \
         bound_args->value.idx != EVAL_ERROR_MANY_ARGS || \
@@ -313,7 +337,7 @@ void test_bind_args(test_env* te) {
                                                       two_params, \
                                                       NULL, \
                                                       NULL);
-    bound_args = bind_args(NULL, fn_2_params, empty_args);
+    bound_args = bind_args(fn_2_params, empty_args);
     if (bound_args == NULL || \
         bound_args->type != TYPE_ERROR || \
         bound_args->value.idx != EVAL_ERROR_FEW_ARGS || \
@@ -322,7 +346,7 @@ void test_bind_args(test_env* te) {
     }
     delete_symbol_node_list(bound_args);
     // two params, one arg
-    bound_args = bind_args(NULL, fn_2_params, one_arg);
+    bound_args = bind_args(fn_2_params, one_arg);
     if (bound_args == NULL || \
         bound_args->type != TYPE_ERROR || \
         bound_args->value.idx != EVAL_ERROR_FEW_ARGS || \
@@ -331,7 +355,7 @@ void test_bind_args(test_env* te) {
     }
     delete_symbol_node_list(bound_args);
     // two params, two args
-    bound_args = bind_args(NULL, fn_2_params, two_args);
+    bound_args = bind_args(fn_2_params, two_args);
     if (bound_args == NULL || \
         strcmp(bound_args->name, "y") || \
         bound_args->type != TYPE_S_EXPR || \
@@ -355,7 +379,7 @@ void test_bind_args(test_env* te) {
     s_expr_append(three_args->ptr.se_ptr, create_atom_tp(TYPE_FIXNUM, 1000));
     s_expr_append(three_args->ptr.se_ptr, create_atom_tp(TYPE_BOOL, true));
     s_expr_append(three_args->ptr.se_ptr, create_number_tp(2000));
-    bound_args = bind_args(NULL, fn_2_params, three_args);
+    bound_args = bind_args(fn_2_params, three_args);
     if (bound_args == NULL || \
         bound_args->type != TYPE_ERROR || \
         bound_args->value.idx != EVAL_ERROR_MANY_ARGS || \
@@ -368,7 +392,7 @@ void test_bind_args(test_env* te) {
     two_args->ptr.se_ptr = unit_list(create_number_tp(1000));
     String* str = create_string("test");
     s_expr_append(two_args->ptr.se_ptr, create_string_tp(str));
-    bound_args = bind_args(NULL, fn_2_params, two_args);
+    bound_args = bind_args(fn_2_params, two_args);
     if (bound_args == NULL || \
         strcmp(bound_args->name, "y") || \
         bound_args->type != TYPE_STRING || \
@@ -413,38 +437,34 @@ void test_make_eval_env(test_env* te) {
     print_test_announce("make_eval_env()");
     bool pass = true;
     // empty list of bound args
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     blind_install_symbol(env, "x", &undef);
     blind_install_symbol(env, "y", &undef);
     blind_install_symbol(env, "z", &undef);
     Symbol_Node* args = NULL;
     Environment* out = make_eval_env(env, args);
     if (out == env || \
-        symbol_lookup_name(env, "x") == symbol_lookup_name(out, "x") || \
-        symbol_lookup_name(env, "y") == symbol_lookup_name(out, "y") || \
-        symbol_lookup_name(env, "z") == symbol_lookup_name(out, "z") || \
+        out->enclosing_env != env || \
+        out->env_tracker_next != NULL || \
         symbol_lookup_name(env, "x") == NULL || \
         symbol_lookup_name(env, "x")->type != TYPE_UNDEF || \
         symbol_lookup_name(env, "y") == NULL || \
         symbol_lookup_name(env, "y")->type != TYPE_UNDEF || \
         symbol_lookup_name(env, "z") == NULL || \
         symbol_lookup_name(env, "z")->type != TYPE_UNDEF || \
-        symbol_lookup_name(out, "x") == NULL || \
-        symbol_lookup_name(out, "x")->type != TYPE_UNDEF || \
-        symbol_lookup_name(out, "y") == NULL || \
-        symbol_lookup_name(out, "y")->type != TYPE_UNDEF || \
-        symbol_lookup_name(out, "z") == NULL || \
-        symbol_lookup_name(out, "z")->type != TYPE_UNDEF) {
+        symbol_lookup_name(out, "x") != NULL || \
+        symbol_lookup_name(out, "y") != NULL || \
+        symbol_lookup_name(out, "z") != NULL) {
         pass = false;
     }
-    delete_environment_shared(out);
+    delete_environment(out);
     // one bound arg
     args = create_symbol_node(0, "x", TYPE_FIXNUM, (tp_value){.idx=1000});
     out = make_eval_env(env, args);
     if (out == env || \
+        out->enclosing_env != env || \
+        out->env_tracker_next != NULL || \
         symbol_lookup_name(env, "x") == symbol_lookup_name(out, "x") || \
-        symbol_lookup_name(env, "y") == symbol_lookup_name(out, "y") || \
-        symbol_lookup_name(env, "z") == symbol_lookup_name(out, "z") || \
         symbol_lookup_name(env, "x") == NULL || \
         symbol_lookup_name(env, "x")->type != TYPE_UNDEF || \
         symbol_lookup_name(env, "y") == NULL || \
@@ -454,13 +474,11 @@ void test_make_eval_env(test_env* te) {
         symbol_lookup_name(out, "x") == NULL || \
         symbol_lookup_name(out, "x")->type != TYPE_FIXNUM || \
         symbol_lookup_name(out, "x")->value.idx != 1000 || \
-        symbol_lookup_name(out, "y") == NULL || \
-        symbol_lookup_name(out, "y")->type != TYPE_UNDEF || \
-        symbol_lookup_name(out, "z") == NULL || \
-        symbol_lookup_name(out, "z")->type != TYPE_UNDEF) {
+        symbol_lookup_name(out, "y") != NULL || \
+        symbol_lookup_name(out, "z") != NULL) {
         pass = false;
     }
-    delete_environment_shared(out);
+    delete_environment(out);
     // two bound args
     args->value.idx = 2000;
     s_expr* se = create_empty_s_expr();
@@ -470,9 +488,10 @@ void test_make_eval_env(test_env* te) {
                                     (tp_value){.se_ptr=se});
     out = make_eval_env(env, args);
     if (out == env || \
+        out->enclosing_env != env || \
+        out->env_tracker_next != NULL || \
         symbol_lookup_name(env, "x") == symbol_lookup_name(out, "x") || \
         symbol_lookup_name(env, "y") == symbol_lookup_name(out, "y") || \
-        symbol_lookup_name(env, "z") == symbol_lookup_name(out, "z") || \
         symbol_lookup_name(env, "x") == NULL || \
         symbol_lookup_name(env, "x")->type != TYPE_UNDEF || \
         symbol_lookup_name(env, "y") == NULL || \
@@ -486,13 +505,12 @@ void test_make_eval_env(test_env* te) {
         symbol_lookup_name(out, "y")->type != TYPE_S_EXPR || \
         symbol_lookup_name(out, "y")->value.se_ptr != se || \
         !is_empty_list(symbol_lookup_name(out, "y")->value.se_ptr) || \
-        symbol_lookup_name(out, "z") == NULL || \
-        symbol_lookup_name(out, "z")->type != TYPE_UNDEF) {
+        symbol_lookup_name(out, "z") != NULL) {
         pass = false;
     }
-    delete_environment_shared(out);
+    delete_environment(out);
     delete_symbol_node_list(args);
-    delete_environment_full(env);
+    delete_environment(env);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -502,7 +520,7 @@ void test_make_eval_env(test_env* te) {
 void test_collect_arguments(test_env* te) {
     print_test_announce("collect_arguments()");
     bool pass = true;
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     s_expr empty_s_expr = {NULL, NULL};
     typed_ptr empty_se_tp = {.type=TYPE_S_EXPR, .ptr={.se_ptr=&empty_s_expr}};
@@ -851,7 +869,7 @@ void test_collect_arguments(test_env* te) {
     }
     free(out);
     delete_s_expr_recursive(call_with_eval, true);
-    delete_environment_full(env);
+    delete_environment(env);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -860,7 +878,7 @@ void test_collect_arguments(test_env* te) {
 
 void test_eval_arithmetic(test_env* te) {
     print_test_announce("eval_arithmetic()");
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     bool pass = true;
     #define NUM_OPS 4
@@ -1197,7 +1215,7 @@ void test_eval_arithmetic(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(list_one_two_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_NEED_NUM);
     pass = run_test_expect(eval_arithmetic, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     delete_s_expr_recursive(add_two_two, true);
     for (unsigned int i = 0; i < NUM_OPS; i++) {
         free(arith_ops[i]);
@@ -1212,7 +1230,7 @@ void test_eval_arithmetic(test_env* te) {
 void test_eval_comparison(test_env* te) {
     print_test_announce("eval_comparison()");
     bool pass = true;
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     typed_ptr *eq_tp, *lt_tp, *gt_tp, *le_tp, *ge_tp;
     eq_tp = builtin_tp_from_name(env, "=");
@@ -1423,7 +1441,7 @@ void test_eval_comparison(test_env* te) {
     free(gt_tp);
     free(le_tp);
     free(ge_tp);
-    delete_environment_full(env);
+    delete_environment(env);
     delete_s_expr_recursive(subtract_three_two, true);
     #undef NUM_OPS
     print_test_result(pass);
@@ -1434,7 +1452,7 @@ void test_eval_comparison(test_env* te) {
 
 void test_eval_exit(test_env* te) {
     print_test_announce("eval_exit()");
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     bool pass = true;
     // (exit) -> EVAL_ERROR_EXIT
@@ -1456,7 +1474,7 @@ void test_eval_exit(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_MANY_ARGS);
     pass = run_test_expect(eval_exit, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
@@ -1465,7 +1483,7 @@ void test_eval_exit(test_env* te) {
 
 void test_eval_cons(test_env* te) {
     print_test_announce("eval_cons()");
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     typed_ptr* cons = builtin_tp_from_name(env, "cons");
     bool pass = true;
@@ -1548,7 +1566,7 @@ void test_eval_cons(test_env* te) {
     s_expr_append(expected->ptr.se_ptr, create_number_tp(3));
     pass = run_test_expect(eval_cons, cmd, env, expected) && pass;
     free(cons);
-    delete_environment_full(env);
+    delete_environment(env);
     delete_s_expr_recursive(subtract_three_one, true);
     print_test_result(pass);
     te->passed += pass;
@@ -1558,7 +1576,7 @@ void test_eval_cons(test_env* te) {
 
 void test_eval_car_cdr(test_env* te) {
     print_test_announce("eval_car_cdr()");
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     typed_ptr* car = builtin_tp_from_name(env, "car");
     typed_ptr* cdr = builtin_tp_from_name(env, "cdr");
@@ -1631,7 +1649,7 @@ void test_eval_car_cdr(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_car_cdr, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(car);
     free(cdr);
     print_test_result(pass);
@@ -1642,7 +1660,7 @@ void test_eval_car_cdr(test_env* te) {
 
 void test_eval_list_construction(test_env* te) {
     print_test_announce("eval_list_construction()");
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     typed_ptr* list = builtin_tp_from_name(env, "list");
     bool pass = true;
@@ -1694,7 +1712,7 @@ void test_eval_list_construction(test_env* te) {
     expected = create_s_expr_tp(unit_list(create_s_expr_tp(lone_one)));
     s_expr_append(expected->ptr.se_ptr, create_number_tp(2));
     pass = run_test_expect(eval_list_construction, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(list);
     print_test_result(pass);
     te->passed += pass;
@@ -1704,7 +1722,7 @@ void test_eval_list_construction(test_env* te) {
 
 void test_eval_and_or(test_env* te) {
     print_test_announce("eval_and_or()");
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     typed_ptr* and_builtin = builtin_tp_from_name(env, "and");
     typed_ptr* or_builtin = builtin_tp_from_name(env, "or");
@@ -2036,7 +2054,7 @@ void test_eval_and_or(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_and_or, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(and_builtin);
     free(or_builtin);
     free(cond_sym);
@@ -2051,7 +2069,7 @@ void test_eval_and_or(test_env* te) {
 
 void test_eval_not(test_env* te) {
     print_test_announce("eval_not()");
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     typed_ptr* not_builtin = builtin_tp_from_name(env, "not");
     typed_ptr* cond_sym = symbol_tp_from_name(env, "cond");
@@ -2112,7 +2130,7 @@ void test_eval_not(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = pass && run_test_expect(eval_not, cmd, env, expected);
-    delete_environment_full(env);
+    delete_environment(env);
     free(not_builtin);
     free(cond_sym);
     print_test_result(pass);
@@ -2123,7 +2141,7 @@ void test_eval_not(test_env* te) {
 
 void test_eval_list_pred(test_env* te) {
     print_test_announce("eval_list_pred()");
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     typed_ptr* listpred_builtin = builtin_tp_from_name(env, "list?");
     typed_ptr* cons_sym = symbol_tp_from_name(env, "cons");
@@ -2176,7 +2194,7 @@ void test_eval_list_pred(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_list_pred, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(listpred_builtin);
     free(cons_sym);
     print_test_result(pass);
@@ -2187,7 +2205,7 @@ void test_eval_list_pred(test_env* te) {
 
 void test_eval_atom_pred(test_env* te) {
     print_test_announce("eval_atom_pred()");
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     typed_ptr* cons_sym = symbol_tp_from_name(env, "cons");
     typed_ptr fn_tp = {.type=TYPE_FUNCTION, .ptr={.idx=0}};
@@ -2309,7 +2327,7 @@ void test_eval_atom_pred(test_env* te) {
         expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
         pass = run_test_expect(eval_atom_pred, cmd, env, expected) && pass;
     }
-    delete_environment_full(env);
+    delete_environment(env);
     free(cons_sym);
     free(x_sym);
     print_test_result(pass);
@@ -2320,7 +2338,7 @@ void test_eval_atom_pred(test_env* te) {
 
 void test_eval_null_pred(test_env* te) {
     print_test_announce("eval_null_pred()");
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     typed_ptr* nullpred_builtin = builtin_tp_from_name(env, "null?");
     typed_ptr *x_sym = install_symbol(env, "x", &undef);
@@ -2377,7 +2395,7 @@ void test_eval_null_pred(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_null_pred, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(nullpred_builtin);
     free(x_sym);
     print_test_result(pass);
@@ -2388,7 +2406,7 @@ void test_eval_null_pred(test_env* te) {
 
 void test_eval_lambda(test_env* te) {
     print_test_announce("eval_lambda()");
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     typed_ptr* lambda_builtin = builtin_tp_from_name(env, "lambda");
     typed_ptr *x_sym, *y_sym;
@@ -2463,7 +2481,7 @@ void test_eval_lambda(test_env* te) {
         resulting_fn->param_list == NULL || \
         strcmp(resulting_fn->param_list->name, "x") || \
         resulting_fn->param_list->next != NULL || \
-        resulting_fn->closure_env == NULL || \
+        resulting_fn->enclosing_env == NULL || \
         !deep_match_typed_ptrs(resulting_fn->body, body)) {
         pass = false;
     }
@@ -2485,7 +2503,7 @@ void test_eval_lambda(test_env* te) {
         resulting_fn == NULL || \
         strcmp(resulting_fn->name, "") || \
         resulting_fn->param_list != NULL || \
-        resulting_fn->closure_env == NULL || \
+        resulting_fn->enclosing_env == NULL || \
         !deep_match_typed_ptrs(resulting_fn->body, body)) {
         pass = false;
     }
@@ -2515,7 +2533,7 @@ void test_eval_lambda(test_env* te) {
         resulting_fn->param_list->next == NULL || \
         strcmp(resulting_fn->param_list->next->name, "y") || \
         resulting_fn->param_list->next->next != NULL || \
-        resulting_fn->closure_env == NULL || \
+        resulting_fn->enclosing_env == NULL || \
         !deep_match_typed_ptrs(resulting_fn->body, body)) {
         pass = false;
     }
@@ -2542,7 +2560,7 @@ void test_eval_lambda(test_env* te) {
         resulting_fn->param_list == NULL || \
         strcmp(resulting_fn->param_list->name, "x") || \
         resulting_fn->param_list->next != NULL || \
-        resulting_fn->closure_env == NULL || \
+        resulting_fn->enclosing_env == NULL || \
         !deep_match_typed_ptrs(resulting_fn->body, body)) {
         pass = false;
     }
@@ -2565,7 +2583,7 @@ void test_eval_lambda(test_env* te) {
         resulting_fn == NULL || \
         strcmp(resulting_fn->name, "") || \
         resulting_fn->param_list != NULL || \
-        resulting_fn->closure_env == NULL || \
+        resulting_fn->enclosing_env == NULL || \
         !deep_match_typed_ptrs(resulting_fn->body, body)) {
         pass = false;
     }
@@ -2587,14 +2605,14 @@ void test_eval_lambda(test_env* te) {
         resulting_fn == NULL || \
         strcmp(resulting_fn->name, "") || \
         resulting_fn->param_list != NULL || \
-        resulting_fn->closure_env == NULL || \
+        resulting_fn->enclosing_env == NULL || \
         !deep_match_typed_ptrs(resulting_fn->body, body)) {
         pass = false;
     }
     delete_s_expr_recursive(cmd, true);
     free(expected);
     free(out);
-    delete_environment_full(env);
+    delete_environment(env);
     free(lambda_builtin);
     free(x_sym);
     free(y_sym);
@@ -2606,7 +2624,7 @@ void test_eval_lambda(test_env* te) {
 
 void test_eval_cond(test_env* te) {
     print_test_announce("eval_cond()");
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     typed_ptr* cond_builtin = builtin_tp_from_name(env, "cond");
     typed_ptr* else_sym = symbol_tp_from_name(env, "else");
@@ -2915,7 +2933,7 @@ void test_eval_cond(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(first_case));
     expected = create_string_tp(create_string("hello"));
     pass = run_test_expect(eval_cond, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(cond_builtin);
     free(equals_sym);
     free(else_sym);
@@ -2927,7 +2945,7 @@ void test_eval_cond(test_env* te) {
 
 void test_eval_define(test_env* te) {
     print_test_announce("eval_define()");
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     typed_ptr* define_builtin = builtin_tp_from_name(env, "define");
     typed_ptr *x_sym, *y_sym, *z_sym;
@@ -3062,7 +3080,7 @@ void test_eval_define(test_env* te) {
     if (x_fn == NULL || \
         strcmp(x_fn->name, "x") || \
         x_fn->param_list != NULL || \
-        x_fn->closure_env == NULL || \
+        x_fn->enclosing_env == NULL || \
         !deep_match_typed_ptrs(x_fn->body, body)) {
         pass = false;
     }
@@ -3081,7 +3099,7 @@ void test_eval_define(test_env* te) {
     if (x_fn == NULL || \
         strcmp(x_fn->name, "x") || \
         x_fn->param_list != NULL || \
-        x_fn->closure_env == NULL || \
+        x_fn->enclosing_env == NULL || \
         !deep_match_typed_ptrs(x_fn->body, body)) {
         pass = false;
     }
@@ -3121,7 +3139,7 @@ void test_eval_define(test_env* te) {
         x_fn->param_list->next == NULL || \
         strcmp(x_fn->param_list->next->name, "z") || \
         x_fn->param_list->next->next != NULL || \
-        x_fn->closure_env == NULL || \
+        x_fn->enclosing_env == NULL || \
         !deep_match_typed_ptrs(x_fn->body, body)) {
         pass = false;
     }
@@ -3141,7 +3159,7 @@ void test_eval_define(test_env* te) {
     if (x_fn == NULL || \
         strcmp(x_fn->name, "x") || \
         x_fn->param_list != NULL || \
-        x_fn->closure_env == NULL || \
+        x_fn->enclosing_env == NULL || \
         !deep_match_typed_ptrs(x_fn->body, body)) {
         pass = false;
     }
@@ -3161,14 +3179,35 @@ void test_eval_define(test_env* te) {
     if (x_fn == NULL || \
         strcmp(x_fn->name, "x") || \
         x_fn->param_list != NULL || \
-        x_fn->closure_env == NULL || \
+        x_fn->enclosing_env == NULL || \
         !deep_match_typed_ptrs(x_fn->body, body)) {
         pass = false;
     }
     free(x_value);
     delete_string(body->ptr.string);
     free(body);
-    delete_environment_full(env);
+    // test for a nested environment
+    Environment* child = create_environment(0, 0, env);
+    cmd = unit_list(copy_typed_ptr(define_builtin));
+    s_expr_append(cmd, copy_typed_ptr(x_sym));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_void_tp();
+    pass = run_test_expect(eval_define, cmd, child, expected) && pass;
+    x_value = value_lookup_index(child, x_sym);
+    if (x_value == NULL || \
+        x_value->type != TYPE_FIXNUM || \
+        x_value->ptr.idx != 1) {
+        pass = false;
+    }
+    free(x_value);
+    x_value = value_lookup_index(env, x_sym);
+    if (x_value == NULL || \
+        x_value->type != TYPE_FUNCTION) {
+        pass = false;
+    }
+    free(x_value);
+    delete_environment(child);
+    delete_environment(env);
     free(define_builtin);
     free(x_sym);
     free(y_sym);
@@ -3181,7 +3220,7 @@ void test_eval_define(test_env* te) {
 
 void test_eval_setvar(test_env* te) {
     print_test_announce("eval_set_variable()");
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     typed_ptr* setvar_builtin = builtin_tp_from_name(env, "set!");
     typed_ptr *x_sym;
@@ -3307,7 +3346,52 @@ void test_eval_setvar(test_env* te) {
         delete_string(x_value->ptr.string);
     }
     free(x_value);
-    delete_environment_full(env);
+    // test for a nested environment
+    Environment* middle = create_environment(0, 0, env);
+    cmd = unit_list(copy_typed_ptr(setvar_builtin));
+    s_expr_append(cmd, copy_typed_ptr(x_sym));
+    s_expr_append(cmd, create_number_tp(1));
+    expected = create_void_tp();
+    pass = run_test_expect(eval_set_variable, cmd, middle, expected) && pass;
+    if (symbol_lookup_index(middle, x_sym) != NULL) {
+        pass = false;
+    }
+    x_value = value_lookup_index(env, x_sym);
+    if (x_value == NULL || \
+        x_value->type != TYPE_FIXNUM || \
+        x_value->ptr.idx != 1) {
+        pass = false;
+    }
+    free(x_value);
+    // test for a deeper nested environment
+    Environment* lowest = create_environment(0, 0, middle);
+    typed_ptr number_three = {.type=TYPE_FIXNUM, .ptr={.idx=3}};
+    blind_install_symbol(middle, "x", &number_three);
+    cmd = unit_list(copy_typed_ptr(setvar_builtin));
+    s_expr_append(cmd, copy_typed_ptr(x_sym));
+    s_expr_append(cmd, create_number_tp(2));
+    expected = create_void_tp();
+    pass = run_test_expect(eval_set_variable, cmd, lowest, expected) && pass;
+    if (symbol_lookup_index(lowest, x_sym) != NULL) {
+        pass = false;
+    }
+    x_value = value_lookup_index(middle, x_sym);
+    if (x_value == NULL || \
+        x_value->type != TYPE_FIXNUM || \
+        x_value->ptr.idx != 2) {
+        pass = false;
+    }
+    free(x_value);
+    x_value = value_lookup_index(env, x_sym);
+    if (x_value == NULL || \
+        x_value->type != TYPE_FIXNUM || \
+        x_value->ptr.idx != 1) {
+        pass = false;
+    }
+    free(x_value);
+    delete_environment(lowest);
+    delete_environment(middle);
+    delete_environment(env);
     free(setvar_builtin);
     free(x_sym);
     print_test_result(pass);
@@ -3318,7 +3402,7 @@ void test_eval_setvar(test_env* te) {
 
 void test_eval_quote(test_env* te) {
     print_test_announce("eval_quote()");
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     typed_ptr* quote_builtin = builtin_tp_from_name(env, "quote");
     typed_ptr *x_sym;
@@ -3374,7 +3458,7 @@ void test_eval_quote(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(subexpr));
     expected = create_s_expr_tp(copy_s_expr(subexpr));
     pass = run_test_expect(eval_quote, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(quote_builtin);
     free(x_sym);
     print_test_result(pass);
@@ -3385,7 +3469,7 @@ void test_eval_quote(test_env* te) {
 
 void test_eval_string_length(test_env* te) {
     print_test_announce("eval_string_length()");
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     typed_ptr* strlen_builtin = builtin_tp_from_name(env, "string-length");
     bool pass = true;
@@ -3424,7 +3508,7 @@ void test_eval_string_length(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_string_length, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(strlen_builtin);
     print_test_result(pass);
     te->passed += pass;
@@ -3434,7 +3518,7 @@ void test_eval_string_length(test_env* te) {
 
 void test_eval_string_equals(test_env* te) {
     print_test_announce("eval_string_equals()");
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     typed_ptr* streq_builtin = builtin_tp_from_name(env, "string=?");
     bool pass = true;
@@ -3516,7 +3600,7 @@ void test_eval_string_equals(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_string_equals, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(streq_builtin);
     print_test_result(pass);
     te->passed += pass;
@@ -3526,7 +3610,7 @@ void test_eval_string_equals(test_env* te) {
 
 void test_eval_string_append(test_env* te) {
     print_test_announce("eval_string_append()");
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     typed_ptr* strappend_builtin = builtin_tp_from_name(env, "string-append");
     bool pass = true;
@@ -3574,7 +3658,7 @@ void test_eval_string_append(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_string_append, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(strappend_builtin);
     print_test_result(pass);
     te->passed += pass;
@@ -3584,7 +3668,7 @@ void test_eval_string_append(test_env* te) {
 
 void test_eval_builtin(test_env* te) {
     print_test_announce("eval_builtin()");
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     typed_ptr* else_sym = symbol_tp_from_name(env, "else");
     typed_ptr *x_sym;
@@ -3777,7 +3861,7 @@ void test_eval_builtin(test_env* te) {
     Function_Node* fn = function_lookup_index(env, expected);
     if (fn == NULL || \
         fn->param_list != NULL || \
-        fn->closure_env == NULL || \
+        fn->enclosing_env == NULL || \
         !match_typed_ptrs(fn->body, body)) {
         pass = false;
     }
@@ -3793,7 +3877,7 @@ void test_eval_builtin(test_env* te) {
     s_expr_append(cmd, create_number_tp(0));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_builtin, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(x_sym);
     free(else_sym);
     print_test_result(pass);
@@ -3804,7 +3888,7 @@ void test_eval_builtin(test_env* te) {
 
 void test_eval_s_expr(test_env* te) {
     print_test_announce("eval_s_expr()");
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     typed_ptr *x_sym, *x2_sym;
     x_sym = install_symbol(env, "x", &undef);
@@ -3885,7 +3969,7 @@ void test_eval_s_expr(test_env* te) {
     s_expr_append(cmd, create_number_tp(0));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_s_expr, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(x_sym);
     free(x2_sym);
     print_test_result(pass);
@@ -3896,7 +3980,7 @@ void test_eval_s_expr(test_env* te) {
 
 void test_eval_function(test_env* te) {
     print_test_announce("eval_function()");
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     typed_ptr *x_sym, *y_sym, *my_fun;
     x_sym = install_symbol(env, "x", &undef);
@@ -3926,20 +4010,32 @@ void test_eval_function(test_env* te) {
     s_expr_append(cmd, create_number_tp(1));
     expected = create_error_tp(EVAL_ERROR_UNDEF_FUNCTION);
     pass = run_test_expect(eval_function, cmd, env, expected) && pass;
+    if (env->env_tracker_next != NULL) {
+        pass = false;
+    }
     // (my-fun (/ 0)) -> EVAL_ERROR_DIV_ZERO
     cmd = unit_list(value_lookup_index(env, my_fun));
     s_expr_append(cmd, create_s_expr_tp(divide_zero_s_expr(env)));
     expected = create_error_tp(EVAL_ERROR_DIV_ZERO);
     pass = run_test_expect(eval_function, cmd, env, expected) && pass;
+    if (env->env_tracker_next != NULL) {
+        pass = false;
+    }
     // (my-fun) -> EVAL_ERROR_FEW_ARGS
     cmd = unit_list(value_lookup_index(env, my_fun));
     expected = create_error_tp(EVAL_ERROR_FEW_ARGS);
     pass = run_test_expect(eval_function, cmd, env, expected) && pass;
+    if (env->env_tracker_next != NULL) {
+        pass = false;
+    }
     // (my-fun 1) -> EVAL_ERROR_FEW_ARGS
     cmd = unit_list(value_lookup_index(env, my_fun));
     s_expr_append(cmd, create_number_tp(1));
     expected = create_error_tp(EVAL_ERROR_FEW_ARGS);
     pass = run_test_expect(eval_function, cmd, env, expected) && pass;
+    if (env->env_tracker_next != NULL) {
+        pass = false;
+    }
     // (my-fun 1 2 3) -> EVAL_ERROR_MANY_ARGS
     cmd = unit_list(value_lookup_index(env, my_fun));
     s_expr_append(cmd, create_number_tp(1));
@@ -3947,6 +4043,9 @@ void test_eval_function(test_env* te) {
     s_expr_append(cmd, create_number_tp(3));
     expected = create_error_tp(EVAL_ERROR_MANY_ARGS);
     pass = run_test_expect(eval_function, cmd, env, expected) && pass;
+    if (env->env_tracker_next != NULL) {
+        pass = false;
+    }
     // (my-fun 2 (list 8 16)) -> '(4 8 16)
     cmd = unit_list(value_lookup_index(env, my_fun));
     s_expr_append(cmd, create_number_tp(2));
@@ -3958,6 +4057,10 @@ void test_eval_function(test_env* te) {
     s_expr_append(expected->ptr.se_ptr, create_number_tp(8));
     s_expr_append(expected->ptr.se_ptr, create_number_tp(16));
     pass = run_test_expect(eval_function, cmd, env, expected) && pass;
+    if (env->env_tracker_next == NULL || \
+        env->env_tracker_next->env_tracker_next != NULL) {
+        pass = false;
+    }
     // (my-fun #t (list 8 16)) -> EVAL_ERROR_NEED_NUM
     cmd = unit_list(value_lookup_index(env, my_fun));
     s_expr_append(cmd, create_atom_tp(TYPE_BOOL, true));
@@ -3967,7 +4070,12 @@ void test_eval_function(test_env* te) {
     s_expr_append(cmd, create_s_expr_tp(list_eight_sixteen));
     expected = create_error_tp(EVAL_ERROR_NEED_NUM);
     pass = run_test_expect(eval_function, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    if (env->env_tracker_next == NULL || \
+        env->env_tracker_next->env_tracker_next == NULL || \
+        env->env_tracker_next->env_tracker_next->env_tracker_next != NULL) {
+        pass = false;
+    }
+    delete_environment(env);
     free(x_sym);
     free(y_sym);
     free(my_fun);
@@ -3983,7 +4091,7 @@ typed_ptr* wrapper_evaluate(const s_expr* cmd, Environment* env) {
 
 void test_evaluate(test_env* te) {
     print_test_announce("evaluate()");
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     typed_ptr number = {.type=TYPE_FIXNUM, .ptr={.idx=1}};
     typed_ptr *x_sym;
@@ -4048,6 +4156,10 @@ void test_evaluate(test_env* te) {
     cmd = unit_list(create_s_expr_tp(cmd));
     expected = create_atom_tp(TYPE_FIXNUM, 20);
     pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
+    if (env->env_tracker_next == NULL || \
+        env->env_tracker_next->env_tracker_next != NULL) {
+        pass = false;
+    }
     // eval[ 'x ] (assuming x is defined to be 1) -> 1
     cmd = unit_list(copy_typed_ptr(x_sym));
     expected = create_number_tp(1);
@@ -4068,7 +4180,7 @@ void test_evaluate(test_env* te) {
     cmd = unit_list(create_string_tp(create_string("hello")));
     expected = create_string_tp(create_string("hello"));
     pass = run_test_expect(wrapper_evaluate, cmd, env, expected) && pass;
-    delete_environment_full(env);
+    delete_environment(env);
     free(x_sym);
     print_test_result(pass);
     te->passed += pass;

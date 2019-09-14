@@ -21,7 +21,8 @@ typed_ptr* parse(const char str[], Environment* env) {
     char* new_symbol = NULL;
     char* new_string = NULL;
     Environment* temp_env = create_environment(env->symbol_table->length, \
-                                               env->function_table->length);
+                                               env->function_table->length, \
+                                               NULL);
     s_expr* head = create_empty_s_expr();
     while (str[curr] && state != PARSE_ERROR) {
         switch (state) {
@@ -183,7 +184,7 @@ typed_ptr* parse(const char str[], Environment* env) {
         }
         delete_s_expr_recursive(head, true);
     }
-    delete_environment_full(temp_env);
+    delete_environment(temp_env);
     return (state == PARSE_ERROR) ? create_error_tp(error) : \
                                     create_s_expr_tp(head);
 }

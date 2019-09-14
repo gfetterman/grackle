@@ -8,7 +8,7 @@ test_env* unit_tests() {
     printf("unit tests\n");
     printf("----------------\n");
     // setup
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     test_env* t_env = malloc(sizeof(test_env));
     if (t_env == NULL) {
@@ -25,7 +25,7 @@ test_env* unit_tests() {
     unit_tests_parse(t_env);
     unit_tests_evaluate(t_env);
     // cleanup
-    delete_environment_full(t_env->env);
+    delete_environment(t_env->env);
     t_env->env = NULL;
     return t_env;
 }
@@ -34,7 +34,7 @@ test_env* end_to_end_tests() {
     printf("end-to-end tests\n");
     printf("----------------\n");
     // setup
-    Environment* env = create_environment(0, 0);
+    Environment* env = create_environment(0, 0, NULL);
     setup_environment(env);
     test_env* t_env = malloc(sizeof(test_env));
     if (t_env == NULL) {
@@ -62,8 +62,9 @@ test_env* end_to_end_tests() {
     end_to_end_string_length_tests(t_env);
     end_to_end_string_equals_tests(t_env);
     end_to_end_string_append_tests(t_env);
+    end_to_end_scoping_tests(t_env);
     // cleanup
-    delete_environment_full(t_env->env);
+    delete_environment(t_env->env);
     t_env->env = NULL;
     return t_env;
 }

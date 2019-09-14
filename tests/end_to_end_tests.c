@@ -689,3 +689,33 @@ void end_to_end_string_append_tests(test_env* t_env) {
     e2e_atom_test("(string-append (/ 0))", err_t, EVAL_ERROR_DIV_ZERO, t_env);
     return;
 }
+
+void end_to_end_scoping_tests(test_env* t_env) {
+    printf("# scoping #\n");
+    char define_a_one[] = "(define a 1)";
+    char scope_define_no_param_a[] = "(define (f) (cond (#t (define a 2) a)))";
+    char call_f[] = "(f)";
+    char scope_mutate_no_param_a[] = "(define (g) (cond (#t (set! a 2) a)))";
+    char call_g[] = "(g)";
+    char scope_define_param_a[] = "(define (h a) (cond (#t (define a 2) a)))";
+    char call_h[] = "(h 3)";
+    char scope_mutate_param_a[] = "(define (j a) (cond (#t (set! a 2) a)))";
+    char call_j[] = "(j 3)";
+    // defining a without a shadowing variable in-scope
+    char* define_a_no_shadow[] = {define_a_one, scope_define_no_param_a, call_f};
+    e2e_multiline_atom_test(define_a_no_shadow, 3, TYPE_FIXNUM, 2, t_env);
+    e2e_atom_test("(cond (#t a))", TYPE_FIXNUM, 1, t_env);
+    // mutating a without a shadowing variable in-scope
+    char* mutate_a_no_shadow[] = {define_a_one, scope_mutate_no_param_a, call_g};
+    e2e_multiline_atom_test(mutate_a_no_shadow, 3, TYPE_FIXNUM, 2, t_env);
+    e2e_atom_test("(cond (#t a))", TYPE_FIXNUM, 2, t_env);
+    // defining a with a shadowing variable in-scope
+    char* define_a_shadow[] = {define_a_one, scope_define_param_a, call_h};
+    e2e_multiline_atom_test(define_a_shadow, 3, TYPE_FIXNUM, 2, t_env);
+    e2e_atom_test("(cond (#t a))", TYPE_FIXNUM, 1, t_env);
+    // mutating a with a shadowing variable in-scope
+    char* mutate_a_shadow[] = {define_a_one, scope_mutate_param_a, call_j};
+    e2e_multiline_atom_test(mutate_a_shadow, 3, TYPE_FIXNUM, 2, t_env);
+    e2e_atom_test("(cond (#t a))", TYPE_FIXNUM, 1, t_env);
+    return;
+}

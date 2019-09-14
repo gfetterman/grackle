@@ -43,7 +43,7 @@ typedef struct FUNCTION_NODE {
     unsigned int function_idx;
     char* name;
     Symbol_Node* param_list;
-    struct ENVIRONMENT* closure_env;
+    struct ENVIRONMENT* enclosing_env;
     typed_ptr* body;
     struct FUNCTION_NODE* next;
 } Function_Node;
@@ -51,7 +51,7 @@ typedef struct FUNCTION_NODE {
 Function_Node* create_function_node(unsigned int function_idx, \
                                     char* name, \
                                     Symbol_Node* param_list, \
-                                    struct ENVIRONMENT* closure_env, \
+                                    struct ENVIRONMENT* enclosing_env, \
                                     typed_ptr* body);
 
 typedef struct FUNCTION_TABLE {
@@ -67,13 +67,15 @@ Function_Table* create_function_table(unsigned int offset);
 typedef struct ENVIRONMENT {
     Symbol_Table* symbol_table;
     Function_Table* function_table;
+    struct ENVIRONMENT* enclosing_env;
+    struct ENVIRONMENT* global_env;
+    struct ENVIRONMENT* env_tracker_next;
 } Environment;
 
 Environment* create_environment(unsigned int symbol_start, \
-                                unsigned int function_start);
-Environment* copy_environment(Environment* env);
-void delete_environment_shared(Environment* env);
-void delete_environment_full(Environment* env);
+                                unsigned int function_start, \
+                                Environment* enclosing_env);
+void delete_environment(Environment* env);
 
 // adding things to an environment
 
@@ -82,7 +84,7 @@ void blind_install_symbol(Environment* env, char* name, typed_ptr* tp);
 typed_ptr* install_function(Environment* env, \
                             char* name, \
                             Symbol_Node* arg_list, \
-                            Environment* closure_env, \
+                            Environment* enclosing_env, \
                             typed_ptr* body);
 
 void setup_environment(Environment* env);
