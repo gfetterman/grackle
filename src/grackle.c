@@ -17,7 +17,8 @@ int main() {
         if (parse_output->type == TYPE_ERROR) {
             print_error(parse_output);
             printf("\n");
-        } else {
+        } else if (parse_output->type == TYPE_S_EXPR && \
+                   !is_empty_list(parse_output->ptr.se_ptr)) {
             typed_ptr* eval_output = evaluate(parse_output, env);
             print_typed_ptr(eval_output, env);
             printf("\n");
