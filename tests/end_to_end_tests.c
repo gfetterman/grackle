@@ -12,7 +12,12 @@ void e2e_atom_test(char cmd[], type t, long val, test_env* te) {
     printf("test command: %-40s", cmd);
     typed_ptr* output = parse_and_evaluate(cmd, te->env);
     typed_ptr* expected = create_atom_tp(t, val);
-    bool pass = match_typed_ptrs(output, expected);
+    bool pass;
+    if (output->type == TYPE_S_EXPR) {
+        pass = match_typed_ptrs(output->ptr.se_ptr->car, expected);
+    } else {
+        pass = match_typed_ptrs(output, expected);
+    }
     if (output->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(output->ptr.se_ptr, true);
     } else if (output->type == TYPE_STRING) {
@@ -28,10 +33,14 @@ void e2e_atom_test(char cmd[], type t, long val, test_env* te) {
 
 void e2e_pair_test(char cmd[], typed_ptr* car, typed_ptr* cdr, test_env* te) {
     printf("test command: %-40s", cmd);
-    bool pass = false;
     typed_ptr* output = parse_and_evaluate(cmd, te->env);
     typed_ptr* expected = create_s_expr_tp(create_s_expr(car, cdr));
-    pass = deep_match_typed_ptrs(output, expected);
+    bool pass;
+    if (output->type == TYPE_S_EXPR) {
+        pass = deep_match_typed_ptrs(output->ptr.se_ptr->car, expected);
+    } else {
+        pass = deep_match_typed_ptrs(output, expected);
+    }
     if (output->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(output->ptr.se_ptr, true);
     } else if (output->type == TYPE_STRING) {
@@ -56,7 +65,12 @@ void e2e_s_expr_test(char cmd[], \
     for (unsigned int i = 0; i < tp_list_len; i++) {
         s_expr_append(expected->ptr.se_ptr, copy_typed_ptr(tp_list[i]));
     }
-    bool pass = deep_match_typed_ptrs(output, expected);
+    bool pass;
+    if (output->type == TYPE_S_EXPR) {
+        pass = deep_match_typed_ptrs(output->ptr.se_ptr->car, expected);
+    } else {
+        pass = deep_match_typed_ptrs(output, expected);
+    }
     if (output->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(output->ptr.se_ptr, true);
     } else if (output->type == TYPE_STRING) {
@@ -80,12 +94,20 @@ void e2e_multiline_atom_test(char* cmds[], \
     typed_ptr* output = parse_and_evaluate(cmds[0], te->env);
     for (unsigned int i = 1; i < num_cmds; i++) {
         printf("\n");
+        if (output->type == TYPE_S_EXPR) {
+            delete_s_expr_recursive(output->ptr.se_ptr, true);
+        }
         free(output);
         printf("              %-40s", cmds[i]);
         output = parse_and_evaluate(cmds[i], te->env);
     }
     typed_ptr* expected = create_atom_tp(t, val);
-    bool pass = match_typed_ptrs(output, expected);
+    bool pass;
+    if (output->type == TYPE_S_EXPR) {
+        pass = match_typed_ptrs(output->ptr.se_ptr->car, expected);
+    } else {
+        pass = match_typed_ptrs(output, expected);
+    }
     if (output->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(output->ptr.se_ptr, true);
     } else if (output->type == TYPE_STRING) {
@@ -103,7 +125,12 @@ void e2e_string_test(char cmd[], char expected_str[], test_env* te) {
     printf("test command: %-40s", cmd);
     typed_ptr* output = parse_and_evaluate(cmd, te->env);
     typed_ptr* expected = create_string_tp(create_string(expected_str));
-    bool pass = match_typed_ptrs(output, expected);
+    bool pass;
+    if (output->type == TYPE_S_EXPR) {
+        pass = match_typed_ptrs(output->ptr.se_ptr->car, expected);
+    } else {
+        pass = match_typed_ptrs(output, expected);
+    }
     if (output->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(output->ptr.se_ptr, true);
     } else if (output->type == TYPE_STRING) {
@@ -118,14 +145,49 @@ void e2e_string_test(char cmd[], char expected_str[], test_env* te) {
     return;
 }
 
+void e2e_multi_output_atom_test(char cmd[], \
+                                typed_ptr** tp_list, \
+                                unsigned int tp_list_len, \
+                                test_env* te) {
+    printf("test command: %-40s", cmd);
+    typed_ptr* output = parse_and_evaluate(cmd, te->env);
+    typed_ptr* expected = create_s_expr_tp(create_empty_s_expr());
+    for (unsigned int i = 0; i < tp_list_len; i++) {
+        s_expr_append(expected->ptr.se_ptr, copy_typed_ptr(tp_list[i]));
+    }
+    bool pass;
+    if (output->type == TYPE_S_EXPR) {
+        pass = deep_match_typed_ptrs(output, expected);
+    } else {
+        pass = false;
+    }
+    if (output->type == TYPE_S_EXPR) {
+        delete_s_expr_recursive(output->ptr.se_ptr, true);
+    } else if (output->type == TYPE_STRING) {
+        delete_string(output->ptr.string);
+    }
+    free(output);
+    delete_s_expr_recursive(expected->ptr.se_ptr, false);
+    free(expected);
+    printf("%s\n", (pass) ? "PASSED" : "FAILED <=");
+    te->passed += (pass) ? 1 : 0;
+    te->run++;
+    return;
+}
+
 void end_to_end_parse_tests(test_env* t_env) {
     printf("# parsing #\n");
-    e2e_atom_test("", TYPE_ERROR, EVAL_ERROR_MISSING_PROCEDURE, t_env);
     e2e_atom_test("(", TYPE_ERROR, PARSE_ERROR_UNBAL_PAREN, t_env);
     e2e_atom_test(")", TYPE_ERROR, PARSE_ERROR_UNBAL_PAREN, t_env);
-    e2e_atom_test("a", TYPE_ERROR, PARSE_ERROR_BARE_SYM, t_env);
+    e2e_atom_test("a", TYPE_ERROR, EVAL_ERROR_UNDEF_SYM, t_env);
     e2e_atom_test("()", TYPE_ERROR, EVAL_ERROR_MISSING_PROCEDURE, t_env);
-    e2e_atom_test("(+ 1 1) (+ 1 1)", TYPE_ERROR, PARSE_ERROR_TOO_MANY, t_env);
+    typed_ptr add_one_one = {.type=TYPE_FIXNUM, .ptr={.idx=2}};
+    typed_ptr add_two_two = {.type=TYPE_FIXNUM, .ptr={.idx=4}};
+    typed_ptr* multi_expected[] = {&add_one_one, &add_two_two};
+    e2e_multi_output_atom_test("(+ 1 1) (+ 2 2)", \
+                               multi_expected, \
+                               2, \
+                               t_env);
     e2e_atom_test("(\"test", TYPE_ERROR, PARSE_ERROR_UNBAL_DOUBLE_QUOTE, t_env);
     return;
 }
@@ -704,18 +766,18 @@ void end_to_end_scoping_tests(test_env* t_env) {
     // defining a without a shadowing variable in-scope
     char* define_a_no_shadow[] = {define_a_one, scope_define_no_param_a, call_f};
     e2e_multiline_atom_test(define_a_no_shadow, 3, TYPE_FIXNUM, 2, t_env);
-    e2e_atom_test("(cond (#t a))", TYPE_FIXNUM, 1, t_env);
+    e2e_atom_test("a", TYPE_FIXNUM, 1, t_env);
     // mutating a without a shadowing variable in-scope
     char* mutate_a_no_shadow[] = {define_a_one, scope_mutate_no_param_a, call_g};
     e2e_multiline_atom_test(mutate_a_no_shadow, 3, TYPE_FIXNUM, 2, t_env);
-    e2e_atom_test("(cond (#t a))", TYPE_FIXNUM, 2, t_env);
+    e2e_atom_test("a", TYPE_FIXNUM, 2, t_env);
     // defining a with a shadowing variable in-scope
     char* define_a_shadow[] = {define_a_one, scope_define_param_a, call_h};
     e2e_multiline_atom_test(define_a_shadow, 3, TYPE_FIXNUM, 2, t_env);
-    e2e_atom_test("(cond (#t a))", TYPE_FIXNUM, 1, t_env);
+    e2e_atom_test("a", TYPE_FIXNUM, 1, t_env);
     // mutating a with a shadowing variable in-scope
     char* mutate_a_shadow[] = {define_a_one, scope_mutate_param_a, call_j};
     e2e_multiline_atom_test(mutate_a_shadow, 3, TYPE_FIXNUM, 2, t_env);
-    e2e_atom_test("(cond (#t a))", TYPE_FIXNUM, 1, t_env);
+    e2e_atom_test("a", TYPE_FIXNUM, 1, t_env);
     return;
 }

@@ -479,16 +479,7 @@ void test_string_is_boolean_literal(test_env* te) {
 bool test_parse_output(const char cmd[], typed_ptr* expected) {
     Environment* env = create_environment(0, 0, NULL);
     typed_ptr* out = parse(cmd, env);
-    bool pass = true;
-    if (!deep_match_typed_ptrs(out, expected)) {
-    /*if (out == NULL || \
-        out->type != expected->type || \
-        (out->type == TYPE_S_EXPR && \
-         !match_s_exprs(out->ptr.se_ptr, expected->ptr.se_ptr)) || \
-        (out->type != TYPE_S_EXPR && \
-         !match_typed_ptrs(out, expected))) {*/
-        pass = false;
-    }
+    bool pass = deep_match_typed_ptrs(out, expected);
     if (out->type == TYPE_S_EXPR) {
         delete_s_expr_recursive(out->ptr.se_ptr, true);
     }
@@ -505,11 +496,8 @@ void test_parse(test_env* te) {
     print_test_announce("parse()");
     bool pass = true;
     // errors:
-    // "a"
-    typed_ptr* expected = create_error_tp(PARSE_ERROR_BARE_SYM);
-    pass = test_parse_output("a", expected) && pass;
     // "("
-    expected = create_error_tp(PARSE_ERROR_UNBAL_PAREN);
+    typed_ptr* expected = create_error_tp(PARSE_ERROR_UNBAL_PAREN);
     pass = test_parse_output("(", expected) && pass;
     // ")"
     expected = create_error_tp(PARSE_ERROR_UNBAL_PAREN);
@@ -520,9 +508,6 @@ void test_parse(test_env* te) {
     // ")("
     expected = create_error_tp(PARSE_ERROR_UNBAL_PAREN);
     pass = test_parse_output(")(", expected) && pass;
-    // "() ()"
-    expected = create_error_tp(PARSE_ERROR_TOO_MANY);
-    pass = test_parse_output("() ()", expected) && pass;
     // "(a"
     expected = create_error_tp(PARSE_ERROR_UNBAL_PAREN);
     pass = test_parse_output("(a", expected) && pass;
@@ -532,18 +517,25 @@ void test_parse(test_env* te) {
     pass = test_parse_output("", expected) && pass;
     // "()"
     expected = create_s_expr_tp(create_empty_s_expr());
+    expected = create_s_expr_tp(unit_list(expected));
     pass = test_parse_output("()", expected) && pass;
-    // "(a)"
+    // "a"
     // this is a little fiddly - we have to anticipate the symbol number "a"
     //   gets assigned
+    expected = create_atom_tp(TYPE_SYMBOL, 0);
+    expected = create_s_expr_tp(unit_list(expected));
+    pass = test_parse_output("a", expected) && pass;
+    // "(a)"
     expected = create_s_expr_tp(create_empty_s_expr());
     s_expr_append(expected->ptr.se_ptr, create_atom_tp(TYPE_SYMBOL, 0));
+    expected = create_s_expr_tp(unit_list(expected));
     pass = test_parse_output("(a)", expected) && pass;
     // "(a a a)"
     expected = create_s_expr_tp(create_empty_s_expr());
     s_expr_append(expected->ptr.se_ptr, create_atom_tp(TYPE_SYMBOL, 0));
     s_expr_append(expected->ptr.se_ptr, create_atom_tp(TYPE_SYMBOL, 0));
     s_expr_append(expected->ptr.se_ptr, create_atom_tp(TYPE_SYMBOL, 0));
+    expected = create_s_expr_tp(unit_list(expected));
     pass = test_parse_output("(a a a)", expected) && pass;
     // "(a (a a) a)"
     expected = create_s_expr_tp(create_empty_s_expr());
@@ -553,6 +545,7 @@ void test_parse(test_env* te) {
     s_expr_append(sublist, create_atom_tp(TYPE_SYMBOL, 0));
     s_expr_append(expected->ptr.se_ptr, create_s_expr_tp(sublist));
     s_expr_append(expected->ptr.se_ptr, create_atom_tp(TYPE_SYMBOL, 0));
+    expected = create_s_expr_tp(unit_list(expected));
     pass = test_parse_output("(a (a a) a)", expected) && pass;
     // "(a (a a) (a a) a)"
     expected = create_s_expr_tp(create_empty_s_expr());
@@ -563,6 +556,7 @@ void test_parse(test_env* te) {
     s_expr_append(expected->ptr.se_ptr, create_s_expr_tp(sublist));
     s_expr_append(expected->ptr.se_ptr, create_s_expr_tp(copy_s_expr(sublist)));
     s_expr_append(expected->ptr.se_ptr, create_atom_tp(TYPE_SYMBOL, 0));
+    expected = create_s_expr_tp(unit_list(expected));
     pass = test_parse_output("(a (a a) (a a) a)", expected) && pass;
     // "(a (a a) a (a a))"
     expected = create_s_expr_tp(create_empty_s_expr());
@@ -573,12 +567,14 @@ void test_parse(test_env* te) {
     s_expr_append(expected->ptr.se_ptr, create_s_expr_tp(sublist));
     s_expr_append(expected->ptr.se_ptr, create_atom_tp(TYPE_SYMBOL, 0));
     s_expr_append(expected->ptr.se_ptr, create_s_expr_tp(copy_s_expr(sublist)));
+    expected = create_s_expr_tp(unit_list(expected));
     pass = test_parse_output("(a (a a) a (a a))", expected) && pass;
     // "((a))"
     sublist = create_empty_s_expr();
     s_expr_append(sublist, create_atom_tp(TYPE_SYMBOL, 0));
     expected = create_s_expr_tp(create_empty_s_expr());
     s_expr_append(expected->ptr.se_ptr, create_s_expr_tp(sublist));
+    expected = create_s_expr_tp(unit_list(expected));
     pass = test_parse_output("((a))", expected) && pass;
     // "((a) a a)"
     sublist = create_empty_s_expr();
@@ -587,6 +583,7 @@ void test_parse(test_env* te) {
     s_expr_append(expected->ptr.se_ptr, create_s_expr_tp(sublist));
     s_expr_append(expected->ptr.se_ptr, create_atom_tp(TYPE_SYMBOL, 0));
     s_expr_append(expected->ptr.se_ptr, create_atom_tp(TYPE_SYMBOL, 0));
+    expected = create_s_expr_tp(unit_list(expected));
     pass = test_parse_output("((a) a a)", expected) && pass;
     // "((a a) a a)"
     sublist = create_empty_s_expr();
@@ -596,6 +593,7 @@ void test_parse(test_env* te) {
     s_expr_append(expected->ptr.se_ptr, create_s_expr_tp(sublist));
     s_expr_append(expected->ptr.se_ptr, create_atom_tp(TYPE_SYMBOL, 0));
     s_expr_append(expected->ptr.se_ptr, create_atom_tp(TYPE_SYMBOL, 0));
+    expected = create_s_expr_tp(unit_list(expected));
     pass = test_parse_output("((a a) a a)", expected) && pass;
     // "(((a a) a) a (a a))"
     sublist = create_empty_s_expr();
@@ -611,6 +609,7 @@ void test_parse(test_env* te) {
     s_expr_append(sublist, create_atom_tp(TYPE_SYMBOL, 0));
     s_expr_append(sublist, create_atom_tp(TYPE_SYMBOL, 0));
     s_expr_append(expected->ptr.se_ptr, create_s_expr_tp(sublist));
+    expected = create_s_expr_tp(unit_list(expected));
     pass = test_parse_output("(((a a) a) a (a a))", expected) && pass;
     // playing with whitespace
     unsigned int num_ws_inputs = 15;
@@ -632,6 +631,7 @@ void test_parse(test_env* te) {
     for (unsigned int idx = 0; idx < num_ws_inputs; idx++) {
         expected = create_s_expr_tp(create_empty_s_expr());
         s_expr_append(expected->ptr.se_ptr, create_atom_tp(TYPE_SYMBOL, 0));
+        expected = create_s_expr_tp(unit_list(expected));
         pass = test_parse_output(ws_inputs[idx], expected) && pass;
     }
     // testing symbol registration
@@ -703,11 +703,21 @@ void test_parse(test_env* te) {
     s_expr_append(expected_se, create_atom_tp(TYPE_SYMBOL, 2));
     s_expr_append(expected_se, create_string_tp(create_string("str\\\"4")));
     expected = create_s_expr_tp(expected_se);
+    expected = create_s_expr_tp(unit_list(expected));
     pass = test_parse_output(str_test, expected) && pass;
     // '("str1)'
     char bad_str_test[] = "(\"str1)";
     expected = create_error_tp(PARSE_ERROR_UNBAL_DOUBLE_QUOTE);
     pass = test_parse_output(bad_str_test, expected) && pass;
+    // 'a (b) (a b c)'
+    expected = create_s_expr_tp(unit_list(create_atom_tp(TYPE_SYMBOL, 0)));
+    s_expr* b_se = unit_list(create_atom_tp(TYPE_SYMBOL, 1));
+    s_expr_append(expected->ptr.se_ptr, create_s_expr_tp(b_se));
+    s_expr* abc_se = unit_list(create_atom_tp(TYPE_SYMBOL, 0));
+    s_expr_append(abc_se, create_atom_tp(TYPE_SYMBOL, 1));
+    s_expr_append(abc_se, create_atom_tp(TYPE_SYMBOL, 2));
+    s_expr_append(expected->ptr.se_ptr, create_s_expr_tp(abc_se));
+    pass = test_parse_output("a (b) (a b c)", expected) && pass;
     delete_environment(env);
     print_test_result(pass);
     te->passed += pass;

@@ -24,6 +24,7 @@ typed_ptr* parse(const char str[], Environment* env) {
                                                env->function_table->length, \
                                                NULL);
     s_expr* head = create_empty_s_expr();
+    s_expr_stack_push(&stack, head);
     while (str[curr] && state != PARSE_ERROR) {
         switch (state) {
             case PARSE_START:
@@ -31,16 +32,20 @@ typed_ptr* parse(const char str[], Environment* env) {
                     case ' ': // ignore leading whitespace
                         break;
                     case '(':
-                        s_expr_stack_push(&stack, head);
+                        init_new_s_expr(&stack);
                         state = PARSE_NEW_S_EXPR;
                         break;
                     case ')':
                         state = PARSE_ERROR;
                         error = PARSE_ERROR_UNBAL_PAREN;
                         break;
+                    case '"':
+                        string_start = curr;
+                        state = PARSE_READ_STRING;
+                        break;
                     default:
-                        state = PARSE_ERROR;
-                        error = PARSE_ERROR_BARE_SYM;
+                        symbol_start = curr;
+                        state = PARSE_READ_SYMBOL;
                         break;
                 }
                 break;
@@ -166,10 +171,22 @@ typed_ptr* parse(const char str[], Environment* env) {
         }
         curr++;
     }
-    if (state == PARSE_READ_STRING || state == PARSE_STRING_ESCAPE) {
+    if (state == PARSE_READ_SYMBOL && stack != NULL) {
+        new_symbol = substring(str, symbol_start, curr);
+        error = register_symbol(&stack, env, temp_env, new_symbol);
+        free(new_symbol);
+        new_symbol = NULL;
+        if (error != PARSE_ERROR_NONE) {
+            state = PARSE_ERROR;
+        }
+    } else if (state == PARSE_READ_STRING || state == PARSE_STRING_ESCAPE) {
         state = PARSE_ERROR;
         error = PARSE_ERROR_UNBAL_DOUBLE_QUOTE;
-    } else if (state != PARSE_ERROR && stack != NULL) {
+    }
+    if (state != PARSE_ERROR) {
+        state = terminate_s_expr(&stack, &error);
+    }
+    if (state != PARSE_ERROR && stack != NULL) {
         state = PARSE_ERROR;
         error = PARSE_ERROR_UNBAL_PAREN;
     }

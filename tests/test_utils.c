@@ -5,10 +5,15 @@ typed_ptr* parse_and_evaluate(char command[], Environment* env) {
     if (parse_output->type == TYPE_ERROR) {
         return parse_output;
     } else {
-        typed_ptr* eval_output = evaluate(parse_output, env);
+        s_expr* eval_output = create_empty_s_expr();
+        for (s_expr* term = parse_output->ptr.se_ptr; \
+             !is_empty_list(term); \
+             term = term->cdr->ptr.se_ptr) {
+            s_expr_append(eval_output, evaluate(term->car, env));
+        }
         delete_s_expr_recursive(parse_output->ptr.se_ptr, true);
         free(parse_output);
-        return eval_output;
+        return create_s_expr_tp(eval_output);
     }
 }
 

@@ -89,7 +89,7 @@ void print_error(const typed_ptr* tp) {
     }
     switch (tp->ptr.idx) {
         case TEST_ERROR_DUMMY:
-            printf("dummy testing error (there is a bug if this appears");
+            printf("dummy testing error (there is a bug if this appears ");
             printf("outside of tests)");
             break;
         case PARSE_ERROR_NONE:
@@ -115,6 +115,9 @@ void print_error(const typed_ptr* tp) {
             break;
         case PARSE_ERROR_INT_TOO_HIGH:
             printf("parsing: integer literal too large to fit in fixnum");
+            break;
+        case PARSE_ERROR_UNBAL_DOUBLE_QUOTE:
+            printf("parsing: string literal missing closing double quotes");
             break;
         case EVAL_ERROR_EXIT:
             break; // exit is handled in the REPL
