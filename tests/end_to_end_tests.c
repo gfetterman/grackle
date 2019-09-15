@@ -94,6 +94,9 @@ void e2e_multiline_atom_test(char* cmds[], \
     typed_ptr* output = parse_and_evaluate(cmds[0], te->env);
     for (unsigned int i = 1; i < num_cmds; i++) {
         printf("\n");
+        if (output->type == TYPE_S_EXPR) {
+            delete_s_expr_recursive(output->ptr.se_ptr, true);
+        }
         free(output);
         printf("              %-40s", cmds[i]);
         output = parse_and_evaluate(cmds[i], te->env);
