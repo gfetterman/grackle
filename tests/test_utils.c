@@ -107,24 +107,6 @@ void print_test_result(bool pass) {
     return;
 }
 
-s_expr* unit_list(typed_ptr* tp) {
-    return create_s_expr(tp, create_s_expr_tp(create_empty_s_expr()));
-}
-
-void s_expr_append(s_expr* se, typed_ptr* tp) {
-    // assume: se is a valid s-expression
-    while (!is_empty_list(se)) {
-        se = se->cdr->ptr.se_ptr;
-    }
-    se->car = tp;
-    se->cdr = create_s_expr_tp(create_empty_s_expr());
-    return;
-}
-
-typed_ptr* create_number_tp(long value) {
-    return create_typed_ptr(TYPE_FIXNUM, (tp_value){.idx=value});
-}
-
 typed_ptr* builtin_tp_from_name(Environment* env, const char name[]) {
     Symbol_Node* found = symbol_lookup_name(env, name);
     if (found == NULL || found->type != TYPE_BUILTIN) {

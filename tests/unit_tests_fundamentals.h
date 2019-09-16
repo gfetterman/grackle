@@ -4,7 +4,7 @@
 #include "fundamentals.h"
 #include "test_utils.h"
 
-void unit_tests_fundamentals(test_env* t_env);
+void unit_tests_fundamentals(test_env* te);
 
 void test_create_typed_ptr(test_env* te);
 void test_create_atom_tp(test_env* te);
@@ -23,5 +23,8 @@ void test_s_expr_next(test_env* te);
 void test_is_empty_list(test_env* te);
 void test_is_false_literal(test_env* te);
 void test_is_pair(test_env* te);
+void test_unit_list(test_env* te);
+void test_s_expr_append(test_env* te);
+void test_create_number_tp(test_env* te);
 
 #endif

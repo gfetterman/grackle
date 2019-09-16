@@ -143,4 +143,8 @@ bool is_empty_list(const s_expr* se);
 bool is_false_literal(const typed_ptr* tp);
 bool is_pair(const s_expr* se);
 
+s_expr* unit_list(typed_ptr* tp);
+void s_expr_append(s_expr* se, typed_ptr* tp);
+typed_ptr* create_number_tp(long value);
+
 #endif

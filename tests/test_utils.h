@@ -27,10 +27,6 @@ bool deep_match_typed_ptrs(typed_ptr* first, typed_ptr* second);
 void print_test_announce(char function[]);
 void print_test_result(bool pass);
 
-s_expr* unit_list(typed_ptr* tp);
-void s_expr_append(s_expr* se, typed_ptr* tp);
-typed_ptr* create_number_tp(long value);
-
 typed_ptr* builtin_tp_from_name(Environment* env, const char name[]);
 typed_ptr* symbol_tp_from_name(Environment* env, const char name[]);
 

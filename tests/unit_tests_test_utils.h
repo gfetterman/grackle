@@ -15,10 +15,6 @@ void test_match_typed_ptrs(test_env* te);
 void test_match_s_exprs(test_env* te);
 void test_deep_match_typed_ptrs(test_env* te);
 
-void test_unit_list(test_env* te);
-void test_s_expr_append(test_env* te);
-void test_create_number_tp(test_env* te);
-
 void test_builtin_tp_from_name(test_env* te);
 void test_symbol_tp_from_name(test_env* te);
 

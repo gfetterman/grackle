@@ -15,25 +15,28 @@ static type type_list[NUM_BUILTIN_TYPES] = {TYPE_UNDEF, \
 static tp_value TEST_NUM_TP_VAL = {.idx=TEST_NUM};
 static tp_value TEST_S_EXPR_TP_VAL = {.se_ptr=TEST_S_EXPR};
 
-void unit_tests_fundamentals(test_env* t_env) {
+void unit_tests_fundamentals(test_env* te) {
     printf("# fundamentals.c #\n");
-    test_create_typed_ptr(t_env);
-    test_create_atom_tp(t_env);
-    test_create_error_tp(t_env);
-    test_create_void_tp(t_env);
-    test_create_s_expr_tp(t_env);
-    test_create_string_tp(t_env);
-    test_copy_typed_ptr(t_env);
-    test_create_s_expr(t_env);
-    test_create_empty_s_expr(t_env);
-    test_copy_s_expr(t_env);
-    test_delete_s_expr_recursive(t_env);
-    test_create_string(t_env);
-    test_delete_string(t_env);
-    test_s_expr_next(t_env);
-    test_is_empty_list(t_env);
-    test_is_false_literal(t_env);
-    test_is_pair(t_env);
+    test_create_typed_ptr(te);
+    test_create_atom_tp(te);
+    test_create_error_tp(te);
+    test_create_void_tp(te);
+    test_create_s_expr_tp(te);
+    test_create_string_tp(te);
+    test_copy_typed_ptr(te);
+    test_create_s_expr(te);
+    test_create_empty_s_expr(te);
+    test_copy_s_expr(te);
+    test_delete_s_expr_recursive(te);
+    test_create_string(te);
+    test_delete_string(te);
+    test_s_expr_next(te);
+    test_is_empty_list(te);
+    test_is_false_literal(te);
+    test_is_pair(te);
+    test_unit_list(te);
+    test_s_expr_append(te);
+    test_create_number_tp(te);
     return;
 }
 
@@ -515,6 +518,114 @@ void test_is_pair(test_env* te) {
         pass = false;
     }
     delete_s_expr_recursive(se, true);
+    print_test_result(pass);
+    te->passed += pass;
+    te->run++;
+    return;
+}
+
+void test_unit_list(test_env* te) {
+    print_test_announce("unit_list()");
+    bool pass = true;
+    // unit_list(create_number_tp(1)) -> '(1)
+    s_expr* out = unit_list(create_number_tp(1));
+    s_expr* expected = create_s_expr(create_number_tp(1), \
+                                     create_s_expr_tp(create_empty_s_expr()));
+    pass = match_s_exprs(out, expected) && pass;
+    delete_s_expr_recursive(out, true);
+    delete_s_expr_recursive(expected, true);
+    // unit_list(create_s_expr_tp(unit_list(1))) -> '((1))
+    out = unit_list(create_s_expr_tp(unit_list(create_number_tp(1))));
+    expected = create_s_expr(create_s_expr_tp(unit_list(create_number_tp(1))), \
+                             create_s_expr_tp(create_empty_s_expr()));
+    pass = match_s_exprs(out, expected) && pass;
+    delete_s_expr_recursive(out, true);
+    delete_s_expr_recursive(expected, true);
+    print_test_result(pass);
+    te->passed += pass;
+    te->run++;
+    return;
+}
+
+void test_s_expr_append(test_env* te) {
+    print_test_announce("s_expr_append()");
+    bool pass = true;
+    // append(empty, 1) -> '(1)
+    s_expr* out = create_empty_s_expr();
+    s_expr_append(out, create_number_tp(1));
+    s_expr* expected = unit_list(create_number_tp(1));
+    pass = match_s_exprs(out, expected) && pass;
+    delete_s_expr_recursive(out, true);
+    delete_s_expr_recursive(expected, true);
+    // append(empty, empty) -> '(())
+    out = create_empty_s_expr();
+    s_expr_append(out, create_s_expr_tp(create_empty_s_expr()));
+    expected = unit_list(create_s_expr_tp(create_empty_s_expr()));
+    pass = match_s_exprs(out, expected) && pass;
+    delete_s_expr_recursive(out, true);
+    delete_s_expr_recursive(expected, true);
+    // append('(1), 2) -> '(1 2)
+    out = unit_list(create_number_tp(1));
+    s_expr_append(out, create_number_tp(2));
+    expected = create_s_expr(create_number_tp(2), \
+                             create_s_expr_tp(create_empty_s_expr()));
+    expected = create_s_expr(create_number_tp(1), create_s_expr_tp(expected));
+    pass = match_s_exprs(out, expected) && pass;
+    delete_s_expr_recursive(out, true);
+    delete_s_expr_recursive(expected, true);
+    // append('(1 2 3), 4) -> '(1 2 3 4)
+    out = unit_list(create_number_tp(1));
+    s_expr_append(out, create_number_tp(2));
+    s_expr_append(out, create_number_tp(3));
+    s_expr_append(out, create_number_tp(4));
+    expected = create_s_expr(create_number_tp(4), \
+                             create_s_expr_tp(create_empty_s_expr()));
+    expected = create_s_expr(create_number_tp(3), create_s_expr_tp(expected));
+    expected = create_s_expr(create_number_tp(2), create_s_expr_tp(expected));
+    expected = create_s_expr(create_number_tp(1), create_s_expr_tp(expected));
+    pass = match_s_exprs(out, expected) && pass;
+    delete_s_expr_recursive(out, true);
+    delete_s_expr_recursive(expected, true);
+    // append('(1 2), '(3 4)) -> '(1 2 (3 4))
+    out = unit_list(create_number_tp(1));
+    s_expr_append(out, create_number_tp(2));
+    s_expr* sublist = unit_list(create_number_tp(3));
+    s_expr_append(sublist, create_number_tp(4));
+    s_expr_append(out, create_s_expr_tp(sublist));
+    expected = create_s_expr(create_s_expr_tp(copy_s_expr(sublist)), \
+                             create_s_expr_tp(create_empty_s_expr()));
+    expected = create_s_expr(create_number_tp(2), create_s_expr_tp(expected));
+    expected = create_s_expr(create_number_tp(1), create_s_expr_tp(expected));
+    pass = match_s_exprs(out, expected) && pass;
+    delete_s_expr_recursive(out, true);
+    delete_s_expr_recursive(expected, true);
+    print_test_result(pass);
+    te->passed += pass;
+    te->run++;
+    return;
+}
+
+void test_create_number_tp(test_env* te) {
+    print_test_announce("create_number_tp()");
+    bool pass = true;
+    // -10
+    typed_ptr* out = create_number_tp(-10);
+    typed_ptr* expected = create_typed_ptr(TYPE_FIXNUM, (tp_value){.idx=-10});
+    pass = match_typed_ptrs(out, expected) && pass;
+    free(out);
+    free(expected);
+    // 0
+    out = create_number_tp(0);
+    expected = create_typed_ptr(TYPE_FIXNUM, (tp_value){.idx=0});
+    pass = match_typed_ptrs(out, expected) && pass;
+    free(out);
+    free(expected);
+    // 10
+    out = create_number_tp(10);
+    expected = create_typed_ptr(TYPE_FIXNUM, (tp_value){.idx=10});
+    pass = match_typed_ptrs(out, expected) && pass;
+    free(out);
+    free(expected);
     print_test_result(pass);
     te->passed += pass;
     te->run++;
