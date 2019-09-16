@@ -383,46 +383,22 @@ typed_ptr* eval_define(const s_expr* se, Environment* env) {
                 result = create_error_tp(EVAL_ERROR_BAD_SYMBOL);
             } else {
                 // create a dummy (lambda <params> <body>) s-expression
-                typed_ptr lambda = {.type=TYPE_BUILTIN, .ptr={.idx=BUILTIN_LAMBDA}};
-                //typed_ptr* lambda = create_atom_tp(TYPE_BUILTIN, BUILTIN_LAMBDA);
-                s_expr* params = s_expr_next(first_arg->ptr.se_ptr);
+                typed_ptr* lambda = create_atom_tp(TYPE_BUILTIN, BUILTIN_LAMBDA);
+                s_expr* params = copy_s_expr(s_expr_next(first_arg->ptr.se_ptr));
                 typed_ptr* body = copy_typed_ptr(second_arg);
                 if (body->type == TYPE_S_EXPR) {
                     body->ptr.se_ptr = copy_s_expr(body->ptr.se_ptr);
                 } else if (body->type == TYPE_STRING) {
                     body->ptr.string = create_string(body->ptr.string->contents);
                 }
-                s_expr* dummy_lambda_se = unit_list(&lambda);
+                s_expr* dummy_lambda_se = unit_list(lambda);
                 s_expr_append(dummy_lambda_se, create_s_expr_tp(params));
                 s_expr_append(dummy_lambda_se, body);
                 typed_ptr* fn = eval_lambda(dummy_lambda_se, env);
-                // old
-                /*typed_ptr* param_list = first_arg->ptr.se_ptr->cdr;
-                s_expr* empty = create_empty_s_expr();
-                first_arg->ptr.se_ptr->cdr = create_s_expr_tp(empty);
-                typed_ptr* fn_body = second_arg;
-                s_expr_next(args_tp->ptr.se_ptr)->car = NULL;
-                Symbol_Node* lam_stn = symbol_lookup_name(env->global_env, \
-                                                          "lambda");
-                typed_ptr* lam = create_atom_tp(TYPE_SYMBOL, \
-                                                lam_stn->symbol_idx);
-                empty = create_empty_s_expr();
-                s_expr* fn_body_se = create_s_expr(fn_body, \
-                                                   create_s_expr_tp(empty));
-                typed_ptr* fn_body_tp = create_s_expr_tp(fn_body_se);
-                s_expr* param_list_se = create_s_expr(param_list, \
-                                                      fn_body_tp);
-                typed_ptr* param_list_tp = create_s_expr_tp(param_list_se);
-                s_expr* dummy_lam = create_s_expr(lam, param_list_tp);
-                typed_ptr* fn = eval_lambda(dummy_lam, env);*/
+                delete_s_expr_recursive(dummy_lambda_se, true);
                 if (fn->type == TYPE_ERROR) {
-                    //delete_s_expr_recursive(dummy_lam, true);
-                    delete_s_expr_recursive(dummy_lambda_se, false);
                     result = fn;
                 } else {
-                    //delete_s_expr_recursive(param_list->ptr.se_ptr, true);
-                    //delete_s_expr_recursive(dummy_lam, false);
-                    delete_s_expr_recursive(dummy_lambda_se, false);
                     blind_install_symbol(env, sym_node->name, fn);
                     Function_Node* fn_fn = function_lookup_index(env, fn);
                     free(fn_fn->name);
