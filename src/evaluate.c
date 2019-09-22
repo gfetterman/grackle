@@ -644,50 +644,30 @@ typed_ptr* eval_cond(const s_expr* se, Environment* env) {
     return result;
 }
 
-// Evaluates an s-expression whose car is the built-in function 
-//   BUILTIN_LISTPRED.
-// This function takes one argument, which is evaluated.
-// There is no restriction on the type of the argument.
-// Returns a typed_ptr containing an error code (if the evaluation failed) or
-//   the (boolean) truth value of the predicate (if it succeeded).
-// In either case, the returned typed_ptr is the caller's responsibility to
-//   free, and is safe to (shallow) free without harm to the symbol table, list
-//   area, or any other object.
 typed_ptr* eval_list_pred(const s_expr* se, Environment* env) {
-    typed_ptr* result = NULL;
     typed_ptr* args_tp = collect_arguments(se, env, 1, 1, true);
     if (args_tp->type == TYPE_ERROR) {
-        result = args_tp;
+        return args_tp;
+    }
+    typed_ptr* arg = args_tp->ptr.se_ptr->car;
+    typed_ptr* result = create_atom_tp(TYPE_BOOL, true);
+    if (arg->type != TYPE_S_EXPR) {
+        result->ptr.idx = false;
     } else {
-        typed_ptr* arg = args_tp->ptr.se_ptr->car;
-        result = create_atom_tp(TYPE_BOOL, true);
-        if (arg->type != TYPE_S_EXPR) {
-            result->ptr.idx = false;
-        } else {
-            s_expr* arg_se = arg->ptr.se_ptr;
-            while (!is_empty_list(arg_se)) {
-                if (arg_se->cdr->type != TYPE_S_EXPR) {
-                    result->ptr.idx = false;
-                    break;
-                }
-                arg_se = s_expr_next(arg_se);
+        for (s_expr* arg_se = arg->ptr.se_ptr; \
+             !is_empty_list(arg_se); \
+             arg_se = s_expr_next(arg_se)) {
+            if (arg_se->cdr->type != TYPE_S_EXPR) {
+                result->ptr.idx = false;
+                break;
             }
         }
-        delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
-        free(args_tp);
     }
+    delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
+    free(args_tp);
     return result;
 }
 
-// Evaluates an s-expression whose car is a built-in function in the set
-//   {BUILTIN_xxxxPRED | xxxx in {PAIR, BOOL, FIXNUM, VOID}}.
-// This function takes one argument, which is evaluated.
-// There is no restriction on the type of the argument.
-// Returns a typed_ptr containing an error code (if the evaluation failed) or
-//   the (boolean) truth value of the predicate (if it succeeded).
-// In either case, the returned typed_ptr is the caller's responsibility to
-//   free, and is safe to (shallow) free without harm to the symbol table, list
-//   area, or any other object.
 typed_ptr* eval_atom_pred(const s_expr* se, Environment* env) {
     type target_type = TYPE_UNDEF;
     switch (se->car->ptr.idx) {
@@ -715,203 +695,179 @@ typed_ptr* eval_atom_pred(const s_expr* se, Environment* env) {
         default:
             return create_error_tp(EVAL_ERROR_UNDEF_BUILTIN);
     }
-    typed_ptr* result = NULL;
     typed_ptr* args_tp = collect_arguments(se, env, 1, 1, true);
     if (args_tp->type == TYPE_ERROR) {
-        result = args_tp;
-    } else {
-        typed_ptr* arg = args_tp->ptr.se_ptr->car;
-        // general case
-        result = create_atom_tp(TYPE_BOOL, arg->type == target_type);
-        // special case: (procedure? +) -> #t AND (procedure? <user-fn>) -> #t
-        if (target_type == TYPE_BUILTIN && arg->type == TYPE_FUNCTION) {
-            result->ptr.idx = true;
-        }
-        // special case: (pair? '()) -> #f
-        if (arg->type == TYPE_S_EXPR && is_empty_list(arg->ptr.se_ptr)) {
-            result->ptr.idx = false;
-        }
-        delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
-        free(args_tp);
+        return args_tp;
     }
+    typed_ptr* arg = args_tp->ptr.se_ptr->car;
+    // general case
+    typed_ptr* result = create_atom_tp(TYPE_BOOL, arg->type == target_type);
+    // special case: (procedure? +) -> #t AND (procedure? <user-fn>) -> #t
+    if (target_type == TYPE_BUILTIN && arg->type == TYPE_FUNCTION) {
+        result->ptr.idx = true;
+    }
+    // special case: (pair? '()) -> #f
+    if (arg->type == TYPE_S_EXPR && is_empty_list(arg->ptr.se_ptr)) {
+        result->ptr.idx = false;
+    }
+    delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
+    free(args_tp);
     return result;
 }
 
 typed_ptr* eval_null_pred(const s_expr* se, Environment* env) {
-    typed_ptr* result = NULL;
     typed_ptr* args_tp = collect_arguments(se, env, 1, 1, true);
     if (args_tp->type == TYPE_ERROR) {
-        result = args_tp;
-    } else {
-        typed_ptr* arg = args_tp->ptr.se_ptr->car;
-        result = create_atom_tp(TYPE_BOOL, false);
-        if (arg->type == TYPE_S_EXPR && is_empty_list(arg->ptr.se_ptr)) {
-            result->ptr.idx = true;
-        }
-        delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
-        free(args_tp);
+        return args_tp;
     }
+    typed_ptr* arg = args_tp->ptr.se_ptr->car;
+    typed_ptr* result = create_atom_tp(TYPE_BOOL,
+                                       (arg->type == TYPE_S_EXPR && \
+                                        is_empty_list(arg->ptr.se_ptr)));
+    delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
+    free(args_tp);
     return result;
 }
 
-// Evaluates an s-expression whose car is the built-in special form
-//   BUILTIN_LAMBDA.
-// This special form takes two arguments.
-// The first argument must be a list (nested s-expression) of symbols, which
-//   become the parameters of the lambda. Anything else returns an error. This
-//   argument is not evaluated.
-// The second argument may be anything, and is not evaluated, but stored as the
-//   body of the lambda.
-// The function installed in the environment, and its associated data, is now
-//   the environment's responsibility.
-// The typed pointer returned is the caller's responsibility to free, and can
-//   safely be (shallow) freed.
 typed_ptr* eval_lambda(const s_expr* se, Environment* env) {
-    typed_ptr* result = NULL;
     typed_ptr* args_tp = collect_arguments(se, env, 2, 2, false);
     if (args_tp->type == TYPE_ERROR) {
-        result = args_tp;
-    } else {
-        typed_ptr* first_arg = args_tp->ptr.se_ptr->car;
-        typed_ptr* second_arg = s_expr_next(args_tp->ptr.se_ptr)->car;
-        if (first_arg->type != TYPE_S_EXPR) {
-            result = create_error_tp(EVAL_ERROR_BAD_SYNTAX);
-        } else {
-            Symbol_Node* params = collect_parameters(first_arg, env);
-            if (params != NULL && params->type == TYPE_ERROR) {
-                result = create_error_tp(params->value.idx);
-                delete_symbol_node_list(params);
-            } else {
-                typed_ptr* body = copy_typed_ptr(second_arg);
-                if (body->type == TYPE_S_EXPR) {
-                    body->ptr.se_ptr = copy_s_expr(body->ptr.se_ptr);
-                } else if (body->type == TYPE_STRING) {
-                    char* contents = body->ptr.string->contents;
-                    body->ptr.string = create_string(contents);
-                }
-                result = install_function(env, "", params, env, body);
-            }
-        }
-        delete_s_expr_recursive(args_tp->ptr.se_ptr, false);
-        free(args_tp);
+        return args_tp;
     }
+    typed_ptr* first_arg = args_tp->ptr.se_ptr->car;
+    typed_ptr* second_arg = s_expr_next(args_tp->ptr.se_ptr)->car;
+    typed_ptr* result = NULL;
+    if (first_arg->type != TYPE_S_EXPR) {
+        result = create_error_tp(EVAL_ERROR_BAD_SYNTAX);
+    } else {
+        Symbol_Node* params = collect_parameters(first_arg, env);
+        if (params != NULL && params->type == TYPE_ERROR) {
+            result = create_error_tp(params->value.idx);
+            delete_symbol_node_list(params);
+        } else {
+            typed_ptr* body = copy_typed_ptr(second_arg);
+            if (body->type == TYPE_S_EXPR) {
+                body->ptr.se_ptr = copy_s_expr(body->ptr.se_ptr);
+            } else if (body->type == TYPE_STRING) {
+                char* contents = body->ptr.string->contents;
+                body->ptr.string = create_string(contents);
+            }
+            result = install_function(env, "", params, env, body);
+        }
+    }
+    delete_s_expr_recursive(args_tp->ptr.se_ptr, false);
+    free(args_tp);
     return result;
 }
 
 typed_ptr* eval_quote(const s_expr* se, Environment* env) {
-    typed_ptr* result = NULL;
     typed_ptr* args_tp = collect_arguments(se, env, 1, 1, false);
     if (args_tp->type == TYPE_ERROR) {
-        result = args_tp;
-    } else {
-        result = copy_typed_ptr(args_tp->ptr.se_ptr->car);
-        if (result->type == TYPE_S_EXPR) {
-            result->ptr.se_ptr = copy_s_expr(result->ptr.se_ptr);
-        } else if (result->type == TYPE_STRING) {
-            char* contents = result->ptr.string->contents;
-            result->ptr.string = create_string(contents);
-        }
-        delete_s_expr_recursive(args_tp->ptr.se_ptr, false);
-        free(args_tp);
+        return args_tp;
     }
+    typed_ptr* result = copy_typed_ptr(args_tp->ptr.se_ptr->car);
+    if (result->type == TYPE_S_EXPR) {
+        result->ptr.se_ptr = copy_s_expr(result->ptr.se_ptr);
+    } else if (result->type == TYPE_STRING) {
+        char* contents = result->ptr.string->contents;
+        result->ptr.string = create_string(contents);
+    }
+    delete_s_expr_recursive(args_tp->ptr.se_ptr, false);
+    free(args_tp);
     return result;
 }
 
 typed_ptr* eval_string_length(const s_expr* se, Environment* env) {
-    typed_ptr* result = NULL;
     typed_ptr* args_tp = collect_arguments(se, env, 1, 1, true);
     if (args_tp->type == TYPE_ERROR) {
-        result = args_tp;
-    } else {
-        typed_ptr* arg = args_tp->ptr.se_ptr->car;
-        if (arg->type != TYPE_STRING) {
-            result = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
-        } else {
-            result = create_atom_tp(TYPE_FIXNUM, arg->ptr.string->len);
-        }
-        delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
-        free(args_tp);
+        return args_tp;
     }
+    typed_ptr* arg = args_tp->ptr.se_ptr->car;
+    typed_ptr* result = NULL;
+    if (arg->type != TYPE_STRING) {
+        result = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
+    } else {
+        result = create_atom_tp(TYPE_FIXNUM, arg->ptr.string->len);
+    }
+    delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
+    free(args_tp);
     return result;
 }
 
 typed_ptr* eval_string_equals(const s_expr* se, Environment* env) {
-    typed_ptr* result = NULL;
     typed_ptr* args_tp = collect_arguments(se, env, 2, -1, true);
     if (args_tp->type == TYPE_ERROR) {
-        result = args_tp;
+        return args_tp;
+    }
+    s_expr* arg_se = args_tp->ptr.se_ptr;
+    typed_ptr* first_arg = arg_se->car;
+    typed_ptr* result = NULL;
+    if (first_arg->type != TYPE_STRING) {
+        result = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
     } else {
-        s_expr* arg_se = args_tp->ptr.se_ptr;
-        typed_ptr* first_arg = arg_se->car;
-        arg_se = s_expr_next(arg_se);
-        if (first_arg->type != TYPE_STRING) {
-            result = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
-        } else {
-            result = create_atom_tp(TYPE_BOOL, true);
-            while (result->ptr.idx == true && !is_empty_list(arg_se)) {
-                typed_ptr* next_arg = arg_se->car;
-                if (next_arg->type != TYPE_STRING) {
-                    free(result);
-                    result = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
-                    break;
-                }
-                if (first_arg->ptr.string->len != next_arg->ptr.string->len || \
-                    strcmp(first_arg->ptr.string->contents, \
-                            next_arg->ptr.string->contents)) {
-                    result->ptr.idx = false;
-                }
-                arg_se = s_expr_next(arg_se);
+        result = create_atom_tp(TYPE_BOOL, true);
+        for (arg_se = s_expr_next(arg_se); \
+             result->ptr.idx == true && !is_empty_list(arg_se); \
+             arg_se = s_expr_next(arg_se)) {
+            typed_ptr* curr_arg = arg_se->car;
+            if (curr_arg->type != TYPE_STRING) {
+                free(result);
+                result = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
+                break;
+            }
+            if (first_arg->ptr.string->len != curr_arg->ptr.string->len || \
+                strcmp(first_arg->ptr.string->contents, \
+                        curr_arg->ptr.string->contents)) {
+                result->ptr.idx = false;
             }
         }
-        delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
-        free(args_tp);
     }
+    delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
+    free(args_tp);
     return result;
 }
 
 typed_ptr* eval_string_append(const s_expr* se, Environment* env) {
-    typed_ptr* result = NULL;
     typed_ptr* args_tp = collect_arguments(se, env, 0, -1, true);
     if (args_tp->type == TYPE_ERROR) {
-        result = args_tp;
-    } else {
-        bool all_strings = true;
-        long total_length = 0;
-        s_expr* arg_se = args_tp->ptr.se_ptr;
-        for ( ; !is_empty_list(arg_se); arg_se = s_expr_next(arg_se)) {
-            if (arg_se->car->type != TYPE_STRING) {
-                all_strings = false;
-                break;
-            }
-            total_length += arg_se->car->ptr.string->len;
-        }
-        if (all_strings) {
-            result = create_string_tp(create_string(""));
-            if (total_length > 0) {
-                char* new_str = malloc(sizeof(char) * (total_length + 1));
-                if (new_str == NULL) {
-                    fprintf(stderr, "malloc failed in eval_string_append()\n");
-                    exit(-1);
-                }
-                char* start = new_str;
-                arg_se = args_tp->ptr.se_ptr;
-                for ( ; !is_empty_list(arg_se); arg_se = s_expr_next(arg_se)) {
-                    memcpy(start, \
-                           arg_se->car->ptr.string->contents, \
-                           arg_se->car->ptr.string->len);
-                    start += arg_se->car->ptr.string->len;
-                }
-                new_str[total_length] = '\0';
-                free(result->ptr.string->contents);
-                result->ptr.string->contents = new_str;
-                result->ptr.string->len = total_length;
-            }
-        } else {
-            result = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
-        }
-        delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
-        free(args_tp);
+        return args_tp;
     }
+    bool all_strings = true;
+    long total_length = 0;
+    s_expr* arg_se = args_tp->ptr.se_ptr;
+    for ( ; !is_empty_list(arg_se); arg_se = s_expr_next(arg_se)) {
+        if (arg_se->car->type != TYPE_STRING) {
+            all_strings = false;
+            break;
+        }
+        total_length += arg_se->car->ptr.string->len;
+    }
+    typed_ptr* result = NULL;
+    if (all_strings) {
+        result = create_string_tp(create_string(""));
+        if (total_length > 0) {
+            char* new_str = malloc(sizeof(char) * (total_length + 1));
+            if (new_str == NULL) {
+                fprintf(stderr, "malloc failed in eval_string_append()\n");
+                exit(-1);
+            }
+            char* start = new_str;
+            arg_se = args_tp->ptr.se_ptr;
+            for ( ; !is_empty_list(arg_se); arg_se = s_expr_next(arg_se)) {
+                String* curr_string = arg_se->car->ptr.string;
+                memcpy(start, curr_string->contents, curr_string->len);
+                start += curr_string->len;
+            }
+            new_str[total_length] = '\0';
+            free(result->ptr.string->contents);
+            result->ptr.string->contents = new_str;
+            result->ptr.string->len = total_length;
+        }
+    } else {
+        result = create_error_tp(EVAL_ERROR_BAD_ARG_TYPE);
+    }
+    delete_s_expr_recursive(args_tp->ptr.se_ptr, true);
+    free(args_tp);
     return result;
 }
 

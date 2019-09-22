@@ -148,13 +148,70 @@ typed_ptr* eval_not(const s_expr* se, Environment* env);
 //   evaluates to non-false), or an error code (if any evaluation failed).
 typed_ptr* eval_cond(const s_expr* se, Environment* env);
 
+// Evaluates an s-expression whose car is the built-in function 
+//   BUILTIN_LISTPRED, in the context of the given environment.
+// This function takes one argument, which may be any valid expression. It is
+//   evaluated.
+// Returns a dynamically-allocated typed_ptr containing the boolean truth value
+//   of the predicate, or an error code (if the evaluation failed).
 typed_ptr* eval_list_pred(const s_expr* se, Environment* env);
+
+// Evaluates an s-expression whose car is a built-in function in the set
+//   {BUILTIN_xxPRED | xx in {PAIR, BOOL, NUMBER, VOID, PROC, SYMBOL, STRING}}.
+// This function takes one argument, which may be any valid expression. It is
+//   evaluated.
+// Returns a dynamically-allocated typed_ptr containing the boolean truth value
+//   of the predicate, or an error code (if the evaluation failed).
 typed_ptr* eval_atom_pred(const s_expr* se, Environment* env);
+
+// Evaluates an s-expression whose car is a built-in function BUILTIN_NULLPRED,
+//   in the context of the given environment.
+// This function takes one argument, which may be any valid expression. It is
+//   evaluated.
+// Returns a dynamically-allocated typed_ptr containing the boolean truth value
+//   of the predicate, or an error code (if the evaluation failed).
 typed_ptr* eval_null_pred(const s_expr* se, Environment* env);
+
+// Evaluates an s-expression whose car is the built-in special form
+//   BUILTIN_LAMBDA, in the context of the given environment.
+// This special form takes two arguments, neither of which is evaluated.
+// The first argument must be a list of symbols.
+// The second argument may be any valid expression.
+// The first argument is the lambda's parameter list, and the second its body.
+// The lambda is installed into the given environment as a function.
+// Returns a dynamically-allocated typed_ptr containing a reference to the
+//   installed function, or an error code (if the evaluation failed).
 typed_ptr* eval_lambda(const s_expr* se, Environment* env);
+
+// Evaluates an s-expression whose car is the built-in special form
+//   BUILTIN_QUOTE, in the context of the given environment.
+// This special form takes one argument, which may be any valid expression.
+// The argument is returned, unevaluated.
+// Returns a dynamically-allocated typed_ptr containing a copy of the input, or
+//   an error code (if the evaluation failed).
 typed_ptr* eval_quote(const s_expr* se, Environment* env);
+
+// Evaluates an s-expression whose car is the built-in function
+//   BUILTIN_STRINGLEN, in the context of the given environment.
+// This function takes one argument, which must be a string. It is evaluated.
+// Returns a dynamically-allocated typed_ptr containing the length of the input
+//   string, or an error code (if the evaluation failed).
 typed_ptr* eval_string_length(const s_expr* se, Environment* env);
+
+// Evaluates an s-expression whose car is the built-in function
+//   BUILTIN_STRINGEQ, in the context of the given environment.
+// This function takes at least two arguments, which must all be strings. Each
+//   argument is evaluated.
+// Returns a dynamically-allocated typed_ptr containing the boolean truth value
+//   of the predicate, or an error code (if the evaluation failed).
 typed_ptr* eval_string_equals(const s_expr* se, Environment* env);
+
+// Evaluates an s-expression whose car is the built-in function
+//   BUILTIN_STRINGAPPEND, in the context of the given environment.
+// This function takes any number of arguments, which must all be strings. Each
+//   argument is evaluated.
+// Returns a dynamically-allocated typed_ptr containing all of the argument
+//   strings concatenated, or an error code (if the evaluation failed).
 typed_ptr* eval_string_append(const s_expr* se, Environment* env);
 
 // helper functions
