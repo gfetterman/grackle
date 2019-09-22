@@ -47,6 +47,7 @@ typed_ptr* eval_comparison(const s_expr* se, Environment* env);
 //   Rather than `(define add (lambda (x y) (+ x y)))`, you can write
 //   `(define (add x y) (+ x y))`.
 // The first argument may thus be either (1) a symbol, or (2) a list of symbols.
+//   It is not evaluated.
 // The second argument may be any valid expression. If the first argument is a
 //   symbol, the second argument is evaluated. If the first argument is a list
 //   of symbols, the second argument is treated as the body of a lambda
@@ -60,14 +61,93 @@ typed_ptr* eval_comparison(const s_expr* se, Environment* env);
 //   error code (if the evaluation failed).
 typed_ptr* eval_define(const s_expr* se, Environment* env);
 
+// Evaluates an s-expression whose car is the built-in special form
+//   BUILTIN_SETVAR, in the context of the given environment.
+// This special form takes exactly two arguments.
+// The first argument must be a symbol. It is not evaluated. It must be defined
+//   before it can be mutated.
+// The second argument may be any valid expression. It is evaluated.
+// The symbol's value within the given environment, or (if the symbol is not
+//   defined within the given environment) in its nearest enclosing scope, is
+//   set to the result of evaluating the second argument.
+// Returns a dynamically-allocated typed_ptr containing a <void> value, or an
+//   error code (if the evaluation failed).
 typed_ptr* eval_set_variable(const s_expr* se, Environment* env);
+
+// Evaluates an s-expression whose car is the built-in instruction to exit the
+//   interpreter, BUILTIN_EXIT.
+// This instruction takes exactly zero arguments.
+// Returns a dynamically-allocated typed_ptr containing the error
+//   EVAL_ERROR_EXIT, or another error code (if evaluation failed).
 typed_ptr* eval_exit(const s_expr* se, Environment* env);
+
+// Evaluates an s-expression whose car is the built-in function BUILTIN_CONS, in
+//   the context of the given environment.
+// This function takes exactly two arguments.
+// The arguments may be any valid expression. Each is evaluated.
+// The arguments are made into a cons cell (a pair).
+// Returns a dynamically-allocated typed_ptr to the resulting pair, or an error
+//   code (if the evaluation failed).
 typed_ptr* eval_cons(const s_expr* se, Environment* env);
+
+// Evaluates an s-expression whose car is in the set {BUILTIN_CAR, BUILTIN_CDR},
+//   in the context of the given environment.
+// This function takes exactly one argument.
+// The first argument must be a non-empty s-expression. It is evaluated.
+// `car` produces the first element in a pair, `cdr` the second.
+// Returns a dynamically-allocated typed_ptr containing the resulting object, or
+//   an error code (if the evaluation failed).
 typed_ptr* eval_car_cdr(const s_expr* se, Environment* env);
+
+// Evaluates an s-expression whose car is the built-in function BUILTIN_LIST,
+//   in the context of the given environment.
+// This function takes any number of arguments.
+// The arguments may be any valid expression. Each is evaluated.
+// The arguments are made into a list. Providing zero arguments produces the
+//   empty list.
+// Returns a dynamically-allocated typed_ptr containing the resulting
+//   s-expression, or an error code (if the evaluation failed).
 typed_ptr* eval_list_construction(const s_expr* se, Environment* env);
+
+// Evaluates an s-expression whose car is in the set {BUILTIN_AND, BUILTIN_OR},
+//   in the context of the given environment.
+// These special forms take any number of arguments.
+// Their arguments may be any valid expression.
+// The arguments are evaluated in order, until a stopping condition is reached
+//   or the arguments are exhausted.
+// `and` stops once an argument evaluates to boolean false.
+// `or` stops once an argument evaluates to anything but boolean false.
+// Returns a dynamically-allocated typed_ptr containing the result of the last
+//   argument evaluation performed, or an error code (if the evaluation failed).
 typed_ptr* eval_and_or(const s_expr* se, Environment* env);
+
+// Evaluates an s-expression whose car is the built-in function BUILTIN_NOT,
+//   in the context of the given environment.
+// This function takes exactly one argument.
+// The argument may be any valid expression. It is evaluated.
+// Returns a dynamically-allocated typed_ptr containing the boolean value of
+//   whether the argument is a boolean false, or an error code (if the
+//   evaluation failed).
 typed_ptr* eval_not(const s_expr* se, Environment* env);
+
+// Evaluates an s-expression whose car is the built-in special form
+//   BUILTIN_COND, in the context of the given environment.
+// This special form takes any number of arguments.
+// The arguments must be non-empty lists; i.e., they take the form
+//   (predicate [then-body ...]).
+// The predicates of the arguments are evaluated until one evaluates to anything
+//   other than a boolean false value. After this, no predicates are evaluated.
+// For an argument whose predicate evaluates to non-false, its then-bodies are
+//   evaluated in order, if present.
+// One special predicate, named "else", is allowed, which is a fall-through
+//   case. It may only appear as the predicate of the last argument. If an else
+//   clause appears, it must have at least one then-body.
+// Returns a dynamically-allocated typed_ptr containing the result of the last
+//   then-body evaluation (or the predicate, if no then-bodies are present), or
+//   a <void> value (if no arguments are provided or no argument's predicate
+//   evaluates to non-false), or an error code (if any evaluation failed).
 typed_ptr* eval_cond(const s_expr* se, Environment* env);
+
 typed_ptr* eval_list_pred(const s_expr* se, Environment* env);
 typed_ptr* eval_atom_pred(const s_expr* se, Environment* env);
 typed_ptr* eval_null_pred(const s_expr* se, Environment* env);
