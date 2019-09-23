@@ -581,7 +581,7 @@ typed_ptr* eval_cond(const s_expr* se, Environment* env) {
             return create_error_tp(EVAL_ERROR_BAD_SYNTAX);
         }
     }
-    typed_ptr* pred_result = NULL;
+    typed_ptr* pred_result = create_void_tp();
     bool pred_true = false;
     s_expr* then_bodies = NULL;
     for (s_expr* arg_se = s_expr_next(se); \
@@ -621,7 +621,7 @@ typed_ptr* eval_cond(const s_expr* se, Environment* env) {
         free(pred_result);
         result = create_void_tp();
     } else {
-        typed_ptr* last_then_eval = NULL;
+        typed_ptr* last_then_eval = pred_result;
         while (!is_empty_list(then_bodies)) {
             if (last_then_eval != NULL) {
                 if (last_then_eval->type == TYPE_S_EXPR) {
